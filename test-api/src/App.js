@@ -25,7 +25,7 @@ function App() {
 
   const {
     coinGeckoPriceData,
-    isLoading: isLoadingCoinGeckoPrices,
+    // isLoading: isLoadingCoinGeckoPrices, // Not used currently
     error: coinGeckoPriceError,
     stats: coinGeckoPriceStats
   } = useCoinGeckoPriceData();
