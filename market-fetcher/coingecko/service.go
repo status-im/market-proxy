@@ -18,8 +18,12 @@ import (
 )
 
 const (
-	COINGECKO_URL = "https://api.coingecko.com/api/v3/coins/markets"
-	MAX_PER_PAGE  = 250 // CoinGecko's API max per_page value
+	// Base URL for public API
+	COINGECKO_PUBLIC_URL = "https://api.coingecko.com/api/v3/coins/markets"
+	// Base URL for Pro API
+	COINGECKO_PRO_URL = "https://pro-api.coingecko.com/api/v3/coins/markets"
+	// Maximum items per page
+	MAX_PER_PAGE = 250 // CoinGecko's API max per_page value
 )
 
 type CacheData struct {
@@ -46,6 +50,33 @@ func NewService(cfg *config.Config, apiTokens *config.APITokens, onUpdate func()
 		apiTokens: apiTokens,
 		onUpdate:  onUpdate,
 	}
+}
+
+// Returns the appropriate API URL based on whether we have an API key
+func (s *Service) getApiBaseUrl() string {
+	if len(s.apiTokens.Tokens) > 0 {
+		if s.isUsingDemoKey() {
+			log.Printf("CoinGecko: Detected Demo API key, using public API URL")
+			return COINGECKO_PUBLIC_URL
+		} else {
+			log.Printf("CoinGecko: Using Pro API URL with API key")
+			return COINGECKO_PRO_URL
+		}
+	}
+	return COINGECKO_PUBLIC_URL
+}
+
+// Determines if the API key is a demo key
+func (s *Service) isUsingDemoKey() bool {
+	if len(s.apiTokens.Tokens) == 0 {
+		return false
+	}
+
+	apiKey := s.apiTokens.Tokens[0]
+	// Check if this is a demo key
+	return strings.HasPrefix(apiKey, "demo_") ||
+		strings.HasPrefix(apiKey, "CG-") ||
+		strings.Contains(strings.ToLower(apiKey), "demo")
 }
 
 // Start starts the CoinGecko service
@@ -244,17 +275,28 @@ func (s *Service) fetchSinglePage(client *http.Client, page int, limit int) (*AP
 			time.Sleep(sleepTime)
 		}
 
+		// Get the appropriate base URL
+		baseUrl := s.getApiBaseUrl()
+
 		// Build URL with pagination parameters
 		url := fmt.Sprintf("%s?vs_currency=usd&order=market_cap_desc&per_page=%d&page=%d",
-			COINGECKO_URL,
+			baseUrl,
 			limit,
 			page)
 
 		// Add API key to URL if available
 		if len(s.apiTokens.Tokens) > 0 {
-			url = fmt.Sprintf("%s&x_cg_pro_api_key=%s", url, s.apiTokens.Tokens[0])
-			if attempt == 0 {
-				log.Printf("CoinGecko: Using API key for page %d request", page)
+			// Use the correct parameter name based on key type
+			if s.isUsingDemoKey() {
+				url = fmt.Sprintf("%s&x_cg_demo_api_key=%s", url, s.apiTokens.Tokens[0])
+				if attempt == 0 {
+					log.Printf("CoinGecko: Using Public API with Demo key for page %d request", page)
+				}
+			} else {
+				url = fmt.Sprintf("%s&x_cg_pro_api_key=%s", url, s.apiTokens.Tokens[0])
+				if attempt == 0 {
+					log.Printf("CoinGecko: Using Pro API with Pro key for page %d request", page)
+				}
 			}
 		} else if attempt == 0 {
 			log.Printf("CoinGecko: No API key available, using public API for page %d", page)
