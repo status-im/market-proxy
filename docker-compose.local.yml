@@ -1,0 +1,58 @@
+services:
+  market-fetcher:
+    build:
+      context: ./market-fetcher
+      dockerfile: Dockerfile
+    volumes:
+      - ./market-fetcher/config.yaml:/app/config.yaml
+      - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
+    environment:
+      - GO_ENV=development
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx-proxy:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx-proxy/generate-dev-conf.sh:/nginx-config/generate-dev-conf.sh
+      - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
+    command: >
+      sh -c "cd /nginx-config && 
+             chmod +x generate-dev-conf.sh && 
+             ./generate-dev-conf.sh /etc/nginx/nginx.conf && 
+             nginx -g 'daemon off;'"
+    depends_on:
+      market-fetcher:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./test-api
+      dockerfile: Dockerfile
+    volumes:
+      - ./test-api:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_PROXY_USER=${MARKET_PROXY_USER}
+      - REACT_APP_PROXY_PASSWORD=${MARKET_PROXY_PASSWORD}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - nginx-proxy
+    restart: unless-stopped

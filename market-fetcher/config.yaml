@@ -1,0 +1,4 @@
+coingecko_fetcher:
+  update_interval: 10800  # seconds
+  tokens_file: "coingecko_api_tokens.json"
+  limit: 500  # Reduced from 500 to avoid rate limits
