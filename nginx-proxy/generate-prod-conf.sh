@@ -13,14 +13,14 @@ cp "$NGINX_CONF" "${NGINX_CONF}.bak"
 # Add CORS headers for the CoinGecko prices endpoint
 sed -i '/location = \/v1\/leaderboard\/prices {/a\
             # CORS headers\
-            add_header '\''Access-Control-Allow-Origin'\'' '\''https://trading.callfry.com'\'' always;\
+            add_header '\''Access-Control-Allow-Origin'\'' '\''https://topcg.callfry.com'\'' always;\
             add_header '\''Access-Control-Allow-Methods'\'' '\''GET, POST, OPTIONS'\'' always;\
             add_header '\''Access-Control-Allow-Headers'\'' '\''DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,If-None-Match,Accept-Encoding'\'' always;\
             add_header '\''Access-Control-Expose-Headers'\'' '\''Content-Length,Content-Range,X-Proxy-Cache,X-Response-Size,ETag,Content-Encoding,Vary'\'' always;\
 \
             # Handle OPTIONS method\
             if ($request_method = '\''OPTIONS'\'') {\
-                add_header '\''Access-Control-Allow-Origin'\'' '\''https://trading.callfry.com'\'';\
+                add_header '\''Access-Control-Allow-Origin'\'' '\''https://topcg.callfry.om'\'';\
                 add_header '\''Access-Control-Allow-Methods'\'' '\''GET, POST, OPTIONS'\'';\
                 add_header '\''Access-Control-Allow-Headers'\'' '\''DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,If-None-Match,Accept-Encoding'\'';\
                 add_header '\''Access-Control-Expose-Headers'\'' '\''Content-Length,Content-Range,X-Proxy-Cache,X-Response-Size,ETag,Content-Encoding,Vary'\'';\
@@ -33,14 +33,14 @@ sed -i '/location = \/v1\/leaderboard\/prices {/a\
 # Add CORS headers for the CoinGecko markets endpoint
 sed -i '/location = \/v1\/leaderboard\/markets {/a\
             # CORS headers\
-            add_header '\''Access-Control-Allow-Origin'\'' '\''https://trading.callfry.com'\'' always;\
+            add_header '\''Access-Control-Allow-Origin'\'' '\''https://topcg.callfry.om'\'' always;\
             add_header '\''Access-Control-Allow-Methods'\'' '\''GET, POST, OPTIONS'\'' always;\
             add_header '\''Access-Control-Allow-Headers'\'' '\''DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,If-None-Match,Accept-Encoding'\'' always;\
             add_header '\''Access-Control-Expose-Headers'\'' '\''Content-Length,Content-Range,X-Proxy-Cache,X-Response-Size,ETag,Content-Encoding,Vary'\'' always;\
 \
             # Handle OPTIONS method\
             if ($request_method = '\''OPTIONS'\'') {\
-                add_header '\''Access-Control-Allow-Origin'\'' '\''https://trading.callfry.com'\'';\
+                add_header '\''Access-Control-Allow-Origin'\'' '\''https://topcg.callfry.om'\'';\
                 add_header '\''Access-Control-Allow-Methods'\'' '\''GET, POST, OPTIONS'\'';\
                 add_header '\''Access-Control-Allow-Headers'\'' '\''DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,If-None-Match,Accept-Encoding'\'';\
                 add_header '\''Access-Control-Expose-Headers'\'' '\''Content-Length,Content-Range,X-Proxy-Cache,X-Response-Size,ETag,Content-Encoding,Vary'\'';\
