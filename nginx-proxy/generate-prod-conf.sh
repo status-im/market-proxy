@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 if [ -z "$1" ]; then
     echo "Usage: $0 <path_to_nginx_conf>"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Stop and remove existing containers AND volumes
 docker compose -f docker-compose.local.yml down --volumes
 

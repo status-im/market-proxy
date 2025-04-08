@@ -3,12 +3,11 @@ services:
     build:
       context: ./market-fetcher
       dockerfile: Dockerfile
-    container_name: 'market-fetcher'
     volumes:
       - ./market-fetcher/config.yaml:/app/config.yaml
       - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
     environment:
-      GO_ENV: 'development'
+      GO_ENV: 'production'
       PORT: '8081'
     restart: unless-stopped
     ports:
@@ -27,11 +26,14 @@ services:
       context: ./nginx-proxy
       dockerfile: Dockerfile
       args:
-        ENVIRONMENT: dev
-    container_name: 'market-proxy'
+        ENVIRONMENT: prod
     volumes:
-      - ./nginx-proxy/generate-dev-conf.sh:/nginx-config/generate-dev-conf.sh
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
+    command: >
+      sh -c "cd /nginx-config && 
+             chmod +x generate-dev-conf.sh && 
+             ./generate-dev-conf.sh /etc/nginx/nginx.conf && 
+             nginx -g 'daemon off;'"
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -51,14 +53,13 @@ services:
     build:
       context: ./test-api
       dockerfile: Dockerfile
-    container_name: 'market-frontend'
     volumes:
       - ./test-api:/app
       - /app/node_modules
     env_file:
       - .env
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - REACT_APP_API_URL=http://localhost:8080
     ports:
       - "3000:3000"
@@ -71,3 +72,4 @@ services:
 networks:
   markets-network:
     driver: bridge
+
