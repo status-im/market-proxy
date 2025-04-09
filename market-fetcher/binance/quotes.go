@@ -80,11 +80,6 @@ func (qm *QuotesManager) UpdateQuotes(message []byte) error {
 				return fmt.Errorf("failed to parse price for %s: %v", ticker.Symbol, err)
 			}
 
-			quoteVolume, err := ticker.QuoteVolume.Float64()
-			if err != nil {
-				return fmt.Errorf("failed to parse quote volume for %s: %v", ticker.Symbol, err)
-			}
-
 			percentChange24h, err := ticker.PriceChangePercent.Float64()
 			if err != nil {
 				return fmt.Errorf("failed to parse price change percent for %s: %v", ticker.Symbol, err)
@@ -93,18 +88,10 @@ func (qm *QuotesManager) UpdateQuotes(message []byte) error {
 			// Update quote using full symbol as key
 			qm.quotes[ticker.Symbol] = Quote{
 				Price:            price,
-				Volume24h:        quoteVolume,
 				PercentChange24h: percentChange24h,
 			}
 		}
 	}
 
 	return nil
-}
-
-// parseFloat64 parses a string to float64
-func parseFloat64(s string) (float64, error) {
-	var f float64
-	_, err := fmt.Sscanf(s, "%f", &f)
-	return f, err
 }

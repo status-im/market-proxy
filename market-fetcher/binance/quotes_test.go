@@ -64,14 +64,12 @@ func TestQuotesManager_UpdateQuotes(t *testing.T) {
 	btcQuote, exists := quotes["BTC"]
 	assert.True(t, exists, "BTC quote should exist")
 	assert.Equal(t, 50000.00, btcQuote.Price)
-	assert.Equal(t, 100.00, btcQuote.Volume24h)
 	assert.Equal(t, 1.5, btcQuote.PercentChange24h)
 
 	// Verify ETH quote
 	ethQuote, exists := quotes["ETH"]
 	assert.True(t, exists, "ETH quote should exist")
 	assert.Equal(t, 3000.00, ethQuote.Price)
-	assert.Equal(t, 1000.00, ethQuote.Volume24h)
 	assert.Equal(t, -0.5, ethQuote.PercentChange24h)
 
 	// Test invalid JSON message
@@ -128,7 +126,6 @@ func TestQuotesManager_GetLatestQuotes(t *testing.T) {
 	btcQuote, exists := quotes["BTC"]
 	assert.True(t, exists, "BTC quote should exist")
 	assert.Equal(t, 50000.00, btcQuote.Price)
-	assert.Equal(t, 100.00, btcQuote.Volume24h)
 	assert.Equal(t, 1.5, btcQuote.PercentChange24h)
 
 	// Verify quotes map is a copy
