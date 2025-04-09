@@ -181,9 +181,6 @@ function CryptoDataTable({ data, priceData, source }) {
                         <Td>
                             <PriceContainer>
                                 <MainPrice>{formatNumber(volume24h)}</MainPrice>
-                                {tokenPriceData?.volume_24h !== undefined && (
-                                    <SecondaryPrice>{formatNumber(tokenPriceData.volume_24h)}</SecondaryPrice>
-                                )}
                             </PriceContainer>
                         </Td>
                         <Td>{formatNumber(marketCap)}</Td>

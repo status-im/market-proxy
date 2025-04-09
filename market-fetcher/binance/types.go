@@ -33,7 +33,6 @@ type WebSocketService interface {
 // Quote represents price data for a symbol
 type Quote struct {
 	Price            float64 `json:"price"`
-	Volume24h        float64 `json:"volume_24h"`
 	PercentChange24h float64 `json:"percent_change_24h"`
 }
 
