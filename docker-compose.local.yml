@@ -25,12 +25,12 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./nginx-proxy/generate-dev-conf.sh:/nginx-config/generate-dev-conf.sh
+      - ./nginx-proxy/patch-local-cors.sh:/nginx-config/patch-local-cors.sh
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
     command: >
       sh -c "cd /nginx-config && 
-             chmod +x generate-dev-conf.sh && 
-             ./generate-dev-conf.sh /etc/nginx/nginx.conf && 
+             chmod +x patch-local-cors.sh && 
+             ./patch-local-cors.sh /etc/nginx/nginx.conf http://localhost:3000 && 
              nginx -g 'daemon off;'"
     depends_on:
       market-fetcher-status:

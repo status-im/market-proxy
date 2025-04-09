@@ -1,0 +1,30 @@
+services:
+  market-fetcher-status:
+    build:
+      context: ./market-fetcher
+      dockerfile: Dockerfile
+    volumes:
+      - ./market-fetcher/config.yaml:/app/config.yaml
+      - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
+    environment:
+      - GO_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx-proxy:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      market-fetcher-status:
+        condition: service_healthy
+    restart: unless-stopped 
