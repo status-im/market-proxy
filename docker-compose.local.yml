@@ -1,5 +1,5 @@
 services:
-  market-fetcher:
+  market-fetcher-status:
     build:
       context: ./market-fetcher
       dockerfile: Dockerfile
@@ -33,7 +33,7 @@ services:
              ./generate-dev-conf.sh /etc/nginx/nginx.conf && 
              nginx -g 'daemon off;'"
     depends_on:
-      market-fetcher:
+      market-fetcher-status:
         condition: service_healthy
     restart: unless-stopped
 
