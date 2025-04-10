@@ -31,15 +31,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Handle graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		log.Println("Received shutdown signal, stopping services...")
-		cancel()
-	}()
-
 	// Create Binance service first
 	binanceService := binance.NewService(cfg)
 
@@ -97,9 +88,22 @@ func main() {
 		port = "8080"
 	}
 
-	// Create and start HTTP server
+	// Create HTTP server
 	server := api.New(port, binanceService, cgService)
-	if err := server.Start(); err != nil {
-		log.Fatal("Server failed:", err)
-	}
+
+	// Handle graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server and wait for shutdown signal
+	go func() {
+		if err := server.Start(ctx); err != nil {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-sigChan
+	log.Println("Received shutdown signal, stopping services...")
+	cancel() // Cancel context to stop all services
 }
