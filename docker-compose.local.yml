@@ -1,5 +1,5 @@
 services:
-  market-fetcher-status:
+  market-fetcher:
     build:
       context: ./market-fetcher
       dockerfile: Dockerfile
@@ -7,37 +7,42 @@ services:
       - ./market-fetcher/config.yaml:/app/config.yaml
       - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
     environment:
-      - GO_ENV=development
+      GO_ENV: 'development'
+      PORT: '8081'
+    restart: unless-stopped
     ports:
       - "8081:8080"
+    networks:
+      - 'markets-network'
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8081/health" ]
       interval: 5s
       timeout: 3s
       retries: 3
       start_period: 10s
-    restart: unless-stopped
 
-  nginx-proxy:
+  market-proxy:
     build:
       context: ./nginx-proxy
-      dockerfile: Dockerfile
+      dockerfile: nginx-proxy/Dockerfile-local
+    volumes:
+      - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
+    restart: unless-stopped
     ports:
       - "8080:8080"
-    volumes:
-      - ./nginx-proxy/patch-local-cors.sh:/nginx-config/patch-local-cors.sh
-      - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
-    command: >
-      sh -c "cd /nginx-config && 
-             chmod +x patch-local-cors.sh && 
-             ./patch-local-cors.sh /etc/nginx/nginx.conf http://localhost:3000 && 
-             nginx -g 'daemon off;'"
+    networks:
+      - 'markets-network'
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 0.0.0.0 8080']
+      interval: '30s'
+      timeout: '30s'
+      retries: 3
+      start_period: '10s'
     depends_on:
-      market-fetcher-status:
+      market-fetcher:
         condition: service_healthy
-    restart: unless-stopped
 
-  frontend:
+  market-frontend:
     build:
       context: ./test-api
       dockerfile: Dockerfile
@@ -54,5 +59,9 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - nginx-proxy
+      - market-proxy
     restart: unless-stopped
+
+networks:
+  markets-network:
+    driver: bridge

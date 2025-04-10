@@ -19,7 +19,7 @@ add_cors_config() {
     
     # Create a temporary file with the CORS configuration
     local temp_file=$(mktemp)
-    
+
     # Extract the location block
     awk -v loc="$location" '
         $0 ~ "location = " loc " {" { p=1; print; next }
