@@ -24,7 +24,7 @@ services:
   market-proxy:
     build:
       context: ./nginx-proxy
-      dockerfile: nginx-proxy/Dockerfile-local
+      dockerfile: Dockerfile-local
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
     restart: unless-stopped
