@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Set CORS origin for local development
 export CORS_ORIGIN="http://localhost:3000"
