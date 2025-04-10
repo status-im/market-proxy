@@ -54,21 +54,23 @@ func NewService(cfg *config.Config, apiTokens *config.APITokens, onUpdate func()
 
 // Returns the appropriate API URL based on whether we have an API key
 func (s *Service) getApiBaseUrl() string {
-	if len(s.apiTokens.Tokens) > 0 {
-		if s.isUsingDemoKey() {
-			log.Printf("CoinGecko: Detected Demo API key, using public API URL")
-			return COINGECKO_PUBLIC_URL
-		} else {
-			log.Printf("CoinGecko: Using Pro API URL with API key")
-			return COINGECKO_PRO_URL
-		}
+	if s.apiTokens == nil || len(s.apiTokens.Tokens) == 0 {
+		log.Printf("CoinGecko: No API tokens provided, using public API URL")
+		return COINGECKO_PUBLIC_URL
 	}
-	return COINGECKO_PUBLIC_URL
+
+	if s.isUsingDemoKey() {
+		log.Printf("CoinGecko: Detected Demo API key, using public API URL")
+		return COINGECKO_PUBLIC_URL
+	} else {
+		log.Printf("CoinGecko: Using Pro API URL with API key")
+		return COINGECKO_PRO_URL
+	}
 }
 
 // Determines if the API key is a demo key
 func (s *Service) isUsingDemoKey() bool {
-	if len(s.apiTokens.Tokens) == 0 {
+	if s.apiTokens == nil || len(s.apiTokens.Tokens) == 0 {
 		return false
 	}
 
