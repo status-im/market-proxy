@@ -2,11 +2,14 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/coingecko"
@@ -16,6 +19,7 @@ type Server struct {
 	port           string
 	binanceService *binance.Service
 	cgService      *coingecko.Service
+	server         *http.Server
 }
 
 func New(port string, binanceService *binance.Service, cgService *coingecko.Service) *Server {
@@ -26,12 +30,40 @@ func New(port string, binanceService *binance.Service, cgService *coingecko.Serv
 	}
 }
 
-func (s *Server) Start() error {
-	http.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
-	http.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
-	http.HandleFunc("/health", s.handleHealth)
+func (s *Server) Start(ctx context.Context) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
+	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
+	mux.HandleFunc("/health", s.handleHealth)
 
-	return http.ListenAndServe(":"+s.port, nil)
+	s.server = &http.Server{
+		Addr:    ":" + s.port,
+		Handler: mux,
+	}
+
+	log.Printf("Server started at http://localhost:%s", s.port)
+
+	// Create error channel for server
+	errChan := make(chan error, 1)
+	go func() {
+		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+
+	// Wait for either context cancellation or server error
+	select {
+	case <-ctx.Done():
+		log.Println("Context cancelled, shutting down server...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }
 
 func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request) {
@@ -103,4 +135,13 @@ func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
 
 	// Write the response
 	w.Write(responseBytes)
+}
+
+func (s *Server) Stop() error {
+	if s.server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return s.server.Shutdown(ctx)
+	}
+	return nil
 }
