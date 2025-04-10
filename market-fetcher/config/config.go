@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v2"
 )
@@ -31,6 +32,12 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 func LoadAPITokens(filename string) (*APITokens, error) {
+	// Check if file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		// File doesn't exist, return empty tokens
+		return &APITokens{Tokens: []string{}}, nil
+	}
+
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err

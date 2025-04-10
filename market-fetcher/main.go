@@ -24,7 +24,8 @@ func main() {
 	// Load CoinGecko API tokens
 	cgApiTokens, err := config.LoadAPITokens(cfg.CoinGeckoFetcher.TokensFile)
 	if err != nil {
-		log.Fatal("Error loading CoinGecko API tokens:", err)
+		log.Printf("Warning: Error loading CoinGecko API tokens: %v. Using public API without authentication.", err)
+		cgApiTokens = &config.APITokens{Tokens: []string{}}
 	}
 
 	// Create context with cancellation
