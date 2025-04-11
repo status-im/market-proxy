@@ -3,6 +3,7 @@ services:
     build:
       context: ./market-fetcher
       dockerfile: Dockerfile
+    container_name: 'market-fetcher'
     volumes:
       - ./market-fetcher/config.yaml:/app/config.yaml
       - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
@@ -25,6 +26,7 @@ services:
     build:
       context: ./nginx-proxy
       dockerfile: Dockerfile.local
+    container_name: 'market-proxy'
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
     restart: unless-stopped
@@ -46,6 +48,7 @@ services:
     build:
       context: ./test-api
       dockerfile: Dockerfile
+    container_name: 'market-frontend'
     volumes:
       - ./test-api:/app
       - /app/node_modules

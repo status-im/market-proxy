@@ -3,6 +3,7 @@ services:
     build:
       context: ./market-fetcher
       dockerfile: Dockerfile
+    container_name: 'market-fetcher'
     volumes:
       - ./market-fetcher/config.yaml:/app/config.yaml
       - ./secrets/coingecko_api_tokens.json:/app/coingecko_api_tokens.json
@@ -11,7 +12,7 @@ services:
       PORT: '8081'
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "8081:8081"
     networks:
       - 'markets-network'
     healthcheck:
@@ -25,6 +26,7 @@ services:
     build:
       context: ./nginx-proxy
       dockerfile: Dockerfile
+    container_name: 'market-proxy'
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
     restart: unless-stopped
@@ -41,6 +43,18 @@ services:
     depends_on:
       market-fetcher:
         condition: service_healthy
+
+  market-proxy-metrics:
+    image: 'nginx/nginx-prometheus-exporter:1.4'
+    container_name: 'market-proxy-metrics'
+    restart: 'always'
+    command: 
+      - '--nginx.scrape-uri=http://market-proxy:8080/stub_status'
+      - '--web.listen-address=:8090'
+    ports:
+      - '8090:8090'
+    networks:
+      - 'markets-network'
 
 networks:
   markets-network:
