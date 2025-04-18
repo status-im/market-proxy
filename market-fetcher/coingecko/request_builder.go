@@ -28,7 +28,7 @@ type RequestBuilder struct {
 // NewMarketRequestBuilder creates a new request builder for markets endpoint
 func NewMarketRequestBuilder(baseURL string) *RequestBuilder {
 	rb := &RequestBuilder{
-		baseURL:    fmt.Sprintf("%s/coins/markets", baseURL),
+		baseURL:    baseURL,
 		httpMethod: "GET",
 		params:     make(map[string]string),
 		headers:    make(map[string]string),

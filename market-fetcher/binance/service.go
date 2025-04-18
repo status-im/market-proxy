@@ -2,8 +2,10 @@ package binance
 
 import (
 	"context"
-	"github.com/status-im/market-proxy/config"
 	"log"
+	"sync/atomic"
+
+	"github.com/status-im/market-proxy/config"
 )
 
 type Service struct {
@@ -14,6 +16,8 @@ type Service struct {
 	stopCh chan struct{}
 	// Quotes manager
 	quotes *QuotesManager
+	// Flag indicating if at least one successful update was received
+	successfulUpdate atomic.Bool
 }
 
 func NewService(cfg *config.Config) *Service {
@@ -23,8 +27,15 @@ func NewService(cfg *config.Config) *Service {
 		quotes: NewQuotesManager(),
 	}
 
-	// Create WebSocket client with message handler
-	s.wsClient = NewWebSocketClient(s.stopCh, s.quotes.UpdateQuotes)
+	// Create WebSocket client with message handler that also updates our health status
+	s.wsClient = NewWebSocketClient(s.stopCh, func(message []byte) error {
+		err := s.quotes.UpdateQuotes(message)
+		if err == nil {
+			// Mark that we've received at least one successful update
+			s.successfulUpdate.Store(true)
+		}
+		return err
+	})
 
 	return s
 }
@@ -37,6 +48,11 @@ func (s *Service) SetWatchList(baseSymbols []string, quoteSymbol string) {
 // GetLatestQuotes returns the latest quotes for watched symbols
 func (s *Service) GetLatestQuotes() map[string]Quote {
 	return s.quotes.GetLatestQuotes()
+}
+
+// Healthy returns true if at least one successful update has been received
+func (s *Service) Healthy() bool {
+	return s.successfulUpdate.Load()
 }
 
 func (s *Service) Start(ctx context.Context) error {

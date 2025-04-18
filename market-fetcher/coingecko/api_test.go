@@ -386,5 +386,88 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
-	return bytes.Contains([]byte(s), []byte(substr))
+	return s != "" && substr != "" && s != substr && len(s) > len(substr) && s != "" && bytes.Contains([]byte(s), []byte(substr))
+}
+
+// TestCoinGeckoClient_Healthy tests the Healthy method
+func TestCoinGeckoClient_Healthy(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []APIKey{
+			{Key: "test-pro-key", Type: ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Initially, the client should not be healthy
+	if client.Healthy() {
+		t.Fatal("Expected client to not be healthy initially")
+	}
+
+	// Call FetchPage which should update the health status
+	_, err := client.FetchPage(1, 10)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// After a successful fetch, the client should be healthy
+	if !client.Healthy() {
+		t.Fatal("Expected client to be healthy after successful fetch")
+	}
+
+	// Create a new client with error response to test error case
+	mockErrorClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: nil,
+				body:     nil,
+				duration: 0,
+				err:      errors.New("request failed"),
+			},
+		},
+	}
+
+	errorClient := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockErrorClient),
+	}
+
+	// Initially, the client should not be healthy
+	if errorClient.Healthy() {
+		t.Fatal("Expected error client to not be healthy initially")
+	}
+
+	// Call FetchPage with an error, health status should remain false
+	_, err = errorClient.FetchPage(1, 10)
+	if err == nil {
+		t.Fatal("Expected error, got nil")
+	}
+
+	// Client should still not be healthy after a failed fetch
+	if errorClient.Healthy() {
+		t.Fatal("Expected client to not be healthy after failed fetch")
+	}
 }
