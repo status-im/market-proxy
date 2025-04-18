@@ -5,23 +5,28 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"time"
 )
 
 // RetryOptions configures retry behavior for HTTP requests
 type RetryOptions struct {
-	MaxRetries  int
-	BaseBackoff time.Duration
-	LogPrefix   string
+	MaxRetries        int
+	BaseBackoff       time.Duration
+	LogPrefix         string
+	ConnectionTimeout time.Duration // Timeout for establishing connection
+	RequestTimeout    time.Duration // Total request timeout including reading response
 }
 
 // DefaultRetryOptions returns default retry options
 func DefaultRetryOptions() RetryOptions {
 	return RetryOptions{
-		MaxRetries:  3,
-		BaseBackoff: 1000 * time.Millisecond,
-		LogPrefix:   "HTTP",
+		MaxRetries:        3,
+		BaseBackoff:       1000 * time.Millisecond,
+		LogPrefix:         "HTTP",
+		ConnectionTimeout: 10 * time.Second, // Default 10s connection timeout
+		RequestTimeout:    30 * time.Second, // Default 30s total request timeout
 	}
 }
 
@@ -33,21 +38,30 @@ type HTTPClientWithRetries struct {
 
 // NewHTTPClientWithRetries creates a new HTTP client with retry capabilities
 func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
+	client := &http.Client{
+		Timeout: opts.RequestTimeout,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: opts.ConnectionTimeout,
+			}).DialContext,
+		},
+	}
+
 	return &HTTPClientWithRetries{
-		client: &http.Client{},
+		client: client,
 		opts:   opts,
 	}
 }
 
 // ExecuteRequest executes an HTTP request with retry logic
-func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, logContext string) (*http.Response, []byte, time.Duration, error) {
+func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Response, []byte, time.Duration, error) {
 	var lastErr error
 
 	for attempt := 0; attempt < c.opts.MaxRetries; attempt++ {
 		// Only log retry attempts after the first one
 		if attempt > 0 {
-			log.Printf("%s: Retry %d/%d for %s after error: %v",
-				c.opts.LogPrefix, attempt, c.opts.MaxRetries-1, logContext, lastErr)
+			log.Printf("%s: Retry %d/%d after error: %v",
+				c.opts.LogPrefix, attempt, c.opts.MaxRetries-1, lastErr)
 
 			// Calculate backoff with jitter
 			backoffDuration := calculateBackoffWithJitter(c.opts.BaseBackoff, attempt)
@@ -68,7 +82,7 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, logContext str
 		}
 
 		// Process response
-		// Pass context as page parameter for consistent logging
+		// Extract page parameter for consistent logging
 		pageContext := 0
 		if page, exists := extractPageFromRequest(req); exists {
 			pageContext = page
@@ -92,8 +106,8 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, logContext str
 	}
 
 	// If we got here, all retries failed
-	return nil, nil, 0, fmt.Errorf("all %d attempts failed for %s, last error: %v",
-		c.opts.MaxRetries, logContext, lastErr)
+	return nil, nil, 0, fmt.Errorf("all %d attempts failed, last error: %v",
+		c.opts.MaxRetries, lastErr)
 }
 
 // calculateBackoffWithJitter calculates backoff duration with jitter for retries
