@@ -17,7 +17,8 @@ type Config struct {
 }
 
 type APITokens struct {
-	Tokens []string `json:"api_tokens"`
+	Tokens     []string `json:"api_tokens"`
+	DemoTokens []string `json:"demo_api_tokens,omitempty"`
 }
 
 func LoadConfig(path string) (*Config, error) {
