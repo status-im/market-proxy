@@ -10,9 +10,10 @@ import (
 
 type Config struct {
 	CoinGeckoFetcher struct {
-		UpdateInterval int    `yaml:"update_interval"`
-		TokensFile     string `yaml:"tokens_file"`
-		Limit          int    `yaml:"limit"`
+		UpdateIntervalMs int    `yaml:"update_interval_ms"`
+		TokensFile       string `yaml:"tokens_file"`
+		Limit            int    `yaml:"limit"`
+		RequestDelayMs   int    `yaml:"request_delay_ms"` // Delay between requests in milliseconds
 	} `yaml:"coingecko_fetcher"`
 }
 

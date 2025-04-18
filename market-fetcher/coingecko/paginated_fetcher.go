@@ -6,19 +6,35 @@ import (
 	"time"
 )
 
+const (
+	// Default request delay in milliseconds
+	DEFAULT_REQUEST_DELAY = 2000
+)
+
 // PaginatedFetcher handles fetching data with pagination support
 type PaginatedFetcher struct {
-	apiClient  APIClient
-	maxLimit   int
-	totalLimit int
+	apiClient    APIClient
+	maxLimit     int
+	totalLimit   int
+	requestDelay time.Duration // Delay between requests
 }
 
 // NewPaginatedFetcher creates a new paginated fetcher
-func NewPaginatedFetcher(apiClient APIClient, totalLimit int, maxPerPage int) *PaginatedFetcher {
+func NewPaginatedFetcher(apiClient APIClient, totalLimit int, maxPerPage int, requestDelayMs int) *PaginatedFetcher {
+	// Convert delay to time.Duration - allowing 0 as valid value
+	var requestDelay time.Duration
+	if requestDelayMs >= 0 {
+		requestDelay = time.Duration(requestDelayMs) * time.Millisecond
+	} else {
+		// Negative delay means use default (2000ms)
+		requestDelay = DEFAULT_REQUEST_DELAY * time.Millisecond
+	}
+
 	return &PaginatedFetcher{
-		apiClient:  apiClient,
-		maxLimit:   maxPerPage,
-		totalLimit: totalLimit,
+		apiClient:    apiClient,
+		maxLimit:     maxPerPage,
+		totalLimit:   totalLimit,
+		requestDelay: requestDelay,
 	}
 }
 
@@ -87,6 +103,15 @@ func (pf *PaginatedFetcher) FetchData() (*APIResponse, error) {
 		if len(allItems) >= totalLimit {
 			log.Printf("Fetcher: Reached target limit of %d items", totalLimit)
 			break
+		}
+
+		// If there are more pages to fetch, wait before the next request
+		// Only wait if requestDelay > 0
+		if page < totalPages && pf.requestDelay > 0 {
+			log.Printf("Fetcher: Waiting for %.2fs before fetching next page", pf.requestDelay.Seconds())
+			time.Sleep(pf.requestDelay)
+		} else if page < totalPages {
+			log.Printf("Fetcher: No delay configured, fetching next page immediately")
 		}
 	}
 
