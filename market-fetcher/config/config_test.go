@@ -8,9 +8,10 @@ import (
 func createTestConfig(t *testing.T) string {
 	content := `
 coingecko_fetcher:
-  update_interval: 60
+  update_interval_ms: 60000
   tokens_file: "test_tokens.json"
   limit: 100
+  request_delay_ms: 1000
 `
 	tmpfile, err := os.CreateTemp("", "config-*.yaml")
 	if err != nil {
@@ -48,6 +49,7 @@ func createTestTokens(t *testing.T) string {
 	return tmpfile.Name()
 }
 
+// TestLoadConfig verifies the correct loading of updated configuration parameters
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -59,14 +61,18 @@ func TestLoadConfig(t *testing.T) {
 			name: "valid config",
 			configYAML: `
 coingecko_fetcher:
-  update_interval: 60
+  update_interval_ms: 60000
   tokens_file: "test_tokens.json"
   limit: 100
+  request_delay_ms: 1000
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoinGeckoFetcher.UpdateInterval != 60 {
-					t.Errorf("UpdateInterval = %v, want 60", cfg.CoinGeckoFetcher.UpdateInterval)
+				if cfg.CoinGeckoFetcher.UpdateIntervalMs != 60000 {
+					t.Errorf("UpdateIntervalMs = %v, want 60000", cfg.CoinGeckoFetcher.UpdateIntervalMs)
+				}
+				if cfg.CoinGeckoFetcher.RequestDelayMs != 1000 {
+					t.Errorf("RequestDelayMs = %v, want 1000", cfg.CoinGeckoFetcher.RequestDelayMs)
 				}
 				if cfg.CoinGeckoFetcher.Limit != 100 {
 					t.Errorf("Limit = %v, want 100", cfg.CoinGeckoFetcher.Limit)
@@ -77,7 +83,7 @@ coingecko_fetcher:
 			name: "invalid yaml",
 			configYAML: `
 coingecko_fetcher:
-  update_interval: invalid
+  update_interval_ms: invalid
   tokens_file: "test_tokens.json"
   limit: 100
 `,
@@ -87,13 +93,29 @@ coingecko_fetcher:
 			name: "missing required fields",
 			configYAML: `
 coingecko_fetcher:
-  update_interval: 60
+  update_interval_ms: 60000
   tokens_file: "test_tokens.json"
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if cfg.CoinGeckoFetcher.Limit != 0 {
 					t.Errorf("Limit should be empty, got %v", cfg.CoinGeckoFetcher.Limit)
+				}
+			},
+		},
+		{
+			name: "zero request delay",
+			configYAML: `
+coingecko_fetcher:
+  update_interval_ms: 60000
+  tokens_file: "test_tokens.json"
+  limit: 100
+  request_delay_ms: 0
+`,
+			wantErr: false,
+			validateCfg: func(t *testing.T, cfg *Config) {
+				if cfg.CoinGeckoFetcher.RequestDelayMs != 0 {
+					t.Errorf("RequestDelayMs = %v, want 0", cfg.CoinGeckoFetcher.RequestDelayMs)
 				}
 			},
 		},
@@ -218,8 +240,11 @@ func TestLoadConfigWithRealFiles(t *testing.T) {
 	}
 
 	// Validate config
-	if config.CoinGeckoFetcher.UpdateInterval != 60 {
-		t.Errorf("UpdateInterval = %v, want 60", config.CoinGeckoFetcher.UpdateInterval)
+	if config.CoinGeckoFetcher.UpdateIntervalMs != 60000 {
+		t.Errorf("UpdateIntervalMs = %v, want 60000", config.CoinGeckoFetcher.UpdateIntervalMs)
+	}
+	if config.CoinGeckoFetcher.RequestDelayMs != 1000 {
+		t.Errorf("RequestDelayMs = %v, want 1000", config.CoinGeckoFetcher.RequestDelayMs)
 	}
 	if config.CoinGeckoFetcher.Limit != 100 {
 		t.Errorf("Limit = %v, want 100", config.CoinGeckoFetcher.Limit)
