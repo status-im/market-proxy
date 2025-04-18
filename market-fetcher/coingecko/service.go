@@ -111,3 +111,14 @@ func (s *Service) GetCacheData() *APIResponse {
 	defer s.cache.RUnlock()
 	return s.cache.data
 }
+
+// Healthy checks if the service can fetch at least one page of data
+func (s *Service) Healthy() bool {
+	// Check if we already have some data in cache
+	if s.GetCacheData() != nil && len(s.GetCacheData().Data) > 0 {
+		return true
+	}
+
+	// If not, try to fetch at least one page
+	return s.apiClient.Healthy()
+}

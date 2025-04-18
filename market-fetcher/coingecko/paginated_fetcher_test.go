@@ -14,6 +14,8 @@ type MockAPIClient struct {
 	errorPages map[int]error
 	// Track which pages were requested
 	requestedPages []int
+	// Health status flag
+	isHealthy bool
 }
 
 // FetchPage implements the APIClient.FetchPage method for mocking
@@ -41,6 +43,11 @@ func (m *MockAPIClient) FetchPage(page, limit int) ([]CoinData, error) {
 
 	// Return empty slice for pages beyond what we have defined
 	return []CoinData{}, nil
+}
+
+// Healthy implements the APIClient.Healthy method for mocking
+func (m *MockAPIClient) Healthy() bool {
+	return m.isHealthy // Use the isHealthy field
 }
 
 // TestPaginatedFetcher_SinglePage tests fetching a single page of data

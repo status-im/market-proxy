@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/status-im/market-proxy/config"
 )
@@ -13,13 +14,16 @@ import (
 type APIClient interface {
 	// FetchPage fetches a single page of data
 	FetchPage(page, limit int) ([]CoinData, error)
+	// Healthy checks if the API is responsive by fetching a minimal amount of data
+	Healthy() bool
 }
 
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
-	config     *config.Config
-	keyManager APIKeyManagerInterface
-	httpClient *HTTPClientWithRetries
+	config          *config.Config
+	keyManager      APIKeyManagerInterface
+	httpClient      *HTTPClientWithRetries
+	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
 
 // NewCoinGeckoClient creates a new CoinGecko API client
@@ -33,6 +37,11 @@ func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGe
 		keyManager: NewAPIKeyManager(apiTokens),
 		httpClient: NewHTTPClientWithRetries(retryOpts),
 	}
+}
+
+// Healthy checks if the API has had at least one successful fetch
+func (c *CoinGeckoClient) Healthy() bool {
+	return c.successfulFetch.Load()
 }
 
 // FetchPage fetches a single page of data from CoinGecko with retry capability
@@ -56,6 +65,9 @@ func (c *CoinGeckoClient) FetchPage(page, limit int) ([]CoinData, error) {
 
 	log.Printf("CoinGecko: Successfully processed page %d with %d items",
 		page, len(result))
+
+	// Mark that we've had at least one successful fetch
+	c.successfulFetch.Store(true)
 
 	return result, nil
 }

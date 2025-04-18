@@ -97,13 +97,13 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Check if CoinMarketCap data is available
-	if s.binanceService.GetLatestQuotes() != nil {
+	// Check if Binance service is healthy (has received at least one update)
+	if s.binanceService.Healthy() {
 		status["services"].(map[string]string)["binance"] = "up"
 	}
 
-	// Check if CoinGecko data is available
-	if s.cgService.GetCacheData() != nil {
+	// Check if CoinGecko service is healthy (can fetch at least one page)
+	if s.cgService.Healthy() {
 		status["services"].(map[string]string)["coingecko"] = "up"
 	}
 

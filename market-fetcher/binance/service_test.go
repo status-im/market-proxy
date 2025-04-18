@@ -196,6 +196,47 @@ func TestService_Reconnect(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Give time for goroutines to clean up
 }
 
+func TestService_Healthy(t *testing.T) {
+	cfg := &config.Config{}
+	svc := NewService(cfg)
+
+	// Initially, service should not be healthy
+	assert.False(t, svc.Healthy(), "Service should not be healthy initially")
+
+	// Setup watchlist
+	baseSymbols := []string{"BTC", "ETH"}
+	quoteSymbol := "USDT"
+	svc.SetWatchList(baseSymbols, quoteSymbol)
+
+	// Create test message
+	testMessage := []byte(`[
+		{
+			"e": "24hrTicker",
+			"E": 1672515782136,
+			"s": "BTCUSDT",
+			"c": "50000.00",
+			"P": "1.5",
+			"v": "100.00"
+		}
+	]`)
+
+	// Process the message using the callback that was set in the constructor
+	// Extract the callback from wsClient and call it directly
+	err := svc.wsClient.onMessage(testMessage)
+	assert.NoError(t, err)
+
+	// Now the service should be healthy
+	assert.True(t, svc.Healthy(), "Service should be healthy after processing a valid message")
+
+	// Test with invalid message - it should not affect health status
+	invalidMessage := []byte(`invalid json`)
+	err = svc.wsClient.onMessage(invalidMessage)
+	assert.Error(t, err)
+
+	// Service should still be considered healthy
+	assert.True(t, svc.Healthy(), "Service should remain healthy even after error")
+}
+
 func TestService_InvalidMessage(t *testing.T) {
 	cfg := &config.Config{}
 	svc := NewService(cfg)
