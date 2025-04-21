@@ -86,7 +86,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		// Get the appropriate base URL for this key type
 		baseURL := c.getApiBaseUrl(apiKey.Type)
 
-		// Create request builder
+		// Create request builder for markets endpoint
 		requestBuilder := NewMarketRequestBuilder(baseURL)
 
 		// Configure request with pagination parameters
