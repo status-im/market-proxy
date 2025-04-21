@@ -6,22 +6,22 @@ import (
 	"testing"
 )
 
-func TestRequestBuilder_BuildURL(t *testing.T) {
-	baseURL := "https://api.coingecko.com/api/v3"
+func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
+	baseURL := "https://api.coingecko.com"
 
 	tests := []struct {
 		name          string
-		configuration func(*RequestBuilder)
+		configuration func(*MarketsRequestBuilder)
 		checkURL      func(*testing.T, string)
 	}{
 		{
 			name: "Default parameters",
-			configuration: func(rb *RequestBuilder) {
+			configuration: func(rb *MarketsRequestBuilder) {
 				// Using default configuration
 			},
 			checkURL: func(t *testing.T, urlStr string) {
-				if !strings.HasPrefix(urlStr, baseURL+"/coins/markets") {
-					t.Errorf("URL should start with %s/coins/markets, got %s", baseURL, urlStr)
+				if !strings.HasPrefix(urlStr, baseURL+"/api/v3/coins/markets") {
+					t.Errorf("URL should start with %s/api/v3/coins/markets, got %s", baseURL, urlStr)
 				}
 
 				parsedURL, err := url.Parse(urlStr)
@@ -48,7 +48,7 @@ func TestRequestBuilder_BuildURL(t *testing.T) {
 		},
 		{
 			name: "With pagination",
-			configuration: func(rb *RequestBuilder) {
+			configuration: func(rb *MarketsRequestBuilder) {
 				rb.WithPage(2).WithPerPage(50)
 			},
 			checkURL: func(t *testing.T, urlStr string) {
@@ -70,7 +70,7 @@ func TestRequestBuilder_BuildURL(t *testing.T) {
 		},
 		{
 			name: "With Pro API key",
-			configuration: func(rb *RequestBuilder) {
+			configuration: func(rb *MarketsRequestBuilder) {
 				rb.WithApiKey("test-pro-key", ProKey)
 			},
 			checkURL: func(t *testing.T, urlStr string) {
@@ -92,7 +92,7 @@ func TestRequestBuilder_BuildURL(t *testing.T) {
 		},
 		{
 			name: "With Demo API key",
-			configuration: func(rb *RequestBuilder) {
+			configuration: func(rb *MarketsRequestBuilder) {
 				rb.WithApiKey("test-demo-key", DemoKey)
 			},
 			checkURL: func(t *testing.T, urlStr string) {
@@ -114,7 +114,7 @@ func TestRequestBuilder_BuildURL(t *testing.T) {
 		},
 		{
 			name: "With custom currency and order",
-			configuration: func(rb *RequestBuilder) {
+			configuration: func(rb *MarketsRequestBuilder) {
 				rb.WithCurrency("eur").WithOrder("volume_desc")
 			},
 			checkURL: func(t *testing.T, urlStr string) {
@@ -157,8 +157,8 @@ func TestRequestBuilder_BuildURL(t *testing.T) {
 	}
 }
 
-func TestRequestBuilder_Build(t *testing.T) {
-	baseURL := "https://api.coingecko.com/api/v3"
+func TestMarketsRequestBuilder_Build(t *testing.T) {
+	baseURL := "https://api.coingecko.com"
 
 	// Create builder with custom user agent and header
 	rb := NewMarketRequestBuilder(baseURL)
@@ -177,8 +177,8 @@ func TestRequestBuilder_Build(t *testing.T) {
 	}
 
 	// Check URL
-	if !strings.HasPrefix(req.URL.String(), baseURL+"/coins/markets") {
-		t.Errorf("URL should start with %s/coins/markets, got %s", baseURL, req.URL.String())
+	if !strings.HasPrefix(req.URL.String(), baseURL+"/api/v3/coins/markets") {
+		t.Errorf("URL should start with %s/api/v3/coins/markets, got %s", baseURL, req.URL.String())
 	}
 
 	// Check headers

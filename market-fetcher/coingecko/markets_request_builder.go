@@ -5,10 +5,24 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
-// RequestBuilder implements the Builder pattern for CoinGecko API requests
-type RequestBuilder struct {
+const (
+	// Complete path for markets API endpoint
+	MARKETS_API_PATH = "/api/v3/coins/markets"
+)
+
+// buildURL safely combines a base URL with a path
+func buildURL(baseURL, path string) string {
+	baseURL = strings.TrimRight(baseURL, "/")
+	trimmedPath := strings.TrimLeft(path, "/")
+
+	return baseURL + "/" + trimmedPath
+}
+
+// MarketsRequestBuilder implements the Builder pattern for CoinGecko markets API requests
+type MarketsRequestBuilder struct {
 	// Basic request parameters
 	baseURL    string
 	httpMethod string
@@ -26,8 +40,8 @@ type RequestBuilder struct {
 }
 
 // NewMarketRequestBuilder creates a new request builder for markets endpoint
-func NewMarketRequestBuilder(baseURL string) *RequestBuilder {
-	rb := &RequestBuilder{
+func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
+	rb := &MarketsRequestBuilder{
 		baseURL:    baseURL,
 		httpMethod: "GET",
 		params:     make(map[string]string),
@@ -46,56 +60,59 @@ func NewMarketRequestBuilder(baseURL string) *RequestBuilder {
 }
 
 // WithPage adds page parameter for pagination
-func (rb *RequestBuilder) WithPage(page int) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithPage(page int) *MarketsRequestBuilder {
 	rb.params["page"] = strconv.Itoa(page)
 	return rb
 }
 
 // WithPerPage adds per_page parameter
-func (rb *RequestBuilder) WithPerPage(perPage int) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithPerPage(perPage int) *MarketsRequestBuilder {
 	rb.params["per_page"] = strconv.Itoa(perPage)
 	return rb
 }
 
 // WithCurrency adds currency parameter
-func (rb *RequestBuilder) WithCurrency(currency string) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithCurrency(currency string) *MarketsRequestBuilder {
 	rb.params["vs_currency"] = currency
 	return rb
 }
 
 // WithOrder adds ordering parameter
-func (rb *RequestBuilder) WithOrder(order string) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder {
 	rb.params["order"] = order
 	return rb
 }
 
 // WithApiKey sets the API key and its type
-func (rb *RequestBuilder) WithApiKey(apiKey string, keyType KeyType) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *MarketsRequestBuilder {
 	rb.apiKey = apiKey
 	rb.keyType = keyType
 	return rb
 }
 
 // WithHeader adds a custom HTTP header
-func (rb *RequestBuilder) WithHeader(name, value string) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithHeader(name, value string) *MarketsRequestBuilder {
 	rb.headers[name] = value
 	return rb
 }
 
 // WithUserAgent sets the User-Agent header
-func (rb *RequestBuilder) WithUserAgent(userAgent string) *RequestBuilder {
+func (rb *MarketsRequestBuilder) WithUserAgent(userAgent string) *MarketsRequestBuilder {
 	rb.userAgent = userAgent
 	return rb
 }
 
 // GetApiKey returns the API key and its type
-func (rb *RequestBuilder) GetApiKey() (string, KeyType) {
+func (rb *MarketsRequestBuilder) GetApiKey() (string, KeyType) {
 	return rb.apiKey, rb.keyType
 }
 
 // BuildURL builds the complete URL for the request
-func (rb *RequestBuilder) BuildURL() string {
-	// Start with base URL
+func (rb *MarketsRequestBuilder) BuildURL() string {
+	// Build the full URL using the safe path combiner
+	fullPath := buildURL(rb.baseURL, MARKETS_API_PATH)
+
+	// Create query parameters
 	query := url.Values{}
 
 	// Add all parameters
@@ -114,7 +131,7 @@ func (rb *RequestBuilder) BuildURL() string {
 	}
 
 	// Combine URL and query parameters
-	finalURL := rb.baseURL
+	finalURL := fullPath
 	queryString := query.Encode()
 	if queryString != "" {
 		finalURL = fmt.Sprintf("%s?%s", finalURL, queryString)
@@ -124,7 +141,7 @@ func (rb *RequestBuilder) BuildURL() string {
 }
 
 // Build creates an http.Request object
-func (rb *RequestBuilder) Build() (*http.Request, error) {
+func (rb *MarketsRequestBuilder) Build() (*http.Request, error) {
 	// Build the URL
 	finalURL := rb.BuildURL()
 

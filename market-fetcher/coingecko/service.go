@@ -13,9 +13,9 @@ import (
 
 const (
 	// Base URL for public API
-	COINGECKO_PUBLIC_URL = "https://api.coingecko.com/api/v3/coins/markets"
+	COINGECKO_PUBLIC_URL = "https://api.coingecko.com"
 	// Base URL for Pro API
-	COINGECKO_PRO_URL = "https://pro-api.coingecko.com/api/v3/coins/markets"
+	COINGECKO_PRO_URL = "https://pro-api.coingecko.com"
 	// Maximum items per page
 	MAX_PER_PAGE = 250 // CoinGecko's API max per_page value
 )
