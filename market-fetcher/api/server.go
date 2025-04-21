@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/coingecko"
 )
@@ -35,6 +36,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	mux.HandleFunc("/health", s.handleHealth)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	s.server = &http.Server{
 		Addr:    ":" + s.port,
@@ -42,6 +44,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	log.Printf("Server started at http://localhost:%s", s.port)
+	log.Println("Prometheus metrics available at /metrics endpoint")
 
 	// Create error channel for server
 	errChan := make(chan error, 1)

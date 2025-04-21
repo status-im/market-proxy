@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
 )
 
@@ -89,7 +90,15 @@ func (s *Service) Stop() {
 
 // fetchAndUpdate fetches data from CoinGecko and signals update
 func (s *Service) fetchAndUpdate(ctx context.Context) error {
+	// Record start time for metrics
+	startTime := time.Now()
+
+	// Perform the fetch operation
 	data, err := s.fetcher.FetchData()
+
+	// Record metrics regardless of success or failure
+	metrics.RecordFetchMarketDataCycle("markets-leaderboard", startTime)
+
 	if err != nil {
 		return err
 	}

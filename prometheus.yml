@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'market-fetcher'
+    static_configs:
+      - targets: ['market-fetcher:8081'] 
