@@ -128,7 +128,7 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, all
 	}
 
 	// Track successful page
-	*completedPages++
+	(*completedPages)++
 
 	log.Printf("Fetcher: Completed page %d/%d with %d items in %.2fs",
 		page, params.totalPages, len(pageResponse.Data), pageTime.Seconds())
