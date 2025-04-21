@@ -48,29 +48,15 @@ func (wsc *WebSocketClient) Connect() error {
 
 // SetupPingPong sets up ping/pong handlers for the WebSocket connection
 func (wsc *WebSocketClient) SetupPingPong() {
-	// Start ping handler
-	go func() {
-		ticker := time.NewTicker(PING_INTERVAL)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-wsc.stopCh:
-				return
-			case <-ticker.C:
-				// Send empty pong frame
-				if err := wsc.conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(PING_INTERVAL)); err != nil {
-					log.Printf("Error sending pong: %v", err)
-					return
-				}
-			}
-		}
-	}()
-
-	// Set ping handler
-	wsc.conn.SetPingHandler(func(string) error {
+	// Set ping handler to respond with pong containing the same data
+	wsc.conn.SetPingHandler(func(appData string) error {
 		// Reset read deadline
 		wsc.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT))
+		// Respond with pong containing the same data
+		err := wsc.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(10*time.Second))
+		if err != nil {
+			log.Printf("Error sending pong response: %v", err)
+		}
 		return nil
 	})
 }
