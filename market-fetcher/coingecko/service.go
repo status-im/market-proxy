@@ -90,6 +90,9 @@ func (s *Service) Stop() {
 
 // fetchAndUpdate fetches data from CoinGecko and signals update
 func (s *Service) fetchAndUpdate(ctx context.Context) error {
+	// Reset request cycle counters
+	metrics.ResetCycleCounters("coingecko")
+
 	// Record start time for metrics
 	startTime := time.Now()
 
@@ -106,6 +109,11 @@ func (s *Service) fetchAndUpdate(ctx context.Context) error {
 	s.cache.Lock()
 	s.cache.data = data
 	s.cache.Unlock()
+
+	// Record cache size metric
+	if data != nil && data.Data != nil {
+		metrics.RecordTokensCacheSize("markets-leaderboard", len(data.Data))
+	}
 
 	// Signal update through callback
 	if s.onUpdate != nil {

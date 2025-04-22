@@ -109,7 +109,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		log.Printf("CoinGecko: Attempting request for page %d with key type %v", page, apiKey.Type)
 
 		// Execute the request with retries
-		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
+		resp, body, duration, err := c.httpClient.ExecuteRequest(request, "coingecko")
 
 		// If the request failed
 		if err != nil {
