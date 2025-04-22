@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/status-im/market-proxy/metrics"
 )
 
 // RetryOptions configures retry behavior for HTTP requests
@@ -54,7 +56,7 @@ func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
 }
 
 // ExecuteRequest executes an HTTP request with retry logic
-func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Response, []byte, time.Duration, error) {
+func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName string) (*http.Response, []byte, time.Duration, error) {
 	var lastErr error
 
 	for attempt := 0; attempt < c.opts.MaxRetries; attempt++ {
@@ -62,6 +64,9 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 		if attempt > 0 {
 			log.Printf("%s: Retry %d/%d after error: %v",
 				c.opts.LogPrefix, attempt, c.opts.MaxRetries-1, lastErr)
+
+			// Record retry attempt in metrics
+			metrics.RecordHTTPRetry(serviceName)
 
 			// Calculate backoff with jitter
 			backoffDuration := calculateBackoffWithJitter(c.opts.BaseBackoff, attempt)
@@ -78,6 +83,8 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 
 		if err != nil {
 			lastErr = fmt.Errorf("request failed after %.2fs: %v", requestDuration.Seconds(), err)
+			// Record error in metrics
+			metrics.RecordHTTPRequest(serviceName, "error")
 			continue
 		}
 
@@ -94,14 +101,20 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 			if isRetryableError(resp.StatusCode) {
 				lastErr = err
 				resp.Body.Close()
+				// Record rate limited request
+				metrics.RecordHTTPRequest(serviceName, "rate_limited")
 				continue
 			}
 
 			// For non-retryable errors, fail immediately
 			resp.Body.Close()
+			// Record general error
+			metrics.RecordHTTPRequest(serviceName, "error")
 			return nil, nil, requestDuration, err
 		}
 
+		// Record successful request
+		metrics.RecordHTTPRequest(serviceName, "success")
 		return resp, responseBody, requestDuration, nil
 	}
 

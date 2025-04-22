@@ -37,7 +37,7 @@ func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 		client := NewHTTPClientWithRetries(opts)
 
 		req, _ := http.NewRequest("GET", server.URL+"?delay=response", nil)
-		_, _, _, err := client.ExecuteRequest(req)
+		_, _, _, err := client.ExecuteRequest(req, "test-service")
 
 		if err == nil {
 			t.Error("Expected timeout error, got none")
@@ -52,7 +52,7 @@ func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 		client := NewHTTPClientWithRetries(opts)
 
 		req, _ := http.NewRequest("GET", server.URL, nil)
-		_, _, _, err := client.ExecuteRequest(req)
+		_, _, _, err := client.ExecuteRequest(req, "test-service")
 
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
@@ -90,7 +90,7 @@ func TestHTTPClientWithRetries_Retries(t *testing.T) {
 	client := NewHTTPClientWithRetries(opts)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	resp, body, duration, err := client.ExecuteRequest(req)
+	resp, body, duration, err := client.ExecuteRequest(req, "test-service")
 
 	// Check results
 	if err != nil {
@@ -135,7 +135,7 @@ func TestHTTPClientWithRetries_MaxRetriesExceeded(t *testing.T) {
 	client := NewHTTPClientWithRetries(opts)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	_, _, _, err := client.ExecuteRequest(req)
+	_, _, _, err := client.ExecuteRequest(req, "test-service")
 
 	// Should get an error after all retries fail
 	if err == nil {
@@ -168,7 +168,7 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 	client := NewHTTPClientWithRetries(opts)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	_, _, _, err := client.ExecuteRequest(req)
+	_, _, _, err := client.ExecuteRequest(req, "test-service")
 
 	// Should get an error
 	if err == nil {
@@ -195,7 +195,7 @@ func TestHTTPClientWithRetries_ConnectionFailure(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://localhost:57891", nil) // Using an unlikely port
 
 	startTime := time.Now()
-	_, _, _, err := client.ExecuteRequest(req)
+	_, _, _, err := client.ExecuteRequest(req, "test-service")
 	duration := time.Since(startTime)
 
 	// Should get an error
@@ -251,7 +251,7 @@ func TestHTTPClientWithRetries_NetworkErrors(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	_, body, _, err := client.ExecuteRequest(req)
+	_, body, _, err := client.ExecuteRequest(req, "test-service")
 
 	// Should succeed after retry
 	if err != nil {
