@@ -2,7 +2,6 @@ package coingecko
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -72,13 +71,8 @@ func (s *Service) Start(ctx context.Context) error {
 		},
 	)
 
-	// Start the initial fetch
-	if err := s.fetchAndUpdate(ctx); err != nil {
-		return fmt.Errorf("initial fetch failed: %v", err)
-	}
-
 	// Start the scheduler with context
-	s.scheduler.Start(ctx)
+	s.scheduler.Start(ctx, true)
 	return nil
 }
 
