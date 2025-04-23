@@ -31,3 +31,16 @@ func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token
 
 	return result
 }
+
+// CountTokensByPlatform counts the number of tokens per platform
+func CountTokensByPlatform(tokens []Token) map[string]int {
+	platformCounts := make(map[string]int)
+
+	for _, token := range tokens {
+		for platform := range token.Platforms {
+			platformCounts[platform]++
+		}
+	}
+
+	return platformCounts
+}

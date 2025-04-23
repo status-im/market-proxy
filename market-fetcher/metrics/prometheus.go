@@ -8,10 +8,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	// MetricsPrefix is a configurable prefix for all metrics
-	MetricsPrefix = "market_fetcher_"
+// MetricsPrefix is the prefix used for all metrics
+const MetricsPrefix = "market_fetcher_"
 
+var (
 	// FetchDurationHistogram tracks the duration of fetch operations
 	FetchDurationHistogram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -28,6 +28,15 @@ var (
 			Help: "Number of tokens in cache",
 		},
 		[]string{"service"},
+	)
+
+	// TokensByPlatformGauge tracks the number of tokens per platform
+	TokensByPlatformGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: MetricsPrefix + "tokens_by_platform",
+			Help: "Number of tokens per blockchain platform",
+		},
+		[]string{"platform"},
 	)
 
 	// RequestsCounter tracks total number of HTTP requests
@@ -69,6 +78,18 @@ func RecordFetchMarketDataCycle(service string, start time.Time) {
 func RecordTokensCacheSize(service string, size int) {
 	CacheSizeGauge.WithLabelValues(service).Set(float64(size))
 	log.Printf("Metrics: %s cache size is %d tokens", service, size)
+}
+
+// RecordTokensByPlatform records the number of tokens for each platform
+func RecordTokensByPlatform(tokensByPlatform map[string]int) {
+	// Reset all previous values first to handle platforms that no longer have tokens
+	TokensByPlatformGauge.Reset()
+
+	// Record the count for each platform
+	for platform, count := range tokensByPlatform {
+		TokensByPlatformGauge.WithLabelValues(platform).Set(float64(count))
+		log.Printf("Metrics: Platform %s has %d tokens", platform, count)
+	}
 }
 
 // RecordHTTPRequest records metrics for an HTTP request
