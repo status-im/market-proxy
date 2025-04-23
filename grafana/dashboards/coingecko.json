@@ -200,7 +200,7 @@
     },
     {
       "id": 3,
-      "type": "barchart",
+      "type": "timeseries",
       "title": "HTTP Requests Per Cycle",
       "gridPos": {
         "x": 0,
@@ -211,25 +211,39 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "drawStyle": "bars",
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
             "barAlignment": 0,
-            "barWidthFactor": 0.8,
-            "lineWidth": 1,
-            "fillOpacity": 90,
-            "gradientMode": "none",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": true,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
             "axisPlacement": "auto",
             "axisLabel": "Requests",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
             "scaleDistribution": {
               "type": "linear"
             },
+            "axisCenteredZero": false,
             "hideFrom": {
               "tooltip": false,
               "viz": false,
               "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
           },
           "color": {
-            "mode": "fixed"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -348,11 +362,100 @@
           "showLegend": true,
           "displayMode": "table",
           "placement": "bottom",
-          "calcs": ["sum", "max"]
+          "calcs": ["sum", "max", "last"]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Tokens by Platform",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "h": 12,
+        "w": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": true,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "Number of Tokens",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
         },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 100,
-        "stacking": "normal"
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "market_fetcher_tokens_by_platform",
+          "legendFormat": "{{platform}}",
+          "range": true,
+          "refId": "A",
+          "exemplar": true,
+          "instant": false,
+          "interval": "",
+          "intervalFactor": 1
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max", "min"]
+        }
       }
     }
   ],

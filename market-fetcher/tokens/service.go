@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
 )
 
@@ -64,6 +65,8 @@ func (s *Service) Stop() {
 
 // fetchAndUpdate fetches data from CoinGecko and updates the cache
 func (s *Service) fetchAndUpdate() error {
+	startTime := time.Now()
+
 	tokens, err := s.client.FetchTokens()
 	if err != nil {
 		return fmt.Errorf("failed to fetch tokens: %w", err)
@@ -75,6 +78,14 @@ func (s *Service) fetchAndUpdate() error {
 	s.cache.Lock()
 	s.cache.tokens = filteredTokens
 	s.cache.Unlock()
+
+	// Count tokens per platform
+	tokensByPlatform := CountTokensByPlatform(filteredTokens)
+
+	// Record metrics
+	metrics.RecordTokensCacheSize("tokens-service", len(filteredTokens))
+	metrics.RecordTokensByPlatform(tokensByPlatform)
+	metrics.RecordFetchMarketDataCycle("tokens-service", startTime)
 
 	// Signal update through callback if provided
 	if s.onUpdate != nil {
