@@ -12,6 +12,7 @@ import (
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/coingecko"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/tokens"
 )
 
 func main() {
@@ -59,6 +60,17 @@ func main() {
 	}
 	defer cgService.Stop()
 
+	// Create Tokens service
+	tokensService := tokens.NewService(cfg, func() {
+		log.Println("Tokens data has been updated")
+	})
+
+	// Start the Tokens service
+	if err := tokensService.Start(ctx); err != nil {
+		log.Fatal("Failed to start Tokens service:", err)
+	}
+	defer tokensService.Stop()
+
 	// Handle updates from CoinMarketCap and CoinGecko
 	go func() {
 		for {
@@ -90,7 +102,7 @@ func main() {
 	}
 
 	// Create HTTP server
-	server := api.New(port, binanceService, cgService)
+	server := api.New(port, binanceService, cgService, tokensService)
 
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
