@@ -9,10 +9,13 @@ import (
 )
 
 var (
+	// MetricsPrefix is a configurable prefix for all metrics
+	MetricsPrefix = "market_fetcher_"
+
 	// FetchDurationHistogram tracks the duration of fetch operations
 	FetchDurationHistogram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "fetch_duration_seconds",
+			Name: MetricsPrefix + "fetch_duration_seconds",
 			Help: "Time taken to fetch data from external APIs",
 		},
 		[]string{"service", "operation"},
@@ -21,7 +24,7 @@ var (
 	// CacheSizeGauge tracks the number of tokens in cache
 	CacheSizeGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cache_size_tokens",
+			Name: MetricsPrefix + "cache_size_tokens",
 			Help: "Number of tokens in cache",
 		},
 		[]string{"service"},
@@ -30,7 +33,7 @@ var (
 	// RequestsCounter tracks total number of HTTP requests
 	RequestsCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
+			Name: MetricsPrefix + "http_requests_total",
 			Help: "Total number of HTTP requests made",
 		},
 		[]string{"service", "status"},
@@ -39,7 +42,7 @@ var (
 	// RequestsCycleCounter tracks number of HTTP requests per cycle, resets each cycle
 	RequestsCycleCounter = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "http_requests_per_cycle",
+			Name: MetricsPrefix + "http_requests_per_cycle",
 			Help: "Number of HTTP requests per fetch cycle",
 		},
 		[]string{"service", "status"},
@@ -48,7 +51,7 @@ var (
 	// RetryCounter tracks number of retry attempts
 	RetryCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_retry_attempts_total",
+			Name: MetricsPrefix + "http_retry_attempts_total",
 			Help: "Total number of HTTP retry attempts",
 		},
 		[]string{"service"},
