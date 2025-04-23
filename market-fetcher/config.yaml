@@ -3,3 +3,20 @@ coingecko_fetcher:
   tokens_file: "coingecko_api_tokens.json"
   limit: 5000
   request_delay_ms: 0 # milliseconds (0 = no delay, negative = use default)
+
+tokens_fetcher:
+  update_interval_ms: 1800000  # milliseconds (30 minutes)
+  supported_platforms:
+    - ethereum
+    - optimistic-ethereum  # Optimism
+    - arbitrum-one         # Arbitrum
+    - base
+    - status
+    - linea
+    - blast
+    - zksync
+    - mantle
+    - abstract
+    - unichain
+    - binance-smart-chain  # BSC
+    - polygon-pos          # Polygon

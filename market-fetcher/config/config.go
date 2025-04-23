@@ -15,6 +15,11 @@ type Config struct {
 		Limit            int    `yaml:"limit"`
 		RequestDelayMs   int    `yaml:"request_delay_ms"` // Delay between requests in milliseconds
 	} `yaml:"coingecko_fetcher"`
+
+	TokensFetcher struct {
+		UpdateIntervalMs   int      `yaml:"update_interval_ms"`
+		SupportedPlatforms []string `yaml:"supported_platforms"`
+	} `yaml:"tokens_fetcher"`
 }
 
 type APITokens struct {
