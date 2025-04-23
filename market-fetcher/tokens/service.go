@@ -70,7 +70,7 @@ func (s *Service) fetchAndUpdate() error {
 	}
 
 	// Filter tokens by keeping only supported platforms
-	filteredTokens := s.filterTokensByPlatform(tokens)
+	filteredTokens := FilterTokensByPlatform(tokens, s.config.TokensFetcher.SupportedPlatforms)
 
 	s.cache.Lock()
 	s.cache.tokens = filteredTokens
@@ -83,36 +83,6 @@ func (s *Service) fetchAndUpdate() error {
 
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
 	return nil
-}
-
-// filterTokensByPlatform filters tokens to keep only the supported platforms
-func (s *Service) filterTokensByPlatform(tokens []Token) []Token {
-	result := make([]Token, 0, len(tokens))
-
-	// Create a map for faster lookups
-	supportedPlatforms := make(map[string]bool)
-	for _, platform := range s.config.TokensFetcher.SupportedPlatforms {
-		supportedPlatforms[platform] = true
-	}
-
-	for _, token := range tokens {
-		// Create a new platforms map with only supported platforms
-		filteredPlatforms := make(map[string]string)
-
-		for platform, address := range token.Platforms {
-			if supportedPlatforms[platform] {
-				filteredPlatforms[platform] = address
-			}
-		}
-
-		// Only include tokens that have at least one supported platform
-		if len(filteredPlatforms) > 0 {
-			token.Platforms = filteredPlatforms
-			result = append(result, token)
-		}
-	}
-
-	return result
 }
 
 // GetTokens returns the cached tokens
