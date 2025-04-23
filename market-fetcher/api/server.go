@@ -38,7 +38,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
-	mux.HandleFunc("/api/v3/coins/list", s.handleCoinsList)
+	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 
