@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/scheduler"
 )
 
 // Service represents the tokens service that periodically fetches and filters token data
@@ -19,8 +20,7 @@ type Service struct {
 		sync.RWMutex
 		tokens []Token
 	}
-	ticker      *time.Ticker
-	stopCh      chan struct{}
+	scheduler   *scheduler.Scheduler
 	initialized bool
 }
 
@@ -32,47 +32,34 @@ func NewService(config *config.Config, onUpdate func()) *Service {
 		config:   config,
 		client:   client,
 		onUpdate: onUpdate,
-		stopCh:   make(chan struct{}),
 	}
 }
 
 // Start starts the tokens service
 func (s *Service) Start(ctx context.Context) error {
-	// Perform initial fetch
-	if err := s.fetchAndUpdate(); err != nil {
-		log.Printf("Error during initial token fetch: %v", err)
-		// Continue anyway, will retry on next tick
-	} else {
-		s.initialized = true
-	}
-
 	// Start periodic updates
 	updateInterval := time.Duration(s.config.TokensFetcher.UpdateIntervalMs) * time.Millisecond
-	s.ticker = time.NewTicker(updateInterval)
 
-	go func() {
-		for {
-			select {
-			case <-s.ticker.C:
-				if err := s.fetchAndUpdate(); err != nil {
-					log.Printf("Error updating tokens: %v", err)
-				}
-			case <-s.stopCh:
-				s.ticker.Stop()
-				return
-			case <-ctx.Done():
-				s.ticker.Stop()
-				return
-			}
+	// Create and start the scheduler
+	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
+		if err := s.fetchAndUpdate(); err != nil {
+			log.Printf("Error updating tokens: %v", err)
+		} else {
+			s.initialized = true
 		}
-	}()
+	})
+
+	// The scheduler will execute the task immediately on start
+	s.scheduler.Start(ctx, true)
 
 	return nil
 }
 
 // Stop stops the tokens service
 func (s *Service) Stop() {
-	close(s.stopCh)
+	if s.scheduler != nil {
+		s.scheduler.Stop()
+	}
 }
 
 // fetchAndUpdate fetches data from CoinGecko and updates the cache
