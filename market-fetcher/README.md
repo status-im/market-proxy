@@ -66,25 +66,53 @@ docker run -p 8080:8080 market-fetcher
 
 ## Configuration
 
-### config.yaml
+The service is configured via a `config.yaml` file. Below are the key configuration sections:
 
-Main configuration file for the service:
+### coingecko_fetcher
+
 ```yaml
 coingecko_fetcher:
-  update_interval: 10800  # seconds between CoinGecko updates
-  tokens_file: "coingecko_api_tokens.json"  # path to API tokens file
-  limit: 500  # maximum number of tokens to fetch
+  update_interval_ms: 600000  # milliseconds (10 minutes)
+  tokens_file: "coingecko_api_tokens.json"  # file containing API tokens
+  limit: 5000  # number of tokens to fetch
+  request_delay_ms: 0  # delay between requests, 0 = no delay
 ```
+
+### tokens_fetcher
+
+```yaml
+tokens_fetcher:
+  update_interval_ms: 1800000  # milliseconds (30 minutes)
+  supported_platforms:  # list of blockchain platforms to include
+    - ethereum
+    - optimistic-ethereum  # Optimism
+    - arbitrum-one         # Arbitrum
+    - base
+    - status
+    - linea
+    - blast
+    - zksync
+    - mantle
+    - abstract
+    - unichain
+    - binance-smart-chain  # BSC
+    - polygon-pos          # Polygon
+```
+
+#### tokens_fetcher Parameters
+
+- `update_interval_ms`: The interval in milliseconds at which to fetch token data
+- `supported_platforms`: List of blockchain platforms to include in the token data. Tokens will be filtered to only include those available on the supported platforms.
 
 ### coingecko_api_tokens.json
 
 API tokens configuration for CoinGecko:
 ```json
 {
-  "api_tokens": ["your-api-key-here"]
+  "api_tokens": ["your-api-key-here"],
+  "demo_api_tokens": ["demo-key"]
 }
 ```
-
 ## Request Flow
 
 ### Token List Updates
@@ -102,7 +130,8 @@ API tokens configuration for CoinGecko:
 ### REST API Access
 1. Token data available via `/api/v1/leaderboard/markets`
 2. Price data available via `/api/v1/leaderboard/prices`
-3. Health check available via `/health`
+3. Token platform data available via `/api/v1/coins/list`
+4. Health check available via `/health`
 
 ## API Endpoints
 
@@ -138,6 +167,30 @@ Returns token market data from CoinGecko:
     }
   ]
 }
+```
+
+### GET /api/v1/coins/list
+Returns a list of all tokens with their supported blockchain platforms:
+```json
+[
+  {
+    "id": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "platforms": {
+      "ethereum": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    }
+  },
+  {
+    "id": "status",
+    "symbol": "snt",
+    "name": "Status",
+    "platforms": {
+      "ethereum": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
+      "status": "0x744d70fdbe2ba4cf95131626614a1763df805b9e"
+    }
+  }
+]
 ```
 
 ### GET /health
