@@ -24,8 +24,8 @@ func TestPeriodicTask(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start the task
-	pt.Start(ctx)
+	// Start the task with immediate execution
+	pt.Start(ctx, true)
 	assert.True(t, pt.IsRunning())
 
 	// Wait for 3 executions
@@ -62,8 +62,8 @@ func TestPeriodicTask_DoubleStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pt.Start(ctx)
-	pt.Start(ctx) // Second start should be ignored
+	pt.Start(ctx, true)
+	pt.Start(ctx, true) // Second start should be ignored
 
 	time.Sleep(150 * time.Millisecond)
 	pt.Stop()
@@ -80,8 +80,8 @@ func TestPeriodicTask_ContextCancellation(t *testing.T) {
 	// Create context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Start the task
-	pt.Start(ctx)
+	// Start the task with immediate execution
+	pt.Start(ctx, true)
 	assert.True(t, pt.IsRunning())
 
 	// Wait for at least one execution
@@ -117,8 +117,8 @@ func TestPeriodicTask_NestedContext(t *testing.T) {
 	childCtx, childCancel := context.WithCancel(parentCtx)
 	defer childCancel()
 
-	// Start with child context
-	pt.Start(childCtx)
+	// Start with child context and immediate execution
+	pt.Start(childCtx, true)
 	assert.True(t, pt.IsRunning())
 
 	// Wait for parent context to timeout
@@ -128,4 +128,54 @@ func TestPeriodicTask_NestedContext(t *testing.T) {
 	// Verify task stopped due to parent context timeout
 	assert.False(t, pt.IsRunning())
 	assert.Greater(t, atomic.LoadInt32(&counter), int32(0))
+}
+
+func TestPeriodicTask_ImmediateExecution(t *testing.T) {
+	t.Run("With immediate execution", func(t *testing.T) {
+		var counter int32
+		pt := New(100*time.Millisecond, func(ctx context.Context) {
+			atomic.AddInt32(&counter, 1)
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Start with immediate execution
+		pt.Start(ctx, true)
+
+		// Check almost immediately
+		time.Sleep(10 * time.Millisecond)
+
+		// Verify that immediate execution happened
+		assert.Equal(t, int32(1), atomic.LoadInt32(&counter))
+
+		pt.Stop()
+	})
+
+	t.Run("Without immediate execution", func(t *testing.T) {
+		var counter int32
+		pt := New(100*time.Millisecond, func(ctx context.Context) {
+			atomic.AddInt32(&counter, 1)
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Start without immediate execution
+		pt.Start(ctx, false)
+
+		// Check almost immediately
+		time.Sleep(10 * time.Millisecond)
+
+		// Verify that no immediate execution happened
+		assert.Equal(t, int32(0), atomic.LoadInt32(&counter))
+
+		// Wait for the first tick
+		time.Sleep(100 * time.Millisecond)
+
+		// Verify that execution happened after the first tick
+		assert.Equal(t, int32(1), atomic.LoadInt32(&counter))
+
+		pt.Stop()
+	})
 }

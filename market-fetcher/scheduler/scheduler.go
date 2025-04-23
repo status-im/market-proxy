@@ -25,7 +25,7 @@ func New(interval time.Duration, task func(context.Context)) *Scheduler {
 }
 
 // Start begins executing the task at the specified interval
-func (s *Scheduler) Start(ctx context.Context) {
+func (s *Scheduler) Start(ctx context.Context, firstRunImmediately bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -40,6 +40,12 @@ func (s *Scheduler) Start(ctx context.Context) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
+
+		// Execute the task immediately if requested
+		if firstRunImmediately {
+			s.task(ctx)
+		}
+
 		ticker := time.NewTicker(s.interval)
 		defer ticker.Stop()
 
