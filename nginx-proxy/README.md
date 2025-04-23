@@ -15,8 +15,10 @@ graph TD
     G --> H[Market Fetcher]
     H --> I[markets]
     H --> J[prices]
+    H --> O[coins list]
     I --> K[Return Response]
     J --> K
+    O --> K
     K --> L[Compress with Gzip]
     L --> M[Return to Client]
     F --> N[Compress with Gzip]
@@ -28,6 +30,7 @@ The nginx market proxy handles requests through the following process:
 1. Receives HTTP GET requests for market data:
    - `/api/v1/leaderboard/markets` - returns token market data from CoinGecko
    - `/api/v1/leaderboard/prices` - returns price data from Binance
+   - `/api/v1/coins/list` - returns a list of tokens with their supported blockchain platforms
    - `/health` - returns service health status
 2. Validates the request format
 3. Checks if the requested data is available in the cache
@@ -48,6 +51,7 @@ Requests must be in one of the following formats:
 ```
 GET /v1/leaderboard/markets
 GET /v1/leaderboard/prices
+GET /v1/coins/list
 ```
 
 Examples:
@@ -58,6 +62,8 @@ curl -X GET http://localhost:8080/v1/leaderboard/markets
 # Get price data
 curl -X GET http://localhost:8080/v1/leaderboard/prices
 
+# Get tokens by platform
+curl -X GET http://localhost:8080/v1/coins/list
 ```
 
 ## Caching
