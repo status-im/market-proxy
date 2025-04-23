@@ -59,8 +59,9 @@ add_cors_config() {
     rm "$temp_file"
 }
 
-# Add CORS configuration for both endpoints
+# Add CORS configuration for all endpoints
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/prices"
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/markets"
+add_cors_config "$NGINX_CONF" "\/v1\/coins\/list"
 
 echo "Added CORS configuration to $NGINX_CONF for local development environment with origin $CORS_ORIGIN" 
