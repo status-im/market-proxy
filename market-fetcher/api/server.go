@@ -14,20 +14,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/coingecko"
+	"github.com/status-im/market-proxy/tokens"
 )
 
 type Server struct {
 	port           string
 	binanceService *binance.Service
 	cgService      *coingecko.Service
+	tokensService  *tokens.Service
 	server         *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *tokens.Service) *Server {
 	return &Server{
 		port:           port,
 		binanceService: binanceService,
 		cgService:      cgService,
+		tokensService:  tokensService,
 	}
 }
 
@@ -35,6 +38,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
+	mux.HandleFunc("/api/v3/coins/list", s.handleCoinsList)
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -89,6 +93,25 @@ func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request)
 	s.sendJSONResponse(w, quotes)
 }
 
+// handleCoinsList responds with the list of tokens filtered by supported platforms
+// This endpoint mimics the CoinGecko API endpoint /api/v3/coins/list with platform information
+func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
+	// Check for include_platform parameter, though we always include platforms
+	includePlatform := r.URL.Query().Get("include_platform")
+	if includePlatform != "" && includePlatform != "true" {
+		http.Error(w, "include_platform parameter must be 'true' or omitted", http.StatusBadRequest)
+		return
+	}
+
+	tokens := s.tokensService.GetTokens()
+	if len(tokens) == 0 {
+		http.Error(w, "No token data available", http.StatusServiceUnavailable)
+		return
+	}
+
+	s.sendJSONResponse(w, tokens)
+}
+
 // handleHealth responds with 200 OK to indicate the service is running
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if services are initialized
@@ -97,6 +120,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"services": map[string]string{
 			"binance":   "unknown",
 			"coingecko": "unknown",
+			"tokens":    "unknown",
 		},
 	}
 
@@ -108,6 +132,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if CoinGecko service is healthy (can fetch at least one page)
 	if s.cgService.Healthy() {
 		status["services"].(map[string]string)["coingecko"] = "up"
+	}
+
+	// Check if Tokens service is healthy
+	if s.tokensService.Healthy() {
+		status["services"].(map[string]string)["tokens"] = "up"
 	}
 
 	s.sendJSONResponse(w, status)
