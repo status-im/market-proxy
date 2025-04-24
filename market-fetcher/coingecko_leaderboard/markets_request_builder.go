@@ -2,6 +2,7 @@ package coingecko
 
 import (
 	"fmt"
+	cg "github.com/status-im/market-proxy/coingecko"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,7 +33,7 @@ type MarketsRequestBuilder struct {
 
 	// API key information
 	apiKey  string
-	keyType KeyType
+	keyType cg.KeyType
 
 	// Other options
 	userAgent string
@@ -84,7 +85,7 @@ func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder 
 }
 
 // WithApiKey sets the API key and its type
-func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *MarketsRequestBuilder {
+func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType cg.KeyType) *MarketsRequestBuilder {
 	rb.apiKey = apiKey
 	rb.keyType = keyType
 	return rb
@@ -103,7 +104,7 @@ func (rb *MarketsRequestBuilder) WithUserAgent(userAgent string) *MarketsRequest
 }
 
 // GetApiKey returns the API key and its type
-func (rb *MarketsRequestBuilder) GetApiKey() (string, KeyType) {
+func (rb *MarketsRequestBuilder) GetApiKey() (string, cg.KeyType) {
 	return rb.apiKey, rb.keyType
 }
 
@@ -123,9 +124,9 @@ func (rb *MarketsRequestBuilder) BuildURL() string {
 	// Add API key if available
 	if rb.apiKey != "" {
 		switch rb.keyType {
-		case ProKey:
+		case cg.ProKey:
 			query.Add("x_cg_pro_api_key", rb.apiKey)
-		case DemoKey:
+		case cg.DemoKey:
 			query.Add("x_cg_demo_api_key", rb.apiKey)
 		}
 	}

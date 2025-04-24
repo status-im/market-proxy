@@ -1,6 +1,7 @@
 package coingecko
 
 import (
+	cg "github.com/status-im/market-proxy/coingecko"
 	"net/url"
 	"strings"
 	"testing"
@@ -71,7 +72,7 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 		{
 			name: "With Pro API key",
 			configuration: func(rb *MarketsRequestBuilder) {
-				rb.WithApiKey("test-pro-key", ProKey)
+				rb.WithApiKey("test-pro-key", cg.ProKey)
 			},
 			checkURL: func(t *testing.T, urlStr string) {
 				parsedURL, err := url.Parse(urlStr)
@@ -93,7 +94,7 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 		{
 			name: "With Demo API key",
 			configuration: func(rb *MarketsRequestBuilder) {
-				rb.WithApiKey("test-demo-key", DemoKey)
+				rb.WithApiKey("test-demo-key", cg.DemoKey)
 			},
 			checkURL: func(t *testing.T, urlStr string) {
 				parsedURL, err := url.Parse(urlStr)

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	cg "github.com/status-im/market-proxy/coingecko"
 	"github.com/status-im/market-proxy/config"
 )
 
@@ -78,13 +79,13 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // MockAPIKeyManager mocks the APIKeyManagerInterface for testing
 type MockAPIKeyManager struct {
 	// Keys to return
-	mockKeys []APIKey
+	mockKeys []cg.APIKey
 	// Record of keys that were marked as failed
 	failedKeys []string
 }
 
 // GetAvailableKeys implements the GetAvailableKeys method for mocking
-func (m *MockAPIKeyManager) GetAvailableKeys() []APIKey {
+func (m *MockAPIKeyManager) GetAvailableKeys() []cg.APIKey {
 	return m.mockKeys
 }
 
@@ -166,8 +167,8 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 
 	// Create mock key manager with one Pro key
 	mockKeyManager := &MockAPIKeyManager{
-		mockKeys: []APIKey{
-			{Key: "test-pro-key", Type: ProKey},
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
 		},
 	}
 
@@ -198,7 +199,7 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 
 	// Check that the HTTP client was called once
 	if len(mockClient.executedRequests) != 1 {
-		t.Errorf("Expected HTTP client to be called once, got %d", len(mockClient.executedRequests))
+		t.Errorf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
 	}
 
 	// Check that no keys were marked as failed
@@ -222,9 +223,9 @@ func TestCoinGeckoClient_FetchPage_ErrorHandling(t *testing.T) {
 
 	// Create mock key manager with one Pro key and one Demo key
 	mockKeyManager := &MockAPIKeyManager{
-		mockKeys: []APIKey{
-			{Key: "test-pro-key", Type: ProKey},
-			{Key: "test-demo-key", Type: DemoKey},
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+			{Key: "test-demo-key", Type: cg.DemoKey},
 		},
 	}
 
@@ -286,9 +287,9 @@ func TestCoinGeckoClient_FetchPage_KeyFallback(t *testing.T) {
 
 	// Create mock key manager with one Pro key and one Demo key
 	mockKeyManager := &MockAPIKeyManager{
-		mockKeys: []APIKey{
-			{Key: "test-pro-key", Type: ProKey},
-			{Key: "test-demo-key", Type: DemoKey},
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+			{Key: "test-demo-key", Type: cg.DemoKey},
 		},
 	}
 
@@ -358,8 +359,8 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 
 	// Create mock key manager with one Pro key
 	mockKeyManager := &MockAPIKeyManager{
-		mockKeys: []APIKey{
-			{Key: "test-pro-key", Type: ProKey},
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
 		},
 	}
 
@@ -409,8 +410,8 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 
 	// Create mock key manager with one Pro key
 	mockKeyManager := &MockAPIKeyManager{
-		mockKeys: []APIKey{
-			{Key: "test-pro-key", Type: ProKey},
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
 		},
 	}
 
