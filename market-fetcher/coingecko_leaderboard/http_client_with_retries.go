@@ -8,9 +8,15 @@ import (
 	"net"
 	"net/http"
 	"time"
-
-	"github.com/status-im/market-proxy/metrics"
 )
+
+// HttpStatusHandler is an interface for handling HTTP request statuses
+type HttpStatusHandler interface {
+	// OnRequest handles a request with its status result
+	OnRequest(status string)
+	// OnRetry handles retry events
+	OnRetry()
+}
 
 // RetryOptions configures retry behavior for HTTP requests
 type RetryOptions struct {
@@ -34,12 +40,13 @@ func DefaultRetryOptions() RetryOptions {
 
 // HTTPClientWithRetries wraps an HTTP client with retry capabilities
 type HTTPClientWithRetries struct {
-	client *http.Client
-	opts   RetryOptions
+	client        *http.Client
+	opts          RetryOptions
+	statusHandler HttpStatusHandler
 }
 
 // NewHTTPClientWithRetries creates a new HTTP client with retry capabilities
-func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
+func NewHTTPClientWithRetries(opts RetryOptions, handler HttpStatusHandler) *HTTPClientWithRetries {
 	client := &http.Client{
 		Timeout: opts.RequestTimeout,
 		Transport: &http.Transport{
@@ -50,13 +57,19 @@ func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
 	}
 
 	return &HTTPClientWithRetries{
-		client: client,
-		opts:   opts,
+		client:        client,
+		opts:          opts,
+		statusHandler: handler,
 	}
 }
 
+// SetStatusHandler sets the status handler for this client
+func (c *HTTPClientWithRetries) SetStatusHandler(handler HttpStatusHandler) {
+	c.statusHandler = handler
+}
+
 // ExecuteRequest executes an HTTP request with retry logic
-func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName string) (*http.Response, []byte, time.Duration, error) {
+func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Response, []byte, time.Duration, error) {
 	var lastErr error
 
 	for attempt := 0; attempt < c.opts.MaxRetries; attempt++ {
@@ -65,8 +78,10 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName st
 			log.Printf("%s: Retry %d/%d after error: %v",
 				c.opts.LogPrefix, attempt, c.opts.MaxRetries-1, lastErr)
 
-			// Record retry attempt in metrics
-			metrics.RecordHTTPRetry(serviceName)
+			// Record retry attempt
+			if c.statusHandler != nil {
+				c.statusHandler.OnRetry()
+			}
 
 			// Calculate backoff with jitter
 			backoffDuration := calculateBackoffWithJitter(c.opts.BaseBackoff, attempt)
@@ -83,8 +98,10 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName st
 
 		if err != nil {
 			lastErr = fmt.Errorf("request failed after %.2fs: %v", requestDuration.Seconds(), err)
-			// Record error in metrics
-			metrics.RecordHTTPRequest(serviceName, "error")
+			// Record error
+			if c.statusHandler != nil {
+				c.statusHandler.OnRequest("error")
+			}
 			continue
 		}
 
@@ -102,19 +119,25 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName st
 				lastErr = err
 				resp.Body.Close()
 				// Record rate limited request
-				metrics.RecordHTTPRequest(serviceName, "rate_limited")
+				if c.statusHandler != nil {
+					c.statusHandler.OnRequest("rate_limited")
+				}
 				continue
 			}
 
 			// For non-retryable errors, fail immediately
 			resp.Body.Close()
 			// Record general error
-			metrics.RecordHTTPRequest(serviceName, "error")
+			if c.statusHandler != nil {
+				c.statusHandler.OnRequest("error")
+			}
 			return nil, nil, requestDuration, err
 		}
 
 		// Record successful request
-		metrics.RecordHTTPRequest(serviceName, "success")
+		if c.statusHandler != nil {
+			c.statusHandler.OnRequest("success")
+		}
 		return resp, responseBody, requestDuration, nil
 	}
 

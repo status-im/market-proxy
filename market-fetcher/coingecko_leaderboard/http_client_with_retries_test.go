@@ -10,6 +10,37 @@ import (
 	"time"
 )
 
+// MockHttpStatusHandler implements HttpStatusHandler for testing
+type MockHttpStatusHandler struct {
+	requestStatuses []string
+	retryCount      int
+}
+
+func NewMockHttpStatusHandler() *MockHttpStatusHandler {
+	return &MockHttpStatusHandler{
+		requestStatuses: make([]string, 0),
+		retryCount:      0,
+	}
+}
+
+func (m *MockHttpStatusHandler) OnRequest(status string) {
+	m.requestStatuses = append(m.requestStatuses, status)
+}
+
+func (m *MockHttpStatusHandler) OnRetry() {
+	m.retryCount++
+}
+
+// GetRequestCount returns the number of requests recorded
+func (m *MockHttpStatusHandler) GetRequestCount() int {
+	return len(m.requestStatuses)
+}
+
+// GetRetryCount returns the number of retries recorded
+func (m *MockHttpStatusHandler) GetRetryCount() int {
+	return m.retryCount
+}
+
 // TestHTTPClientWithRetries_Timeouts tests that the client correctly applies timeouts
 func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 	// Create a test server that sleeps to simulate slow responses
@@ -33,14 +64,26 @@ func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 	t.Run("RequestTimeout", func(t *testing.T) {
 		opts := DefaultRetryOptions()
 		opts.RequestTimeout = 100 * time.Millisecond // Very short timeout
+		opts.MaxRetries = 3
 
-		client := NewHTTPClientWithRetries(opts)
+		mockHandler := NewMockHttpStatusHandler()
+		client := NewHTTPClientWithRetries(opts, mockHandler)
 
 		req, _ := http.NewRequest("GET", server.URL+"?delay=response", nil)
-		_, _, _, err := client.ExecuteRequest(req, "test-service")
+		_, _, _, err := client.ExecuteRequest(req)
 
 		if err == nil {
 			t.Error("Expected timeout error, got none")
+		}
+
+		// Should have recorded errors
+		if mockHandler.GetRequestCount() < 1 {
+			t.Errorf("Expected at least 1 request status, got %d", mockHandler.GetRequestCount())
+		}
+
+		// Should have recorded retries
+		if mockHandler.GetRetryCount() < 1 {
+			t.Errorf("Expected at least 1 retry, got %d", mockHandler.GetRetryCount())
 		}
 	})
 
@@ -49,13 +92,24 @@ func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 		opts := DefaultRetryOptions()
 		opts.RequestTimeout = 2 * time.Second // Sufficient timeout
 
-		client := NewHTTPClientWithRetries(opts)
+		mockHandler := NewMockHttpStatusHandler()
+		client := NewHTTPClientWithRetries(opts, mockHandler)
 
 		req, _ := http.NewRequest("GET", server.URL, nil)
-		_, _, _, err := client.ExecuteRequest(req, "test-service")
+		_, _, _, err := client.ExecuteRequest(req)
 
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
+		}
+
+		// Should have recorded a success
+		if mockHandler.GetRequestCount() != 1 || mockHandler.requestStatuses[0] != "success" {
+			t.Errorf("Expected 1 success status, got %v", mockHandler.requestStatuses)
+		}
+
+		// Should not have recorded retries
+		if mockHandler.GetRetryCount() != 0 {
+			t.Errorf("Expected 0 retries, got %d", mockHandler.GetRetryCount())
 		}
 	})
 }
@@ -87,10 +141,11 @@ func TestHTTPClientWithRetries_Retries(t *testing.T) {
 	opts.MaxRetries = 3
 	opts.BaseBackoff = 10 * time.Millisecond // Minimal backoff for tests
 
-	client := NewHTTPClientWithRetries(opts)
+	mockHandler := NewMockHttpStatusHandler()
+	client := NewHTTPClientWithRetries(opts, mockHandler)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	resp, body, duration, err := client.ExecuteRequest(req, "test-service")
+	resp, body, duration, err := client.ExecuteRequest(req)
 
 	// Check results
 	if err != nil {
@@ -112,6 +167,19 @@ func TestHTTPClientWithRetries_Retries(t *testing.T) {
 	if duration <= 0 {
 		t.Errorf("Expected positive duration, got %v", duration)
 	}
+
+	// Should have recorded 2 rate_limited and 1 success
+	if mockHandler.GetRequestCount() != 3 ||
+		mockHandler.requestStatuses[0] != "rate_limited" ||
+		mockHandler.requestStatuses[1] != "rate_limited" ||
+		mockHandler.requestStatuses[2] != "success" {
+		t.Errorf("Expected [rate_limited, rate_limited, success] statuses, got %v", mockHandler.requestStatuses)
+	}
+
+	// Should have recorded 2 retries
+	if mockHandler.GetRetryCount() != 2 {
+		t.Errorf("Expected 2 retries, got %d", mockHandler.GetRetryCount())
+	}
 }
 
 // TestHTTPClientWithRetries_MaxRetriesExceeded tests behavior when max retries are exceeded
@@ -132,10 +200,11 @@ func TestHTTPClientWithRetries_MaxRetriesExceeded(t *testing.T) {
 	opts.MaxRetries = 2
 	opts.BaseBackoff = 10 * time.Millisecond // Minimal backoff for tests
 
-	client := NewHTTPClientWithRetries(opts)
+	mockHandler := NewMockHttpStatusHandler()
+	client := NewHTTPClientWithRetries(opts, mockHandler)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	_, _, _, err := client.ExecuteRequest(req, "test-service")
+	_, _, _, err := client.ExecuteRequest(req)
 
 	// Should get an error after all retries fail
 	if err == nil {
@@ -145,6 +214,16 @@ func TestHTTPClientWithRetries_MaxRetriesExceeded(t *testing.T) {
 	// Should have attempted exactly MaxRetries times
 	if attempts != opts.MaxRetries {
 		t.Errorf("Expected %d attempts, got %d", opts.MaxRetries, attempts)
+	}
+
+	// Should have recorded rate_limited for each attempt
+	if mockHandler.GetRequestCount() != opts.MaxRetries {
+		t.Errorf("Expected %d request statuses, got %d", opts.MaxRetries, mockHandler.GetRequestCount())
+	}
+
+	// Should have recorded retries
+	if mockHandler.GetRetryCount() != opts.MaxRetries-1 {
+		t.Errorf("Expected %d retries, got %d", opts.MaxRetries-1, mockHandler.GetRetryCount())
 	}
 }
 
@@ -165,10 +244,11 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 3
 
-	client := NewHTTPClientWithRetries(opts)
+	mockHandler := NewMockHttpStatusHandler()
+	client := NewHTTPClientWithRetries(opts, mockHandler)
 
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	_, _, _, err := client.ExecuteRequest(req, "test-service")
+	_, _, _, err := client.ExecuteRequest(req)
 
 	// Should get an error
 	if err == nil {
@@ -178,6 +258,16 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 	// Should have attempted only once
 	if attempts != 1 {
 		t.Errorf("Expected 1 attempt for non-retryable error, got %d", attempts)
+	}
+
+	// Should have recorded error without retry
+	if mockHandler.GetRequestCount() != 1 || mockHandler.requestStatuses[0] != "error" {
+		t.Errorf("Expected [error] status, got %v", mockHandler.requestStatuses)
+	}
+
+	// Should not have recorded retries
+	if mockHandler.GetRetryCount() != 0 {
+		t.Errorf("Expected 0 retries, got %d", mockHandler.GetRetryCount())
 	}
 }
 
@@ -189,25 +279,35 @@ func TestHTTPClientWithRetries_ConnectionFailure(t *testing.T) {
 	opts.BaseBackoff = 10 * time.Millisecond
 	opts.ConnectionTimeout = 100 * time.Millisecond
 
-	client := NewHTTPClientWithRetries(opts)
+	mockHandler := NewMockHttpStatusHandler()
+	client := NewHTTPClientWithRetries(opts, mockHandler)
 
 	// Point to a localhost address that should immediately fail to connect
 	req, _ := http.NewRequest("GET", "http://localhost:57891", nil) // Using an unlikely port
 
 	startTime := time.Now()
-	_, _, _, err := client.ExecuteRequest(req, "test-service")
+	_, _, _, err := client.ExecuteRequest(req)
 	duration := time.Since(startTime)
 
 	// Should get an error
 	if err == nil {
-		t.Error("Expected error for connection failure, got none")
+		t.Error("Expected connection error, got none")
 	}
 
-	// The total duration should be less than what would be required for the full
-	// MaxRetries × (ConnectionTimeout + BaseBackoff × 2^retry) if timeouts weren't working
-	maxExpectedDuration := time.Duration(opts.MaxRetries) * (opts.ConnectionTimeout + opts.BaseBackoff*3)
+	// Should fail quickly
+	maxExpectedDuration := time.Duration(opts.MaxRetries) * (opts.ConnectionTimeout + opts.BaseBackoff*2)
 	if duration > maxExpectedDuration {
-		t.Errorf("Request took longer than expected: %v > %v", duration, maxExpectedDuration)
+		t.Errorf("Expected quick failure, took %v (exceeds %v)", duration, maxExpectedDuration)
+	}
+
+	// Should have recorded errors
+	if mockHandler.GetRequestCount() != opts.MaxRetries {
+		t.Errorf("Expected %d request statuses, got %d", opts.MaxRetries, mockHandler.GetRequestCount())
+	}
+
+	// Should have recorded retries
+	if mockHandler.GetRetryCount() != opts.MaxRetries-1 {
+		t.Errorf("Expected %d retries, got %d", opts.MaxRetries-1, mockHandler.GetRetryCount())
 	}
 }
 
@@ -222,47 +322,88 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // TestHTTPClientWithRetries_NetworkErrors tests handling of various network errors
 func TestHTTPClientWithRetries_NetworkErrors(t *testing.T) {
-	// Mock transport that returns network errors
-	attempts := 0
-	transport := &mockTransport{
-		roundTripFunc: func(req *http.Request) (*http.Response, error) {
-			attempts++
-			if attempts == 1 {
-				return nil, errors.New("connection reset by peer")
-			} else {
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBufferString(`{"status":"ok"}`)),
-					Header:     make(http.Header),
-					Request:    req,
-				}, nil
-			}
-		},
-	}
-
-	// Configure client with custom transport
+	// Configure client with retries
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 2
 	opts.BaseBackoff = 10 * time.Millisecond
 
-	client := &HTTPClientWithRetries{
-		client: &http.Client{Transport: transport},
-		opts:   opts,
+	mockHandler := NewMockHttpStatusHandler()
+	client := NewHTTPClientWithRetries(opts, mockHandler)
+
+	// Replace the client's transport with our mock
+	errorReturned := false
+	client.client.Transport = &mockTransport{
+		roundTripFunc: func(req *http.Request) (*http.Response, error) {
+			if !errorReturned {
+				// First request fails with connection reset
+				errorReturned = true
+				return nil, errors.New("connection reset by peer")
+			}
+			// Subsequent requests succeed
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewBufferString(`{"status":"ok"}`)),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
 	}
 
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	_, body, _, err := client.ExecuteRequest(req, "test-service")
+	resp, body, _, err := client.ExecuteRequest(req)
 
-	// Should succeed after retry
+	// Should not get an error
 	if err != nil {
-		t.Errorf("Expected success after retry, got error: %v", err)
+		t.Errorf("Expected success after retrying network error, got: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
 
 	if string(body) != `{"status":"ok"}` {
 		t.Errorf("Expected body '{\"status\":\"ok\"}', got '%s'", string(body))
 	}
 
-	if attempts != 2 {
-		t.Errorf("Expected 2 attempts, got %d", attempts)
+	// Should have recorded error followed by success
+	if mockHandler.GetRequestCount() != 2 ||
+		mockHandler.requestStatuses[0] != "error" ||
+		mockHandler.requestStatuses[1] != "success" {
+		t.Errorf("Expected [error, success] statuses, got %v", mockHandler.requestStatuses)
+	}
+
+	// Should have recorded 1 retry
+	if mockHandler.GetRetryCount() != 1 {
+		t.Errorf("Expected 1 retry, got %d", mockHandler.GetRetryCount())
+	}
+}
+
+// Test with no metrics handler
+func TestHTTPClientWithRetries_NoHandler(t *testing.T) {
+	// Create a server that always succeeds
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+
+	// Configure client with null handler
+	opts := DefaultRetryOptions()
+	client := NewHTTPClientWithRetries(opts, nil)
+
+	req, _ := http.NewRequest("GET", server.URL, nil)
+	resp, body, _, err := client.ExecuteRequest(req)
+
+	// Should succeed without error
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	if string(body) != `{"status":"ok"}` {
+		t.Errorf("Expected body '{\"status\":\"ok\"}', got '%s'", string(body))
 	}
 }
