@@ -13,7 +13,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
-	"github.com/status-im/market-proxy/coingecko"
+	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/tokens"
 )
 

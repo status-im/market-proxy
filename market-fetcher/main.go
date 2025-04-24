@@ -10,7 +10,7 @@ import (
 
 	"github.com/status-im/market-proxy/api"
 	"github.com/status-im/market-proxy/binance"
-	"github.com/status-im/market-proxy/coingecko"
+	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/tokens"
 )
@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Load CoinGecko API tokens
-	cgApiTokens, err := config.LoadAPITokens(cfg.CoinGeckoFetcher.TokensFile)
+	cgApiTokens, err := config.LoadAPITokens(cfg.CoingeckoLeaderboardFetcher.TokensFile)
 	if err != nil {
 		log.Printf("Warning: Error loading CoinGecko API tokens: %v. Using public API without authentication.", err)
 		cgApiTokens = &config.APITokens{Tokens: []string{}}

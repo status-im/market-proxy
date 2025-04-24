@@ -1,4 +1,4 @@
-coingecko_fetcher:
+coingecko_leaderboard:
   update_interval_ms: 600000  # milliseconds (10 minutes)
   tokens_file: "coingecko_api_tokens.json"
   limit: 5000
