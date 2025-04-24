@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	cg "github.com/status-im/market-proxy/coingecko"
 	"github.com/status-im/market-proxy/config"
 )
 
@@ -21,7 +22,7 @@ type APIClient interface {
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      APIKeyManagerInterface
+	keyManager      cg.APIKeyManagerInterface
 	httpClient      *HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
@@ -34,7 +35,7 @@ func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGe
 
 	return &CoinGeckoClient{
 		config:     cfg,
-		keyManager: NewAPIKeyManager(apiTokens),
+		keyManager: cg.NewAPIKeyManager(apiTokens),
 		httpClient: NewHTTPClientWithRetries(retryOpts),
 	}
 }
@@ -137,9 +138,9 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 }
 
 // getApiBaseUrl returns the appropriate API URL based on the key type
-func (c *CoinGeckoClient) getApiBaseUrl(keyType KeyType) string {
+func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
 	// Use Pro URL only if we're using a Pro key
-	if keyType == ProKey {
+	if keyType == cg.ProKey {
 		log.Printf("CoinGecko: Using Pro API URL based on key type")
 		return COINGECKO_PRO_URL
 	}
