@@ -33,10 +33,12 @@ func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGe
 	retryOpts := DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
 
+	metricsHandler := NewHttpRequestMetricsWriter("coingecko")
+
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(apiTokens),
-		httpClient: NewHTTPClientWithRetries(retryOpts),
+		httpClient: NewHTTPClientWithRetries(retryOpts, metricsHandler),
 	}
 }
 
@@ -110,7 +112,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		log.Printf("CoinGecko: Attempting request for page %d with key type %v", page, apiKey.Type)
 
 		// Execute the request with retries
-		resp, body, duration, err := c.httpClient.ExecuteRequest(request, "coingecko")
+		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
 
 		// If the request failed
 		if err != nil {
