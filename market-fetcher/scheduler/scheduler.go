@@ -8,12 +8,13 @@ import (
 
 // Scheduler manages a background task that runs at regular intervals
 type Scheduler struct {
-	interval time.Duration
-	task     func(context.Context)
-	wg       sync.WaitGroup
-	mu       sync.Mutex
-	running  bool
-	cancel   context.CancelFunc
+	interval    time.Duration
+	task        func(context.Context)
+	wg          sync.WaitGroup
+	mu          sync.Mutex
+	running     bool
+	cancel      context.CancelFunc
+	taskRunning sync.Mutex // Mutex to prevent concurrent task executions
 }
 
 // New creates a new Scheduler instance
@@ -43,7 +44,7 @@ func (s *Scheduler) Start(ctx context.Context, firstRunImmediately bool) {
 
 		// Execute the task immediately if requested
 		if firstRunImmediately {
-			s.task(ctx)
+			s.runTaskIfNotRunning(ctx)
 		}
 
 		ticker := time.NewTicker(s.interval)
@@ -52,13 +53,23 @@ func (s *Scheduler) Start(ctx context.Context, firstRunImmediately bool) {
 		for {
 			select {
 			case <-ticker.C:
-				// Pass context to the task
-				s.task(ctx)
+				s.runTaskIfNotRunning(ctx)
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
+}
+
+// runTaskIfNotRunning runs the task only if another instance isn't already running
+func (s *Scheduler) runTaskIfNotRunning(ctx context.Context) {
+	// Try to acquire the mutex, but don't block if it's already locked
+	if s.taskRunning.TryLock() {
+		go func() {
+			defer s.taskRunning.Unlock()
+			s.task(ctx)
+		}()
+	}
 }
 
 // Stop terminates the periodic task execution
