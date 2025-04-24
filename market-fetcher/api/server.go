@@ -98,9 +98,12 @@ func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 	// Check for include_platform parameter, though we always include platforms
 	includePlatform := r.URL.Query().Get("include_platform")
-	if includePlatform != "" && includePlatform != "true" {
-		http.Error(w, "include_platform parameter must be 'true' or omitted", http.StatusBadRequest)
-		return
+	if includePlatform != "" {
+		include, err := strconv.ParseBool(includePlatform)
+		if err != nil || !include {
+			http.Error(w, "include_platform parameter must be a valid boolean value representing 'true'", http.StatusBadRequest)
+			return
+		}
 	}
 
 	tokens := s.tokensService.GetTokens()
