@@ -179,3 +179,96 @@ func TestPeriodicTask_ImmediateExecution(t *testing.T) {
 		pt.Stop()
 	})
 }
+
+func TestPeriodicTask_NoTaskOverlap(t *testing.T) {
+	var (
+		counter      int32
+		runningTasks int32
+		maxRunning   int32
+	)
+
+	// Create a task that simulates long-running work
+	task := func(ctx context.Context) {
+		// Increment running count
+		currentRunning := atomic.AddInt32(&runningTasks, 1)
+		// Update max running if current is higher
+		for {
+			max := atomic.LoadInt32(&maxRunning)
+			if currentRunning <= max {
+				break
+			}
+			if atomic.CompareAndSwapInt32(&maxRunning, max, currentRunning) {
+				break
+			}
+		}
+
+		// Simulate work for 150ms (longer than the scheduler interval)
+		time.Sleep(150 * time.Millisecond)
+
+		// Increment task completion counter
+		atomic.AddInt32(&counter, 1)
+		// Decrement running count
+		atomic.AddInt32(&runningTasks, -1)
+	}
+
+	// Create scheduler with 50ms interval (shorter than task duration)
+	pt := New(50*time.Millisecond, task)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start scheduler
+	pt.Start(ctx, true)
+
+	// Let it run for enough time to potentially overlap
+	time.Sleep(400 * time.Millisecond)
+
+	// Stop the scheduler
+	pt.Stop()
+
+	// Verify that multiple tasks were executed
+	assert.Greater(t, atomic.LoadInt32(&counter), int32(1))
+
+	// Verify that tasks never overlapped (maxRunning should be 1)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&maxRunning),
+		"Tasks overlapped: maximum %d tasks were running simultaneously",
+		atomic.LoadInt32(&maxRunning))
+}
+
+func TestPeriodicTask_SkipsIfBusy(t *testing.T) {
+	var counter int32
+
+	// Create task that takes significantly longer than the interval
+	task := func(ctx context.Context) {
+		atomic.AddInt32(&counter, 1)
+		// Sleep for 300ms, much longer than our interval
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	// Create scheduler with short 50ms interval
+	pt := New(50*time.Millisecond, task)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start with immediate execution
+	pt.Start(ctx, true)
+
+	// Let it run for 400ms
+	// This would normally allow for ~8 executions with 50ms interval
+	// But since each task takes 300ms and we prevent overlaps,
+	// we should only see ~2 executions
+	time.Sleep(400 * time.Millisecond)
+
+	// Stop the scheduler
+	pt.Stop()
+
+	// Check the final count
+	finalCount := atomic.LoadInt32(&counter)
+
+	// We expect around 2 executions:
+	// 1. The immediate execution
+	// 2. One more after the first completes
+	assert.GreaterOrEqual(t, finalCount, int32(1))
+	assert.LessOrEqual(t, finalCount, int32(3))
+}
