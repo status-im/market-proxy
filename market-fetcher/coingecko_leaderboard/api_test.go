@@ -131,16 +131,16 @@ func createSampleCoinGeckoData() []CoinGeckoData {
 }
 
 // createMockHTTPClientWithRetries creates a mock HTTPClientWithRetries for testing
-func createMockHTTPClientWithRetries(mockClient *MockHTTPClient) *HTTPClientWithRetries {
+func createMockHTTPClientWithRetries(mockClient *MockHTTPClient) *cg.HTTPClientWithRetries {
 	// Create a real http.Client that uses our mock transport
 	httpClient := &http.Client{
 		Transport: &MockTransport{mockClient: mockClient},
 	}
 
 	// Create a retry client with our mocked http client
-	return &HTTPClientWithRetries{
-		client: httpClient,
-		opts: RetryOptions{
+	return &cg.HTTPClientWithRetries{
+		Client: httpClient,
+		Opts: cg.RetryOptions{
 			MaxRetries:  1, // Just one attempt for tests
 			BaseBackoff: 1 * time.Millisecond,
 			LogPrefix:   "Test",

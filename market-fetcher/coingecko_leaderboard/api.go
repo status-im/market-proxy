@@ -23,22 +23,22 @@ type APIClient interface {
 type CoinGeckoClient struct {
 	config          *config.Config
 	keyManager      cg.APIKeyManagerInterface
-	httpClient      *HTTPClientWithRetries
+	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
 
 // NewCoinGeckoClient creates a new CoinGecko API client
 func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGeckoClient {
 	// Create retry options with CoinGecko specific settings
-	retryOpts := DefaultRetryOptions()
+	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
 
-	metricsHandler := NewHttpRequestMetricsWriter("coingecko")
+	metricsHandler := cg.NewHttpRequestMetricsWriter("coingecko")
 
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(apiTokens),
-		httpClient: NewHTTPClientWithRetries(retryOpts, metricsHandler),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
 	}
 }
 
