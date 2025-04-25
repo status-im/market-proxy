@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Load CoinGecko API tokens
-	cgApiTokens, err := config.LoadAPITokens(cfg.CoingeckoLeaderboardFetcher.TokensFile)
+	cgApiTokens, err := config.LoadAPITokens(cfg.TokensFile)
 	if err != nil {
 		log.Printf("Warning: Error loading CoinGecko API tokens: %v. Using public API without authentication.", err)
 		cgApiTokens = &config.APITokens{Tokens: []string{}}

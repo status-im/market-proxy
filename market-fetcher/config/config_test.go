@@ -7,9 +7,9 @@ import (
 
 func createTestConfig(t *testing.T) string {
 	content := `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 1000
 coingecko_coinslist:
@@ -66,9 +66,9 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "valid config",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 1000
 coingecko_coinslist:
@@ -79,6 +79,9 @@ coingecko_coinslist:
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
+				if cfg.TokensFile != "test_tokens.json" {
+					t.Errorf("TokensFile = %v, want test_tokens.json", cfg.TokensFile)
+				}
 				if cfg.CoingeckoLeaderboard.UpdateIntervalMs != 60000 {
 					t.Errorf("UpdateIntervalMs = %v, want 60000", cfg.CoingeckoLeaderboard.UpdateIntervalMs)
 				}
@@ -102,9 +105,9 @@ coingecko_coinslist:
 		{
 			name: "invalid yaml",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: invalid
-  tokens_file: "test_tokens.json"
   limit: 100
 `,
 			wantErr: true,
@@ -112,9 +115,9 @@ coingecko_leaderboard:
 		{
 			name: "missing required fields",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -126,9 +129,9 @@ coingecko_leaderboard:
 		{
 			name: "zero request delay",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 0
 `,
@@ -142,9 +145,9 @@ coingecko_leaderboard:
 		{
 			name: "tokens fetcher config",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
 coingecko_coinslist:
   update_interval_ms: 1800000
@@ -175,9 +178,9 @@ coingecko_coinslist:
 		{
 			name: "empty supported platforms",
 			configYAML: `
+tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
 coingecko_coinslist:
   update_interval_ms: 1800000
@@ -311,6 +314,9 @@ func TestLoadConfigWithRealFiles(t *testing.T) {
 	}
 
 	// Validate config
+	if config.TokensFile != "test_tokens.json" {
+		t.Errorf("TokensFile = %v, want test_tokens.json", config.TokensFile)
+	}
 	if config.CoingeckoLeaderboard.UpdateIntervalMs != 60000 {
 		t.Errorf("UpdateIntervalMs = %v, want 60000", config.CoingeckoLeaderboard.UpdateIntervalMs)
 	}

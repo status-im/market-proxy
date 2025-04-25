@@ -9,6 +9,7 @@ import (
 type Config struct {
 	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
+	TokensFile           string                      `yaml:"tokens_file"`
 }
 
 func LoadConfig(path string) (*Config, error) {

@@ -7,10 +7,9 @@ import (
 )
 
 type CoingeckoLeaderboardFetcher struct {
-	UpdateIntervalMs int    `yaml:"update_interval_ms"`
-	TokensFile       string `yaml:"tokens_file"`
-	Limit            int    `yaml:"limit"`
-	RequestDelayMs   int    `yaml:"request_delay_ms"` // Delay between requests in milliseconds
+	UpdateIntervalMs int `yaml:"update_interval_ms"`
+	Limit            int `yaml:"limit"`
+	RequestDelayMs   int `yaml:"request_delay_ms"` // Delay between requests in milliseconds
 }
 
 type APITokens struct {
