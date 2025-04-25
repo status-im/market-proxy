@@ -78,10 +78,10 @@ coingecko_fetcher:
   request_delay_ms: 0  # delay between requests, 0 = no delay
 ```
 
-### tokens_fetcher
+### coingecko_coinslist
 
 ```yaml
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000  # milliseconds (30 minutes)
   supported_platforms:  # list of blockchain platforms to include
     - ethereum
@@ -99,7 +99,7 @@ tokens_fetcher:
     - polygon-pos          # Polygon
 ```
 
-#### tokens_fetcher Parameters
+#### coingecko_coinslist Parameters
 
 - `update_interval_ms`: The interval in milliseconds at which to fetch token data
 - `supported_platforms`: List of blockchain platforms to include in the token data. Tokens will be filtered to only include those available on the supported platforms.
