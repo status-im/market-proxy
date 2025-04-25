@@ -1,13 +1,12 @@
 package coingecko
 
 import (
-	cg "github.com/status-im/market-proxy/coingecko"
 	"net/url"
 	"strings"
 	"testing"
 )
 
-func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
+func TestMarketsRequestBuilder_SpecificBehavior(t *testing.T) {
 	baseURL := "https://api.coingecko.com"
 
 	tests := []struct {
@@ -16,7 +15,7 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 		checkURL      func(*testing.T, string)
 	}{
 		{
-			name: "Default parameters",
+			name: "Default market parameters",
 			configuration: func(rb *MarketsRequestBuilder) {
 				// Using default configuration
 			},
@@ -32,18 +31,13 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 
 				query := parsedURL.Query()
 
-				// Check default parameters
+				// Check default parameters specific to markets endpoint
 				if query.Get("vs_currency") != "usd" {
 					t.Errorf("Expected default currency 'usd', got %s", query.Get("vs_currency"))
 				}
 
 				if query.Get("order") != "market_cap_desc" {
 					t.Errorf("Expected default order 'market_cap_desc', got %s", query.Get("order"))
-				}
-
-				// API key should not be present by default
-				if query.Has("x_cg_pro_api_key") || query.Has("x_cg_demo_api_key") {
-					t.Error("API key parameter should not be present in default URL")
 				}
 			},
 		},
@@ -66,50 +60,6 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 
 				if query.Get("per_page") != "50" {
 					t.Errorf("Expected per_page '50', got %s", query.Get("per_page"))
-				}
-			},
-		},
-		{
-			name: "With Pro API key",
-			configuration: func(rb *MarketsRequestBuilder) {
-				rb.WithApiKey("test-pro-key", cg.ProKey)
-			},
-			checkURL: func(t *testing.T, urlStr string) {
-				parsedURL, err := url.Parse(urlStr)
-				if err != nil {
-					t.Fatalf("Failed to parse URL: %v", err)
-				}
-
-				query := parsedURL.Query()
-
-				if query.Get("x_cg_pro_api_key") != "test-pro-key" {
-					t.Errorf("Expected Pro API key 'test-pro-key', got %s", query.Get("x_cg_pro_api_key"))
-				}
-
-				if query.Has("x_cg_demo_api_key") {
-					t.Error("Demo API key parameter should not be present")
-				}
-			},
-		},
-		{
-			name: "With Demo API key",
-			configuration: func(rb *MarketsRequestBuilder) {
-				rb.WithApiKey("test-demo-key", cg.DemoKey)
-			},
-			checkURL: func(t *testing.T, urlStr string) {
-				parsedURL, err := url.Parse(urlStr)
-				if err != nil {
-					t.Fatalf("Failed to parse URL: %v", err)
-				}
-
-				query := parsedURL.Query()
-
-				if query.Get("x_cg_demo_api_key") != "test-demo-key" {
-					t.Errorf("Expected Demo API key 'test-demo-key', got %s", query.Get("x_cg_demo_api_key"))
-				}
-
-				if query.Has("x_cg_pro_api_key") {
-					t.Error("Pro API key parameter should not be present")
 				}
 			},
 		},
@@ -158,13 +108,11 @@ func TestMarketsRequestBuilder_BuildURL(t *testing.T) {
 	}
 }
 
-func TestMarketsRequestBuilder_Build(t *testing.T) {
+func TestMarketsRequestBuilder_EndpointPath(t *testing.T) {
 	baseURL := "https://api.coingecko.com"
 
-	// Create builder with custom user agent and header
+	// Create builder
 	rb := NewMarketRequestBuilder(baseURL)
-	rb.WithUserAgent("TestAgent/1.0")
-	rb.WithHeader("X-Test-Header", "test-value")
 
 	// Build request
 	req, err := rb.Build()
@@ -172,26 +120,8 @@ func TestMarketsRequestBuilder_Build(t *testing.T) {
 		t.Fatalf("Failed to build request: %v", err)
 	}
 
-	// Check method
-	if req.Method != "GET" {
-		t.Errorf("Expected method 'GET', got %s", req.Method)
-	}
-
-	// Check URL
+	// Check the correct API endpoint is used
 	if !strings.HasPrefix(req.URL.String(), baseURL+"/api/v3/coins/markets") {
 		t.Errorf("URL should start with %s/api/v3/coins/markets, got %s", baseURL, req.URL.String())
-	}
-
-	// Check headers
-	if req.Header.Get("User-Agent") != "TestAgent/1.0" {
-		t.Errorf("Expected User-Agent 'TestAgent/1.0', got %s", req.Header.Get("User-Agent"))
-	}
-
-	if req.Header.Get("X-Test-Header") != "test-value" {
-		t.Errorf("Expected custom header value 'test-value', got %s", req.Header.Get("X-Test-Header"))
-	}
-
-	if req.Header.Get("Accept") != "application/json" {
-		t.Errorf("Expected Accept header 'application/json', got %s", req.Header.Get("Accept"))
 	}
 }
