@@ -1,4 +1,4 @@
-package coingecko
+package coingecko_leaderboard
 
 // Original CoinGecko response structure
 type CoinGeckoData struct {
