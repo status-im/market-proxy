@@ -41,7 +41,7 @@ func (m *MockHttpStatusHandler) GetRetryCount() int {
 	return m.retryCount
 }
 
-// TestHTTPClientWithRetries_Timeouts tests that the client correctly applies timeouts
+// TestHTTPClientWithRetries_Timeouts tests that the Client correctly applies timeouts
 func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 	// Create a test server that sleeps to simulate slow responses
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +136,7 @@ func TestHTTPClientWithRetries_Retries(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Configure client with 3 retries and minimal backoff
+	// Configure Client with 3 retries and minimal backoff
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 3
 	opts.BaseBackoff = 10 * time.Millisecond // Minimal backoff for tests
@@ -195,7 +195,7 @@ func TestHTTPClientWithRetries_MaxRetriesExceeded(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Configure client with 2 retries and minimal backoff
+	// Configure Client with 2 retries and minimal backoff
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 2
 	opts.BaseBackoff = 10 * time.Millisecond // Minimal backoff for tests
@@ -240,7 +240,7 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Configure client with retries
+	// Configure Client with retries
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 3
 
@@ -273,7 +273,7 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 
 // TestHTTPClientWithRetries_ConnectionFailure tests handling of connection failures
 func TestHTTPClientWithRetries_ConnectionFailure(t *testing.T) {
-	// Create a client pointing to a non-existent server
+	// Create a Client pointing to a non-existent server
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 2
 	opts.BaseBackoff = 10 * time.Millisecond
@@ -322,7 +322,7 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // TestHTTPClientWithRetries_NetworkErrors tests handling of various network errors
 func TestHTTPClientWithRetries_NetworkErrors(t *testing.T) {
-	// Configure client with retries
+	// Configure Client with retries
 	opts := DefaultRetryOptions()
 	opts.MaxRetries = 2
 	opts.BaseBackoff = 10 * time.Millisecond
@@ -330,9 +330,9 @@ func TestHTTPClientWithRetries_NetworkErrors(t *testing.T) {
 	mockHandler := NewMockHttpStatusHandler()
 	client := NewHTTPClientWithRetries(opts, mockHandler)
 
-	// Replace the client's transport with our mock
+	// Replace the Client's transport with our mock
 	errorReturned := false
-	client.client.Transport = &mockTransport{
+	client.Client.Transport = &mockTransport{
 		roundTripFunc: func(req *http.Request) (*http.Response, error) {
 			if !errorReturned {
 				// First request fails with connection reset
@@ -387,7 +387,7 @@ func TestHTTPClientWithRetries_NoHandler(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Configure client with null handler
+	// Configure Client with null handler
 	opts := DefaultRetryOptions()
 	client := NewHTTPClientWithRetries(opts, nil)
 
