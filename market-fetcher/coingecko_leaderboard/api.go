@@ -28,7 +28,7 @@ type CoinGeckoClient struct {
 }
 
 // NewCoinGeckoClient creates a new CoinGecko API client
-func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGeckoClient {
+func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 	// Create retry options with CoinGecko specific settings
 	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
@@ -37,7 +37,7 @@ func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGe
 
 	return &CoinGeckoClient{
 		config:     cfg,
-		keyManager: cg.NewAPIKeyManager(apiTokens),
+		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
 		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
 	}
 }

@@ -26,13 +26,12 @@ type Service struct {
 }
 
 // NewService creates a new tokens service
-func NewService(config *config.Config, onUpdate func()) *Service {
+func NewService(config *config.Config) *Service {
 	client := NewClient(DefaultCoinGeckoBaseURL)
 
 	return &Service{
-		config:   config,
-		client:   client,
-		onUpdate: onUpdate,
+		config: config,
+		client: client,
 	}
 }
 
