@@ -27,10 +27,9 @@ type CacheData struct {
 
 // Service represents the CoinGecko service
 type Service struct {
-	config    *config.Config
-	apiTokens *config.APITokens
-	onUpdate  func()
-	cache     struct {
+	config   *config.Config
+	onUpdate func()
+	cache    struct {
 		sync.RWMutex
 		data *APIResponse
 	}
@@ -40,20 +39,23 @@ type Service struct {
 }
 
 // NewService creates a new CoinGecko service
-func NewService(cfg *config.Config, apiTokens *config.APITokens, onUpdate func()) *Service {
+func NewService(cfg *config.Config) *Service {
 	// Create API client
-	apiClient := NewCoinGeckoClient(cfg, apiTokens)
+	apiClient := NewCoinGeckoClient(cfg)
 
 	// Create paginated fetcher with the API client
 	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, cfg.CoingeckoLeaderboard.RequestDelayMs)
 
 	return &Service{
 		config:    cfg,
-		apiTokens: apiTokens,
-		onUpdate:  onUpdate,
 		apiClient: apiClient,
 		fetcher:   fetcher,
 	}
+}
+
+// SetOnUpdateCallback sets a callback function that will be called when data is updated
+func (s *Service) SetOnUpdateCallback(onUpdate func()) {
+	s.onUpdate = onUpdate
 }
 
 // Start starts the CoinGecko service
