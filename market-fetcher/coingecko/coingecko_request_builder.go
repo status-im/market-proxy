@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+const (
+	// Base URL for public API
+	COINGECKO_PUBLIC_URL = "https://api.coingecko.com"
+	// Base URL for Pro API
+	COINGECKO_PRO_URL = "https://pro-api.coingecko.com"
+)
+
 // buildURL safely combines a base URL with a path
 func buildURL(baseURL, path string) string {
 	baseURL = strings.TrimRight(baseURL, "/")

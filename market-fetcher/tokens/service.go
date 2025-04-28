@@ -3,11 +3,11 @@ package tokens
 import (
 	"context"
 	"fmt"
-	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/status-im/market-proxy/coingecko"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
@@ -15,10 +15,9 @@ import (
 
 // Service represents the tokens service that periodically fetches and filters token data
 type Service struct {
-	config   *config.Config
-	client   *Client
-	onUpdate func()
-	cache    struct {
+	config *config.Config
+	client *Client
+	cache  struct {
 		sync.RWMutex
 		tokens []Token
 	}
@@ -27,7 +26,7 @@ type Service struct {
 }
 
 // NewService creates a new tokens service
-func NewService(config *config.Config, onUpdate func()) *Service {
+func NewService(config *config.Config) *Service {
 	baseURL := config.OverrideCoingeckoPublicURL
 
 	if baseURL == "" {
@@ -37,9 +36,8 @@ func NewService(config *config.Config, onUpdate func()) *Service {
 	client := NewClient(baseURL)
 
 	return &Service{
-		config:   config,
-		client:   client,
-		onUpdate: onUpdate,
+		config: config,
+		client: client,
 	}
 }
 
@@ -93,11 +91,6 @@ func (s *Service) fetchAndUpdate() error {
 	metrics.RecordTokensCacheSize("tokens-service", len(filteredTokens))
 	metrics.RecordTokensByPlatform(tokensByPlatform)
 	metrics.RecordFetchMarketDataCycle("tokens-service", startTime)
-
-	// Signal update through callback if provided
-	if s.onUpdate != nil {
-		s.onUpdate()
-	}
 
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
 	return nil
