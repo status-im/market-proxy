@@ -148,7 +148,7 @@ func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
 			log.Printf("CoinGecko: Using overridden Pro API URL: %s", c.config.OverrideCoingeckoProURL)
 			return c.config.OverrideCoingeckoProURL
 		}
-		return COINGECKO_PRO_URL
+		return cg.COINGECKO_PRO_URL
 	}
 
 	log.Printf("CoinGecko: Using Public API URL based on key type")
@@ -158,5 +158,5 @@ func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
 		return c.config.OverrideCoingeckoPublicURL
 	}
 	// Otherwise, use the default public URL
-	return COINGECKO_PUBLIC_URL
+	return cg.COINGECKO_PUBLIC_URL
 }
