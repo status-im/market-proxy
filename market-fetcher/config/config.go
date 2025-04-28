@@ -12,6 +12,10 @@ type Config struct {
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
 	TokensFile           string                      `yaml:"tokens_file"`
 	APITokens            *APITokens
+
+	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
+	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
+	OverrideBinanceWSURL       string `yaml:"override_binance_wsurl"`
 }
 
 func LoadConfig(path string) (*Config, error) {
