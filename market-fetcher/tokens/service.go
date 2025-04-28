@@ -3,6 +3,7 @@ package tokens
 import (
 	"context"
 	"fmt"
+	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"log"
 	"sync"
 	"time"
@@ -26,12 +27,19 @@ type Service struct {
 }
 
 // NewService creates a new tokens service
-func NewService(config *config.Config) *Service {
-	client := NewClient(DefaultCoinGeckoBaseURL)
+func NewService(config *config.Config, onUpdate func()) *Service {
+	baseURL := config.OverrideCoingeckoPublicURL
+
+	if baseURL == "" {
+		baseURL = coingecko.COINGECKO_PUBLIC_URL
+	}
+
+	client := NewClient(baseURL)
 
 	return &Service{
-		config: config,
-		client: client,
+		config:   config,
+		client:   client,
+		onUpdate: onUpdate,
 	}
 }
 
