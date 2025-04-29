@@ -2,7 +2,6 @@ package binance
 
 import (
 	"context"
-	"log"
 	"sync/atomic"
 
 	"github.com/status-im/market-proxy/config"
@@ -56,31 +55,12 @@ func (s *Service) Healthy() bool {
 }
 
 func (s *Service) Start(ctx context.Context) error {
-	// Create WebSocket connection
+	// Connect to WebSocket
 	if err := s.wsClient.Connect(); err != nil {
 		return err
 	}
 
-	// Setup ping/pong handling
-	s.wsClient.SetupPingPong()
-
-	// Start message handler
-	go s.wsClient.StartMessageLoop(ctx, func() {
-		s.reconnect(ctx)
-	})
-
 	return nil
-}
-
-func (s *Service) reconnect(ctx context.Context) {
-	s.wsClient.Close()
-
-	if err := s.wsClient.Connect(); err != nil {
-		log.Printf("Failed to reconnect: %v", err)
-		return
-	}
-
-	s.wsClient.SetupPingPong()
 }
 
 func (s *Service) Stop() {
