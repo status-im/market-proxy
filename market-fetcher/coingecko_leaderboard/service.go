@@ -1,4 +1,4 @@
-package coingecko
+package coingecko_leaderboard
 
 import (
 	"context"
@@ -12,10 +12,6 @@ import (
 )
 
 const (
-	// Base URL for public API
-	COINGECKO_PUBLIC_URL = "https://api.coingecko.com"
-	// Base URL for Pro API
-	COINGECKO_PRO_URL = "https://pro-api.coingecko.com"
 	// Maximum items per page
 	MAX_PER_PAGE = 250 // CoinGecko's API max per_page value
 )
@@ -27,10 +23,9 @@ type CacheData struct {
 
 // Service represents the CoinGecko service
 type Service struct {
-	config    *config.Config
-	apiTokens *config.APITokens
-	onUpdate  func()
-	cache     struct {
+	config   *config.Config
+	onUpdate func()
+	cache    struct {
 		sync.RWMutex
 		data *APIResponse
 	}
@@ -40,26 +35,29 @@ type Service struct {
 }
 
 // NewService creates a new CoinGecko service
-func NewService(cfg *config.Config, apiTokens *config.APITokens, onUpdate func()) *Service {
+func NewService(cfg *config.Config) *Service {
 	// Create API client
-	apiClient := NewCoinGeckoClient(cfg, apiTokens)
+	apiClient := NewCoinGeckoClient(cfg)
 
 	// Create paginated fetcher with the API client
-	fetcher := NewPaginatedFetcher(apiClient, cfg.CoinGeckoFetcher.Limit, MAX_PER_PAGE, cfg.CoinGeckoFetcher.RequestDelayMs)
+	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, cfg.CoingeckoLeaderboard.RequestDelayMs)
 
 	return &Service{
 		config:    cfg,
-		apiTokens: apiTokens,
-		onUpdate:  onUpdate,
 		apiClient: apiClient,
 		fetcher:   fetcher,
 	}
 }
 
+// SetOnUpdateCallback sets a callback function that will be called when data is updated
+func (s *Service) SetOnUpdateCallback(onUpdate func()) {
+	s.onUpdate = onUpdate
+}
+
 // Start starts the CoinGecko service
 func (s *Service) Start(ctx context.Context) error {
 	// Convert update interval from milliseconds to time.Duration
-	updateInterval := time.Duration(s.config.CoinGeckoFetcher.UpdateIntervalMs) * time.Millisecond
+	updateInterval := time.Duration(s.config.CoingeckoLeaderboard.UpdateIntervalMs) * time.Millisecond
 
 	// Create scheduler for periodic updates
 	s.scheduler = scheduler.New(

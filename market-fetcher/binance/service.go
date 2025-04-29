@@ -35,7 +35,7 @@ func NewService(cfg *config.Config) *Service {
 			s.successfulUpdate.Store(true)
 		}
 		return err
-	})
+	}, cfg.OverrideBinanceWSURL)
 
 	return s
 }

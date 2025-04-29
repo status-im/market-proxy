@@ -1,4 +1,4 @@
-package coingecko
+package coingecko_leaderboard
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	cg "github.com/status-im/market-proxy/coingecko"
 	"github.com/status-im/market-proxy/config"
 )
 
@@ -21,21 +22,23 @@ type APIClient interface {
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      APIKeyManagerInterface
-	httpClient      *HTTPClientWithRetries
+	keyManager      cg.APIKeyManagerInterface
+	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
 
 // NewCoinGeckoClient creates a new CoinGecko API client
-func NewCoinGeckoClient(cfg *config.Config, apiTokens *config.APITokens) *CoinGeckoClient {
+func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 	// Create retry options with CoinGecko specific settings
-	retryOpts := DefaultRetryOptions()
+	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
+
+	metricsHandler := cg.NewHttpRequestMetricsWriter("coingecko")
 
 	return &CoinGeckoClient{
 		config:     cfg,
-		keyManager: NewAPIKeyManager(apiTokens),
-		httpClient: NewHTTPClientWithRetries(retryOpts),
+		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
 	}
 }
 
@@ -109,7 +112,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		log.Printf("CoinGecko: Attempting request for page %d with key type %v", page, apiKey.Type)
 
 		// Execute the request with retries
-		resp, body, duration, err := c.httpClient.ExecuteRequest(request, "coingecko")
+		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
 
 		// If the request failed
 		if err != nil {
@@ -137,13 +140,23 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 }
 
 // getApiBaseUrl returns the appropriate API URL based on the key type
-func (c *CoinGeckoClient) getApiBaseUrl(keyType KeyType) string {
+func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
 	// Use Pro URL only if we're using a Pro key
-	if keyType == ProKey {
+	if keyType == cg.ProKey {
 		log.Printf("CoinGecko: Using Pro API URL based on key type")
-		return COINGECKO_PRO_URL
+		if c.config.OverrideCoingeckoProURL != "" {
+			log.Printf("CoinGecko: Using overridden Pro API URL: %s", c.config.OverrideCoingeckoProURL)
+			return c.config.OverrideCoingeckoProURL
+		}
+		return cg.COINGECKO_PRO_URL
 	}
 
 	log.Printf("CoinGecko: Using Public API URL based on key type")
-	return COINGECKO_PUBLIC_URL
+	// if OverrideCoingeckoPublicURL is set, use that
+	if c.config.OverrideCoingeckoPublicURL != "" {
+		log.Printf("CoinGecko: Using overridden public API URL: %s", c.config.OverrideCoingeckoPublicURL)
+		return c.config.OverrideCoingeckoPublicURL
+	}
+	// Otherwise, use the default public URL
+	return cg.COINGECKO_PUBLIC_URL
 }

@@ -8,9 +8,15 @@ import (
 	"net"
 	"net/http"
 	"time"
-
-	"github.com/status-im/market-proxy/metrics"
 )
+
+// HttpStatusHandler is an interface for handling HTTP request statuses
+type HttpStatusHandler interface {
+	// OnRequest handles a request with its status result
+	OnRequest(status string)
+	// OnRetry handles retry events
+	OnRetry()
+}
 
 // RetryOptions configures retry behavior for HTTP requests
 type RetryOptions struct {
@@ -32,14 +38,15 @@ func DefaultRetryOptions() RetryOptions {
 	}
 }
 
-// HTTPClientWithRetries wraps an HTTP client with retry capabilities
+// HTTPClientWithRetries wraps an HTTP Client with retry capabilities
 type HTTPClientWithRetries struct {
-	client *http.Client
-	opts   RetryOptions
+	Client        *http.Client
+	Opts          RetryOptions
+	StatusHandler HttpStatusHandler
 }
 
-// NewHTTPClientWithRetries creates a new HTTP client with retry capabilities
-func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
+// NewHTTPClientWithRetries creates a new HTTP Client with retry capabilities
+func NewHTTPClientWithRetries(opts RetryOptions, handler HttpStatusHandler) *HTTPClientWithRetries {
 	client := &http.Client{
 		Timeout: opts.RequestTimeout,
 		Transport: &http.Transport{
@@ -50,27 +57,35 @@ func NewHTTPClientWithRetries(opts RetryOptions) *HTTPClientWithRetries {
 	}
 
 	return &HTTPClientWithRetries{
-		client: client,
-		opts:   opts,
+		Client:        client,
+		Opts:          opts,
+		StatusHandler: handler,
 	}
 }
 
+// SetStatusHandler sets the status handler for this Client
+func (c *HTTPClientWithRetries) SetStatusHandler(handler HttpStatusHandler) {
+	c.StatusHandler = handler
+}
+
 // ExecuteRequest executes an HTTP request with retry logic
-func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName string) (*http.Response, []byte, time.Duration, error) {
+func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Response, []byte, time.Duration, error) {
 	var lastErr error
 
-	for attempt := 0; attempt < c.opts.MaxRetries; attempt++ {
+	for attempt := 0; attempt < c.Opts.MaxRetries; attempt++ {
 		// Only log retry attempts after the first one
 		if attempt > 0 {
 			log.Printf("%s: Retry %d/%d after error: %v",
-				c.opts.LogPrefix, attempt, c.opts.MaxRetries-1, lastErr)
+				c.Opts.LogPrefix, attempt, c.Opts.MaxRetries-1, lastErr)
 
-			// Record retry attempt in metrics
-			metrics.RecordHTTPRetry(serviceName)
+			// Record retry attempt
+			if c.StatusHandler != nil {
+				c.StatusHandler.OnRetry()
+			}
 
 			// Calculate backoff with jitter
-			backoffDuration := calculateBackoffWithJitter(c.opts.BaseBackoff, attempt)
-			log.Printf("%s: Waiting %.2fs before retry", c.opts.LogPrefix, backoffDuration.Seconds())
+			backoffDuration := calculateBackoffWithJitter(c.Opts.BaseBackoff, attempt)
+			log.Printf("%s: Waiting %.2fs before retry", c.Opts.LogPrefix, backoffDuration.Seconds())
 			time.Sleep(backoffDuration)
 		}
 
@@ -78,13 +93,15 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName st
 		requestStart := time.Now()
 
 		// Execute request
-		resp, err := c.client.Do(req)
+		resp, err := c.Client.Do(req)
 		requestDuration := time.Since(requestStart)
 
 		if err != nil {
 			lastErr = fmt.Errorf("request failed after %.2fs: %v", requestDuration.Seconds(), err)
-			// Record error in metrics
-			metrics.RecordHTTPRequest(serviceName, "error")
+			// Record error
+			if c.StatusHandler != nil {
+				c.StatusHandler.OnRequest("error")
+			}
 			continue
 		}
 
@@ -102,25 +119,31 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request, serviceName st
 				lastErr = err
 				resp.Body.Close()
 				// Record rate limited request
-				metrics.RecordHTTPRequest(serviceName, "rate_limited")
+				if c.StatusHandler != nil {
+					c.StatusHandler.OnRequest("rate_limited")
+				}
 				continue
 			}
 
 			// For non-retryable errors, fail immediately
 			resp.Body.Close()
 			// Record general error
-			metrics.RecordHTTPRequest(serviceName, "error")
+			if c.StatusHandler != nil {
+				c.StatusHandler.OnRequest("error")
+			}
 			return nil, nil, requestDuration, err
 		}
 
 		// Record successful request
-		metrics.RecordHTTPRequest(serviceName, "success")
+		if c.StatusHandler != nil {
+			c.StatusHandler.OnRequest("success")
+		}
 		return resp, responseBody, requestDuration, nil
 	}
 
 	// If we got here, all retries failed
 	return nil, nil, 0, fmt.Errorf("all %d attempts failed, last error: %v",
-		c.opts.MaxRetries, lastErr)
+		c.Opts.MaxRetries, lastErr)
 }
 
 // calculateBackoffWithJitter calculates backoff duration with jitter for retries

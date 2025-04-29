@@ -28,7 +28,7 @@ coingecko_fetcher:
   limit: 5000  # number of tokens to fetch
   request_delay_ms: 0  # delay between requests
 
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000  # milliseconds (30 minutes)
   supported_platforms:
     - ethereum

@@ -21,20 +21,25 @@ type WebSocketClient struct {
 	conn      *websocket.Conn
 	stopCh    chan struct{}
 	onMessage func(message []byte) error
+	wsURL     string
 }
 
 // NewWebSocketClient creates a new WebSocket client
-func NewWebSocketClient(stopCh chan struct{}, onMessage func(message []byte) error) *WebSocketClient {
+func NewWebSocketClient(stopCh chan struct{}, onMessage func(message []byte) error, wsURL string) *WebSocketClient {
+	if wsURL == "" {
+		wsURL = BASE_WS_URL
+	}
 	return &WebSocketClient{
 		stopCh:    stopCh,
 		onMessage: onMessage,
+		wsURL:     wsURL,
 	}
 }
 
 // Connect establishes connection to Binance WebSocket API
 func (wsc *WebSocketClient) Connect() error {
 	// Connect to Binance WebSocket data stream
-	conn, _, err := websocket.DefaultDialer.Dial(BASE_WS_URL, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wsc.wsURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to connect to Binance WebSocket: %v", err)
 	}

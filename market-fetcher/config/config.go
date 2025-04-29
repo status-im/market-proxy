@@ -1,30 +1,21 @@
 package config
 
 import (
-	"encoding/json"
 	"io/ioutil"
-	"os"
+	"log"
 
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	CoinGeckoFetcher struct {
-		UpdateIntervalMs int    `yaml:"update_interval_ms"`
-		TokensFile       string `yaml:"tokens_file"`
-		Limit            int    `yaml:"limit"`
-		RequestDelayMs   int    `yaml:"request_delay_ms"` // Delay between requests in milliseconds
-	} `yaml:"coingecko_fetcher"`
+	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
+	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
+	TokensFile           string                      `yaml:"tokens_file"`
+	APITokens            *APITokens
 
-	TokensFetcher struct {
-		UpdateIntervalMs   int      `yaml:"update_interval_ms"`
-		SupportedPlatforms []string `yaml:"supported_platforms"`
-	} `yaml:"tokens_fetcher"`
-}
-
-type APITokens struct {
-	Tokens     []string `json:"api_tokens"`
-	DemoTokens []string `json:"demo_api_tokens,omitempty"`
+	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
+	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
+	OverrideBinanceWSURL       string `yaml:"override_binance_wsurl"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -35,22 +26,18 @@ func LoadConfig(path string) (*Config, error) {
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
-	return &config, err
-}
-
-func LoadAPITokens(filename string) (*APITokens, error) {
-	// Check if file exists
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		// File doesn't exist, return empty tokens
-		return &APITokens{Tokens: []string{}}, nil
-	}
-
-	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	var tokens APITokens
-	err = json.Unmarshal(data, &tokens)
-	return &tokens, err
+	apiTokens, err := LoadAPITokens(config.TokensFile)
+	if err != nil {
+		log.Printf("Warning: Error loading API tokens from %s: %v. Using public API without authentication.",
+			config.TokensFile, err)
+		config.APITokens = &APITokens{Tokens: []string{}}
+	} else {
+		config.APITokens = apiTokens
+	}
+
+	return &config, nil
 }

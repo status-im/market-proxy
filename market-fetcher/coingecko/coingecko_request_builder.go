@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
 const (
-	// Complete path for markets API endpoint
-	MARKETS_API_PATH = "/api/v3/coins/markets"
+	// Base URL for public API
+	COINGECKO_PUBLIC_URL = "https://api.coingecko.com"
+	// Base URL for Pro API
+	COINGECKO_PRO_URL = "https://pro-api.coingecko.com"
 )
 
 // buildURL safely combines a base URL with a path
@@ -21,11 +22,12 @@ func buildURL(baseURL, path string) string {
 	return baseURL + "/" + trimmedPath
 }
 
-// MarketsRequestBuilder implements the Builder pattern for CoinGecko markets API requests
-type MarketsRequestBuilder struct {
+// CoingeckoRequestBuilder implements the Builder pattern for CoinGecko API requests
+type CoingeckoRequestBuilder struct {
 	// Basic request parameters
 	baseURL    string
 	httpMethod string
+	apiPath    string
 
 	// Request specific parameters
 	params map[string]string
@@ -39,10 +41,11 @@ type MarketsRequestBuilder struct {
 	headers   map[string]string
 }
 
-// NewMarketRequestBuilder creates a new request builder for markets endpoint
-func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
-	rb := &MarketsRequestBuilder{
+// NewCoingeckoRequestBuilder creates a new base request builder for CoinGecko endpoints
+func NewCoingeckoRequestBuilder(baseURL, apiPath string) *CoingeckoRequestBuilder {
+	rb := &CoingeckoRequestBuilder{
 		baseURL:    baseURL,
+		apiPath:    apiPath,
 		httpMethod: "GET",
 		params:     make(map[string]string),
 		headers:    make(map[string]string),
@@ -52,65 +55,43 @@ func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
 	// Add default headers
 	rb.headers["Accept"] = "application/json"
 
-	// Add default market parameters
-	rb.params["vs_currency"] = "usd"
-	rb.params["order"] = "market_cap_desc"
-
 	return rb
 }
 
-// WithPage adds page parameter for pagination
-func (rb *MarketsRequestBuilder) WithPage(page int) *MarketsRequestBuilder {
-	rb.params["page"] = strconv.Itoa(page)
-	return rb
-}
-
-// WithPerPage adds per_page parameter
-func (rb *MarketsRequestBuilder) WithPerPage(perPage int) *MarketsRequestBuilder {
-	rb.params["per_page"] = strconv.Itoa(perPage)
-	return rb
-}
-
-// WithCurrency adds currency parameter
-func (rb *MarketsRequestBuilder) WithCurrency(currency string) *MarketsRequestBuilder {
-	rb.params["vs_currency"] = currency
-	return rb
-}
-
-// WithOrder adds ordering parameter
-func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder {
-	rb.params["order"] = order
+// With adds a custom parameter to the URL query
+func (rb *CoingeckoRequestBuilder) With(key, value string) *CoingeckoRequestBuilder {
+	rb.params[key] = value
 	return rb
 }
 
 // WithApiKey sets the API key and its type
-func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *MarketsRequestBuilder {
+func (rb *CoingeckoRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *CoingeckoRequestBuilder {
 	rb.apiKey = apiKey
 	rb.keyType = keyType
 	return rb
 }
 
 // WithHeader adds a custom HTTP header
-func (rb *MarketsRequestBuilder) WithHeader(name, value string) *MarketsRequestBuilder {
+func (rb *CoingeckoRequestBuilder) WithHeader(name, value string) *CoingeckoRequestBuilder {
 	rb.headers[name] = value
 	return rb
 }
 
 // WithUserAgent sets the User-Agent header
-func (rb *MarketsRequestBuilder) WithUserAgent(userAgent string) *MarketsRequestBuilder {
+func (rb *CoingeckoRequestBuilder) WithUserAgent(userAgent string) *CoingeckoRequestBuilder {
 	rb.userAgent = userAgent
 	return rb
 }
 
 // GetApiKey returns the API key and its type
-func (rb *MarketsRequestBuilder) GetApiKey() (string, KeyType) {
+func (rb *CoingeckoRequestBuilder) GetApiKey() (string, KeyType) {
 	return rb.apiKey, rb.keyType
 }
 
 // BuildURL builds the complete URL for the request
-func (rb *MarketsRequestBuilder) BuildURL() string {
+func (rb *CoingeckoRequestBuilder) BuildURL() string {
 	// Build the full URL using the safe path combiner
-	fullPath := buildURL(rb.baseURL, MARKETS_API_PATH)
+	fullPath := buildURL(rb.baseURL, rb.apiPath)
 
 	// Create query parameters
 	query := url.Values{}
@@ -141,7 +122,7 @@ func (rb *MarketsRequestBuilder) BuildURL() string {
 }
 
 // Build creates an http.Request object
-func (rb *MarketsRequestBuilder) Build() (*http.Request, error) {
+func (rb *CoingeckoRequestBuilder) Build() (*http.Request, error) {
 	// Build the URL
 	finalURL := rb.BuildURL()
 

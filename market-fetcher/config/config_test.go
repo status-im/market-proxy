@@ -7,12 +7,12 @@ import (
 
 func createTestConfig(t *testing.T) string {
 	content := `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 1000
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000
   supported_platforms:
     - ethereum
@@ -66,12 +66,12 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "valid config",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 1000
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000
   supported_platforms:
     - ethereum
@@ -79,32 +79,42 @@ tokens_fetcher:
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoinGeckoFetcher.UpdateIntervalMs != 60000 {
-					t.Errorf("UpdateIntervalMs = %v, want 60000", cfg.CoinGeckoFetcher.UpdateIntervalMs)
+				if cfg.TokensFile != "test_tokens.json" {
+					t.Errorf("TokensFile = %v, want test_tokens.json", cfg.TokensFile)
 				}
-				if cfg.CoinGeckoFetcher.RequestDelayMs != 1000 {
-					t.Errorf("RequestDelayMs = %v, want 1000", cfg.CoinGeckoFetcher.RequestDelayMs)
+				if cfg.CoingeckoLeaderboard.UpdateIntervalMs != 60000 {
+					t.Errorf("UpdateIntervalMs = %v, want 60000", cfg.CoingeckoLeaderboard.UpdateIntervalMs)
 				}
-				if cfg.CoinGeckoFetcher.Limit != 100 {
-					t.Errorf("Limit = %v, want 100", cfg.CoinGeckoFetcher.Limit)
+				if cfg.CoingeckoLeaderboard.RequestDelayMs != 1000 {
+					t.Errorf("RequestDelayMs = %v, want 1000", cfg.CoingeckoLeaderboard.RequestDelayMs)
+				}
+				if cfg.CoingeckoLeaderboard.Limit != 100 {
+					t.Errorf("Limit = %v, want 100", cfg.CoingeckoLeaderboard.Limit)
 				}
 				if cfg.TokensFetcher.UpdateIntervalMs != 1800000 {
-					t.Errorf("TokensFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
+					t.Errorf("CoingeckoCoinslistFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
 				}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 2 {
-					t.Errorf("TokensFetcher.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
+					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
 				}
 				if cfg.TokensFetcher.SupportedPlatforms[0] != "ethereum" || cfg.TokensFetcher.SupportedPlatforms[1] != "polygon-pos" {
-					t.Errorf("TokensFetcher.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
+				}
+				if cfg.APITokens == nil {
+					t.Error("APITokens should not be nil")
+				} else {
+					if len(cfg.APITokens.Tokens) != 0 {
+						t.Errorf("Expected empty API tokens, got %d tokens", len(cfg.APITokens.Tokens))
+					}
 				}
 			},
 		},
 		{
 			name: "invalid yaml",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: invalid
-  tokens_file: "test_tokens.json"
   limit: 100
 `,
 			wantErr: true,
@@ -112,41 +122,41 @@ coingecko_fetcher:
 		{
 			name: "missing required fields",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoinGeckoFetcher.Limit != 0 {
-					t.Errorf("Limit should be empty, got %v", cfg.CoinGeckoFetcher.Limit)
+				if cfg.CoingeckoLeaderboard.Limit != 0 {
+					t.Errorf("Limit should be empty, got %v", cfg.CoingeckoLeaderboard.Limit)
 				}
 			},
 		},
 		{
 			name: "zero request delay",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
   request_delay_ms: 0
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoinGeckoFetcher.RequestDelayMs != 0 {
-					t.Errorf("RequestDelayMs = %v, want 0", cfg.CoinGeckoFetcher.RequestDelayMs)
+				if cfg.CoingeckoLeaderboard.RequestDelayMs != 0 {
+					t.Errorf("RequestDelayMs = %v, want 0", cfg.CoingeckoLeaderboard.RequestDelayMs)
 				}
 			},
 		},
 		{
 			name: "tokens fetcher config",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000
   supported_platforms:
     - ethereum
@@ -157,16 +167,16 @@ tokens_fetcher:
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if cfg.TokensFetcher.UpdateIntervalMs != 1800000 {
-					t.Errorf("TokensFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
+					t.Errorf("CoingeckoCoinslistFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
 				}
 				expectedPlatforms := []string{"ethereum", "optimistic-ethereum", "arbitrum-one", "base"}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != len(expectedPlatforms) {
-					t.Errorf("TokensFetcher.SupportedPlatforms length = %v, want %v",
+					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want %v",
 						len(cfg.TokensFetcher.SupportedPlatforms), len(expectedPlatforms))
 				}
 				for i, platform := range expectedPlatforms {
 					if i < len(cfg.TokensFetcher.SupportedPlatforms) && cfg.TokensFetcher.SupportedPlatforms[i] != platform {
-						t.Errorf("TokensFetcher.SupportedPlatforms[%d] = %v, want %v",
+						t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms[%d] = %v, want %v",
 							i, cfg.TokensFetcher.SupportedPlatforms[i], platform)
 					}
 				}
@@ -175,18 +185,18 @@ tokens_fetcher:
 		{
 			name: "empty supported platforms",
 			configYAML: `
-coingecko_fetcher:
+tokens_file: "test_tokens.json"
+coingecko_leaderboard:
   update_interval_ms: 60000
-  tokens_file: "test_tokens.json"
   limit: 100
-tokens_fetcher:
+coingecko_coinslist:
   update_interval_ms: 1800000
   supported_platforms: []
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 0 {
-					t.Errorf("TokensFetcher.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
 				}
 			},
 		},
@@ -296,46 +306,60 @@ func TestLoadAPITokens(t *testing.T) {
 }
 
 func TestLoadConfigWithRealFiles(t *testing.T) {
-	// Create test config file
-	configFile := createTestConfig(t)
-	defer os.Remove(configFile)
-
+	// Create both the config and tokens files first, so we can set the correct path
 	// Create test tokens file
 	tokensFile := createTestTokens(t)
 	defer os.Remove(tokensFile)
 
-	// Update config to point to the test tokens file
-	config, err := LoadConfig(configFile)
+	// Prepare content with correct tokens file path
+	content := `
+tokens_file: "` + tokensFile + `"
+coingecko_leaderboard:
+  update_interval_ms: 60000
+  limit: 100
+  request_delay_ms: 1000
+coingecko_coinslist:
+  update_interval_ms: 1800000
+  supported_platforms:
+    - ethereum
+    - optimistic-ethereum
+    - arbitrum-one
+`
+
+	// Create test config file with correct tokens path
+	tmpfile, err := os.CreateTemp("", "config-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Load config
+	config, err := LoadConfig(tmpfile.Name())
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Validate config
-	if config.CoinGeckoFetcher.UpdateIntervalMs != 60000 {
-		t.Errorf("UpdateIntervalMs = %v, want 60000", config.CoinGeckoFetcher.UpdateIntervalMs)
-	}
-	if config.CoinGeckoFetcher.RequestDelayMs != 1000 {
-		t.Errorf("RequestDelayMs = %v, want 1000", config.CoinGeckoFetcher.RequestDelayMs)
-	}
-	if config.CoinGeckoFetcher.Limit != 100 {
-		t.Errorf("Limit = %v, want 100", config.CoinGeckoFetcher.Limit)
+	if config.TokensFile != tokensFile {
+		t.Errorf("TokensFile = %v, want %v", config.TokensFile, tokensFile)
 	}
 
-	// Validate TokensFetcher config
-	if config.TokensFetcher.UpdateIntervalMs != 1800000 {
-		t.Errorf("TokensFetcher.UpdateIntervalMs = %v, want 1800000", config.TokensFetcher.UpdateIntervalMs)
-	}
-
-	expectedPlatforms := []string{"ethereum", "optimistic-ethereum", "arbitrum-one"}
-	if len(config.TokensFetcher.SupportedPlatforms) != len(expectedPlatforms) {
-		t.Errorf("TokensFetcher.SupportedPlatforms length = %v, want %v",
-			len(config.TokensFetcher.SupportedPlatforms), len(expectedPlatforms))
-	}
-
-	for i, platform := range expectedPlatforms {
-		if config.TokensFetcher.SupportedPlatforms[i] != platform {
-			t.Errorf("TokensFetcher.SupportedPlatforms[%d] = %v, want %v",
-				i, config.TokensFetcher.SupportedPlatforms[i], platform)
+	// Validate APITokens were automatically loaded
+	if config.APITokens == nil {
+		t.Error("APITokens should not be nil")
+	} else {
+		if len(config.APITokens.Tokens) != 2 {
+			t.Errorf("Expected 2 API tokens, got %d", len(config.APITokens.Tokens))
+		}
+		if config.APITokens.Tokens[0] != "test-token-1" || config.APITokens.Tokens[1] != "test-token-2" {
+			t.Errorf("API tokens = %v, want [test-token-1 test-token-2]", config.APITokens.Tokens)
 		}
 	}
 }

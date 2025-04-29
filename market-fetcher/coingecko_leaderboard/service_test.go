@@ -1,4 +1,4 @@
-package coingecko
+package coingecko_leaderboard
 
 import (
 	"testing"
@@ -11,8 +11,7 @@ import (
 func TestService_Healthy_Logic(t *testing.T) {
 	// Create a new service
 	cfg := &config.Config{}
-	apiTokens := &config.APITokens{}
-	svc := NewService(cfg, apiTokens, nil)
+	svc := NewService(cfg)
 
 	// Test case 1: Empty cache, client not healthy
 	// Just test the direct logic without using the Healthy method
