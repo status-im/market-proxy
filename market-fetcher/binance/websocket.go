@@ -1,6 +1,7 @@
 package binance
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -18,32 +19,29 @@ const (
 
 // WebSocketClient manages WebSocket connection to Binance
 type WebSocketClient struct {
-	conn      *websocket.Conn
-	stopCh    chan struct{}
-	onMessage func(message []byte) error
-	wsURL     string
-	mu        sync.Mutex
-	isRunning bool
-	doneCh    chan struct{}
+	conn       *websocket.Conn
+	onMessage  func(message []byte) error
+	wsURL      string
+	mu         sync.Mutex
+	isRunning  bool
+	cancelFunc context.CancelFunc
 }
 
 // NewWebSocketClient creates a new WebSocket client
-func NewWebSocketClient(stopCh chan struct{}, onMessage func(message []byte) error, wsURL string) *WebSocketClient {
+func NewWebSocketClient(onMessage func(message []byte) error, wsURL string) *WebSocketClient {
 	if wsURL == "" {
 		wsURL = BASE_WS_URL
 	}
 	return &WebSocketClient{
-		stopCh:    stopCh,
 		onMessage: onMessage,
 		wsURL:     wsURL,
 		isRunning: false,
-		doneCh:    make(chan struct{}),
 	}
 }
 
-// Connect establishes connection to Binance WebSocket API
+// Connect establishes connection to Binance WebSocket API with the given context
 // It's safe to call this method multiple times - it will only connect once unless Close() was called
-func (wsc *WebSocketClient) Connect() error {
+func (wsc *WebSocketClient) Connect(ctx context.Context) error {
 	wsc.mu.Lock()
 	defer wsc.mu.Unlock()
 
@@ -52,11 +50,14 @@ func (wsc *WebSocketClient) Connect() error {
 		return nil
 	}
 
-	return wsc.connect()
+	connectCtx, cancel := context.WithCancel(ctx)
+	wsc.cancelFunc = cancel
+
+	return wsc.connect(connectCtx)
 }
 
 // connect establishes a new connection (must be called with mutex locked)
-func (wsc *WebSocketClient) connect() error {
+func (wsc *WebSocketClient) connect(ctx context.Context) error {
 	// Connect to Binance WebSocket data stream
 	conn, _, err := websocket.DefaultDialer.Dial(wsc.wsURL, nil)
 	if err != nil {
@@ -71,31 +72,24 @@ func (wsc *WebSocketClient) connect() error {
 	// Setup ping/pong handlers
 	wsc.setupPingPong()
 
-	// Reset done channel if needed
-	select {
-	case <-wsc.doneCh:
-		wsc.doneCh = make(chan struct{})
-	default:
-	}
-
 	// Start message loop
 	wsc.isRunning = true
-	go wsc.startMessageLoop()
+	go wsc.startMessageLoop(ctx)
 
 	return nil
 }
 
 // closeAndConnect closes the current connection and attempts to reconnect
-func (wsc *WebSocketClient) closeAndConnect() {
+func (wsc *WebSocketClient) closeAndConnect(ctx context.Context) {
 	wsc.mu.Lock()
 	defer wsc.mu.Unlock()
 
+	if wsc.cancelFunc != nil {
+		wsc.cancelFunc()
+	}
+
 	// Close connection but don't set isRunning to false
 	if wsc.conn != nil {
-		// Signal current loop to stop
-		close(wsc.doneCh)
-
-		// Close connection
 		wsc.conn.Close()
 		wsc.conn = nil
 	}
@@ -105,8 +99,11 @@ func (wsc *WebSocketClient) closeAndConnect() {
 		return
 	}
 
+	connectCtx, cancel := context.WithCancel(ctx)
+	wsc.cancelFunc = cancel
+
 	// Attempt to reconnect
-	if err := wsc.connect(); err != nil {
+	if err := wsc.connect(connectCtx); err != nil {
 		log.Printf("Failed to reconnect to Binance WebSocket: %v", err)
 	}
 }
@@ -121,8 +118,10 @@ func (wsc *WebSocketClient) Close() {
 		return
 	}
 
-	// Signal loop to stop
-	close(wsc.doneCh)
+	if wsc.cancelFunc != nil {
+		wsc.cancelFunc()
+		wsc.cancelFunc = nil
+	}
 
 	// Close connection
 	if wsc.conn != nil {
@@ -154,23 +153,37 @@ func (wsc *WebSocketClient) setupPingPong() {
 }
 
 // startMessageLoop begins reading messages from the WebSocket connection
-func (wsc *WebSocketClient) startMessageLoop() {
+func (wsc *WebSocketClient) startMessageLoop(ctx context.Context) {
+	done := make(chan struct{})
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			wsc.conn.Close()
+			close(done)
+			return
+		}
+	}()
+
 	for {
 		select {
-		case <-wsc.stopCh:
-			return
-		case <-wsc.doneCh:
+		case <-done:
 			return
 		default:
+			if !wsc.isConnected() {
+				return
+			}
+
 			// Read message
 			_, message, err := wsc.conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("Error reading WebSocket message: %v", err)
 				}
+
 				// Try to reconnect
-				wsc.closeAndConnect()
-				continue
+				go wsc.closeAndConnect(ctx)
+				return
 			}
 
 			// Process message with the provided handler

@@ -11,8 +11,6 @@ type Service struct {
 	config *config.Config
 	// WebSocket client
 	wsClient *WebSocketClient
-	// Channel to signal service stop
-	stopCh chan struct{}
 	// Quotes manager
 	quotes *QuotesManager
 	// Flag indicating if at least one successful update was received
@@ -22,12 +20,11 @@ type Service struct {
 func NewService(cfg *config.Config) *Service {
 	s := &Service{
 		config: cfg,
-		stopCh: make(chan struct{}),
 		quotes: NewQuotesManager(),
 	}
 
 	// Create WebSocket client with message handler that also updates our health status
-	s.wsClient = NewWebSocketClient(s.stopCh, func(message []byte) error {
+	s.wsClient = NewWebSocketClient(func(message []byte) error {
 		err := s.quotes.UpdateQuotes(message)
 		if err == nil {
 			// Mark that we've received at least one successful update
@@ -55,8 +52,8 @@ func (s *Service) Healthy() bool {
 }
 
 func (s *Service) Start(ctx context.Context) error {
-	// Connect to WebSocket
-	if err := s.wsClient.Connect(); err != nil {
+	// Connect to WebSocket with the provided context
+	if err := s.wsClient.Connect(ctx); err != nil {
 		return err
 	}
 
@@ -64,6 +61,5 @@ func (s *Service) Start(ctx context.Context) error {
 }
 
 func (s *Service) Stop() {
-	close(s.stopCh)
 	s.wsClient.Close()
 }
