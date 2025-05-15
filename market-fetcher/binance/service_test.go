@@ -189,6 +189,9 @@ func TestService_Reconnect(t *testing.T) {
 	err := svc.Start(ctx)
 	assert.NoError(t, err)
 
+	// Wait briefly to ensure service starts
+	time.Sleep(100 * time.Millisecond)
+
 	// Stop service
 	svc.Stop()
 
