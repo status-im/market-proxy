@@ -6,10 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+// Add this syncWSConn struct to encapsulate a WebSocket connection with mutex protection
+type syncWSConn struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
 
 // MockServer represents a mock server for testing HTTP and WebSocket requests
 type MockServer struct {
@@ -20,7 +27,8 @@ type MockServer struct {
 	BinanceMock    *BinanceMock
 	WebSocketPath  string
 	upgrader       websocket.Upgrader
-	websocketConns []*websocket.Conn
+	mu             sync.RWMutex // Mutex to protect websocketConns
+	websocketConns []*syncWSConn
 }
 
 // CoinGeckoMock contains mock data for CoinGecko API
@@ -64,7 +72,7 @@ func NewMockServer(addr ...string) *MockServer {
 				return true
 			},
 		},
-		websocketConns: make([]*websocket.Conn, 0),
+		websocketConns: make([]*syncWSConn, 0),
 	}
 
 	// Create HTTP server with request handler
@@ -85,9 +93,15 @@ func NewMockServer(addr ...string) *MockServer {
 // Close closes the mock server and all WebSocket connections
 func (ms *MockServer) Close() {
 	// Close all WebSocket connections
-	for _, conn := range ms.websocketConns {
-		conn.Close()
+	ms.mu.Lock()
+	for _, syncConn := range ms.websocketConns {
+		syncConn.mu.Lock()
+		syncConn.conn.Close()
+		syncConn.mu.Unlock()
 	}
+	// Clear the connections list
+	ms.websocketConns = nil
+	ms.mu.Unlock()
 
 	if ms.server != nil {
 		ms.server.Close()
@@ -158,7 +172,7 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-// handleWebSocket handles WebSocket connections
+// handleWebSocket handles WebSocket connection requests
 func (ms *MockServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Printf("MockServer: Received WebSocket connection request at path: %s", r.URL.Path)
 
@@ -171,14 +185,22 @@ func (ms *MockServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("MockServer: Successfully established WebSocket connection")
 
-	// Add connection to the list of active connections
-	ms.websocketConns = append(ms.websocketConns, conn)
+	// Create a synchronized wrapper for the connection
+	syncConn := &syncWSConn{conn: conn}
 
-	// Send initial data right after connection
+	// Add new connection to list
+	ms.mu.Lock()
+	ms.websocketConns = append(ms.websocketConns, syncConn)
+	ms.mu.Unlock()
+
+	// Send initial data right after connection (with mutex protection)
+	syncConn.mu.Lock()
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(ms.BinanceMock.PriceData)); err != nil {
 		log.Printf("WS Error: Failed to send initial data: %v", err)
+		syncConn.mu.Unlock()
 	} else {
 		log.Printf("WS: Initial data sent successfully. First connection: %v", conn.LocalAddr())
+		syncConn.mu.Unlock()
 	}
 }
 
@@ -195,35 +217,50 @@ func (ms *MockServer) broadcastPriceUpdates() {
 
 // copyAndBroadcast creates a copy of connections and sends them data
 func (ms *MockServer) copyAndBroadcast() {
-	// Create a copy of connections to avoid issues with slice modification
-	var connections []*websocket.Conn
+	// Take a read lock to create a copy of connections
+	ms.mu.RLock()
+	connections := make([]*syncWSConn, len(ms.websocketConns))
+	copy(connections, ms.websocketConns)
+	ms.mu.RUnlock()
 
-	// Get list of active connections
-	connections = append(connections, ms.websocketConns...)
-
-	// Send data to all connected clients
-	for i, conn := range connections {
-		if conn == nil {
+	// Send data to all connected clients (outside the lock)
+	for i, syncConn := range connections {
+		if syncConn == nil {
 			continue
 		}
 
-		err := conn.WriteMessage(websocket.TextMessage, []byte(ms.BinanceMock.PriceData))
+		// Lock the individual connection before writing
+		syncConn.mu.Lock()
+		err := syncConn.conn.WriteMessage(websocket.TextMessage, []byte(ms.BinanceMock.PriceData))
+		syncConn.mu.Unlock()
+
 		if err != nil {
 			log.Printf("WS Error: Failed to send data: %v", err)
 
-			// Remove connection from the main list
-			for j, c := range ms.websocketConns {
-				if c == conn {
-					ms.websocketConns = append(ms.websocketConns[:j], ms.websocketConns[j+1:]...)
-					break
-				}
-			}
-
-			// Close connection
-			conn.Close()
+			// Remove the failed connection from main list
+			ms.removeConnection(syncConn)
 		} else if i == 0 {
 			// Log only for the first connection to avoid cluttering the output
 			log.Printf("WS: Broadcast data sent successfully to %d connections", len(connections))
+		}
+	}
+}
+
+// removeConnection removes a closed connection from the websocketConns slice
+func (ms *MockServer) removeConnection(syncConn *syncWSConn) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	for j, c := range ms.websocketConns {
+		if c == syncConn {
+			// Remove the connection from the slice
+			ms.websocketConns = append(ms.websocketConns[:j], ms.websocketConns[j+1:]...)
+
+			// Close the connection (with mutex protection)
+			syncConn.mu.Lock()
+			syncConn.conn.Close()
+			syncConn.mu.Unlock()
+			break
 		}
 	}
 }
