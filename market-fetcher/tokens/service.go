@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/status-im/market-proxy/coingecko"
@@ -22,7 +23,7 @@ type Service struct {
 		tokens []Token
 	}
 	scheduler   *scheduler.Scheduler
-	initialized bool
+	initialized atomic.Bool
 }
 
 // NewService creates a new tokens service
@@ -51,7 +52,7 @@ func (s *Service) Start(ctx context.Context) error {
 		if err := s.fetchAndUpdate(); err != nil {
 			log.Printf("Error updating tokens: %v", err)
 		} else {
-			s.initialized = true
+			s.initialized.Store(true)
 		}
 	})
 
@@ -111,7 +112,8 @@ func (s *Service) GetTokens() []Token {
 // Healthy checks if the service is initialized and has data
 func (s *Service) Healthy() bool {
 	s.cache.RLock()
-	defer s.cache.RUnlock()
+	tokensLen := len(s.cache.tokens)
+	s.cache.RUnlock()
 
-	return s.initialized && len(s.cache.tokens) > 0
+	return s.initialized.Load() && tokensLen > 0
 }
