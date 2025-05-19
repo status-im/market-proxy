@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	cg "github.com/status-im/market-proxy/coingecko"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 )
 

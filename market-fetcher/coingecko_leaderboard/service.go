@@ -83,7 +83,7 @@ func (s *Service) Stop() {
 // fetchAndUpdate fetches data from CoinGecko and signals update
 func (s *Service) fetchAndUpdate(ctx context.Context) error {
 	// Reset request cycle counters
-	metrics.ResetCycleCounters("coingecko")
+	metrics.ResetCycleCounters("coingecko_common")
 
 	// Record start time for metrics
 	startTime := time.Now()

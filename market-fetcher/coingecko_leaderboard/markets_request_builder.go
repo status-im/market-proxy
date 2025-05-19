@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	cg "github.com/status-im/market-proxy/coingecko"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 const (

@@ -1,4 +1,4 @@
-package coingecko
+package coingecko_common
 
 import (
 	"testing"

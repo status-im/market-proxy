@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/status-im/market-proxy/coingecko"
+	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
@@ -31,7 +31,7 @@ func NewService(config *config.Config) *Service {
 	baseURL := config.OverrideCoingeckoPublicURL
 
 	if baseURL == "" {
-		baseURL = coingecko.COINGECKO_PUBLIC_URL
+		baseURL = coingecko_common.COINGECKO_PUBLIC_URL
 	}
 
 	client := NewClient(baseURL)
