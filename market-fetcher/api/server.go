@@ -14,18 +14,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
 	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
-	"github.com/status-im/market-proxy/tokens"
+	"github.com/status-im/market-proxy/coingecko_tokens"
 )
 
 type Server struct {
 	port           string
 	binanceService *binance.Service
 	cgService      *coingecko.Service
-	tokensService  *tokens.Service
+	tokensService  *coingecko_tokens.Service
 	server         *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *tokens.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service) *Server {
 	return &Server{
 		port:           port,
 		binanceService: binanceService,

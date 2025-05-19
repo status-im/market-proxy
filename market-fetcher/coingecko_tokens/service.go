@@ -1,4 +1,4 @@
-package tokens
+package coingecko_tokens
 
 import (
 	"context"

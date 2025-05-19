@@ -8,8 +8,8 @@ import (
 	"github.com/status-im/market-proxy/api"
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
+	"github.com/status-im/market-proxy/coingecko_tokens"
 	"github.com/status-im/market-proxy/config"
-	"github.com/status-im/market-proxy/tokens"
 )
 
 // Setup creates and registers all services
@@ -25,7 +25,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry.Register(cgService)
 
 	// Create Tokens core
-	tokensService := tokens.NewService(cfg)
+	tokensService := coingecko_tokens.NewService(cfg)
 	registry.Register(tokensService)
 
 	// Get port from environment or use default

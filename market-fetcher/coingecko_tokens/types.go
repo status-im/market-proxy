@@ -1,4 +1,4 @@
-package tokens
+package coingecko_tokens
 
 // Token represents a cryptocurrency token with its id, symbol, name and supported platforms
 type Token struct {
