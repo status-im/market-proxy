@@ -89,7 +89,7 @@ func (c *CoinGeckoClient) FetchPrices(tokenIds []string, currencies []string) (m
 
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
-func (c *CoinGeckoClient) executeFetchRequest(tokenIds []string, currencies []string) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(tokenIds, currencies []string) (*http.Response, []byte, error) {
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()
 
@@ -99,7 +99,7 @@ func (c *CoinGeckoClient) executeFetchRequest(tokenIds []string, currencies []st
 	// Try each key until one succeeds
 	for _, apiKey := range availableKeys {
 		// Get the appropriate base URL for this key type
-		baseURL := c.getApiBaseUrl(apiKey.Type)
+		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		// Create request builder for prices endpoint
 		requestBuilder := NewPricesRequestBuilder(baseURL)
@@ -149,26 +149,4 @@ func (c *CoinGeckoClient) executeFetchRequest(tokenIds []string, currencies []st
 
 	// If we got here, all keys failed
 	return nil, nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
-}
-
-// getApiBaseUrl returns the appropriate API URL based on the key type
-func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
-	// Use Pro URL only if we're using a Pro key
-	if keyType == cg.ProKey {
-		log.Printf("CoinGecko: Using Pro API URL based on key type")
-		if c.config.OverrideCoingeckoProURL != "" {
-			log.Printf("CoinGecko: Using overridden Pro API URL: %s", c.config.OverrideCoingeckoProURL)
-			return c.config.OverrideCoingeckoProURL
-		}
-		return cg.COINGECKO_PRO_URL
-	}
-
-	log.Printf("CoinGecko: Using Public API URL based on key type")
-	// if OverrideCoingeckoPublicURL is set, use that
-	if c.config.OverrideCoingeckoPublicURL != "" {
-		log.Printf("CoinGecko: Using overridden public API URL: %s", c.config.OverrideCoingeckoPublicURL)
-		return c.config.OverrideCoingeckoPublicURL
-	}
-	// Otherwise, use the default public URL
-	return cg.COINGECKO_PUBLIC_URL
 }

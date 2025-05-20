@@ -148,11 +148,3 @@ func (cf *ChunksFetcher) logSummary(startTime time.Time, prices map[string]map[s
 	log.Printf("Fetcher: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
 		len(prices), completedChunks, tokensPerSecond)
 }
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
