@@ -1,0 +1,15 @@
+{
+  "name": "Status Remote Token List",
+  "timestamp": "2025-05-28T13:00:00.000Z",
+  "version": {
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  },
+  "tags": {},
+  "keywords": [
+    "status",
+    "remote"
+  ],
+  "tokens": []
+}
