@@ -109,3 +109,65 @@ func TestPricesRequestBuilder_BuildURL(t *testing.T) {
 	assert.Equal(t, "bitcoin,ethereum", query.Get("ids"))
 	assert.Equal(t, "usd,eur", query.Get("vs_currencies"))
 }
+
+func TestPricesRequestBuilder_WithMetadataParameters(t *testing.T) {
+	baseURL := "https://api.coingecko.com"
+	builder := NewPricesRequestBuilder(baseURL)
+
+	// Test individual metadata parameters
+	builder.WithIds([]string{"bitcoin", "ethereum"}).
+		WithCurrencies([]string{"usd", "eur"}).
+		WithIncludeMarketCap(true).
+		WithInclude24hVolume(true).
+		WithInclude24hChange(true).
+		WithIncludeLastUpdatedAt(true)
+
+	url := builder.BuildURL()
+
+	// Verify all parameters are included (note: comma is URL encoded as %2C)
+	assert.Contains(t, url, "ids=bitcoin%2Cethereum")
+	assert.Contains(t, url, "vs_currencies=usd%2Ceur")
+	assert.Contains(t, url, "include_market_cap=true")
+	assert.Contains(t, url, "include_24hr_vol=true")
+	assert.Contains(t, url, "include_24hr_change=true")
+	assert.Contains(t, url, "include_last_updated_at=true")
+}
+
+func TestPricesRequestBuilder_WithAllMetadata(t *testing.T) {
+	baseURL := "https://api.coingecko.com"
+	builder := NewPricesRequestBuilder(baseURL)
+
+	// Test convenience method for all metadata
+	builder.WithIds([]string{"bitcoin"}).
+		WithCurrencies([]string{"usd"}).
+		WithAllMetadata()
+
+	url := builder.BuildURL()
+
+	// Verify all metadata parameters are included
+	assert.Contains(t, url, "include_market_cap=true")
+	assert.Contains(t, url, "include_24hr_vol=true")
+	assert.Contains(t, url, "include_24hr_change=true")
+	assert.Contains(t, url, "include_last_updated_at=true")
+}
+
+func TestPricesRequestBuilder_WithMetadataFalse(t *testing.T) {
+	baseURL := "https://api.coingecko.com"
+	builder := NewPricesRequestBuilder(baseURL)
+
+	// Test that false parameters are not added
+	builder.WithIds([]string{"bitcoin"}).
+		WithCurrencies([]string{"usd"}).
+		WithIncludeMarketCap(false).
+		WithInclude24hVolume(false).
+		WithInclude24hChange(false).
+		WithIncludeLastUpdatedAt(false)
+
+	url := builder.BuildURL()
+
+	// Verify metadata parameters are NOT included when set to false
+	assert.NotContains(t, url, "include_market_cap")
+	assert.NotContains(t, url, "include_24hr_vol")
+	assert.NotContains(t, url, "include_24hr_change")
+	assert.NotContains(t, url, "include_last_updated_at")
+}

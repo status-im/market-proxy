@@ -37,6 +37,46 @@ func (rb *PricesRequestBuilder) WithCurrencies(currencies []string) *PricesReque
 	return rb
 }
 
+// WithIncludeMarketCap adds include_market_cap parameter
+func (rb *PricesRequestBuilder) WithIncludeMarketCap(include bool) *PricesRequestBuilder {
+	if include {
+		rb.builder.With("include_market_cap", "true")
+	}
+	return rb
+}
+
+// WithInclude24hVolume adds include_24hr_vol parameter
+func (rb *PricesRequestBuilder) WithInclude24hVolume(include bool) *PricesRequestBuilder {
+	if include {
+		rb.builder.With("include_24hr_vol", "true")
+	}
+	return rb
+}
+
+// WithInclude24hChange adds include_24hr_change parameter
+func (rb *PricesRequestBuilder) WithInclude24hChange(include bool) *PricesRequestBuilder {
+	if include {
+		rb.builder.With("include_24hr_change", "true")
+	}
+	return rb
+}
+
+// WithIncludeLastUpdatedAt adds include_last_updated_at parameter
+func (rb *PricesRequestBuilder) WithIncludeLastUpdatedAt(include bool) *PricesRequestBuilder {
+	if include {
+		rb.builder.With("include_last_updated_at", "true")
+	}
+	return rb
+}
+
+// WithAllMetadata adds all metadata parameters (market cap, 24hr volume, 24hr change, last updated)
+func (rb *PricesRequestBuilder) WithAllMetadata() *PricesRequestBuilder {
+	return rb.WithIncludeMarketCap(true).
+		WithInclude24hVolume(true).
+		WithInclude24hChange(true).
+		WithIncludeLastUpdatedAt(true)
+}
+
 // WithApiKey sets the API key and its type (delegated to base builder)
 func (rb *PricesRequestBuilder) WithApiKey(apiKey string, keyType cg.KeyType) *PricesRequestBuilder {
 	rb.builder.WithApiKey(apiKey, keyType)
