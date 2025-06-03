@@ -13,11 +13,11 @@
   ],
   "tokens": [
     {
-      "chainId": 1,
-      "address": "0x744d70FDBE2Ba4CF95131626614a1763DF805B9E",
-      "name": "Status",
-      "symbol": "SNT",
-      "decimals": 18
+      "chainId": 11155111,
+      "address": "0x9f378c6706916cdc9310ce5a48851ec8d50a4c5b",
+      "name": "R2Credential",
+      "symbol": "R2WBTC",
+      "decimals": 8
     }
   ]
 }
