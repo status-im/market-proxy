@@ -9,18 +9,9 @@ import (
 func createCacheKeys(params PriceParams) []string {
 	keys := make([]string, len(params.IDs))
 
-	// Create currencies string for the key
-	currenciesStr := ""
-	for i, currency := range params.Currencies {
-		if i > 0 {
-			currenciesStr += ","
-		}
-		currenciesStr += currency
-	}
-
-	// Create a key for each token ID
+	// Create a key for each token ID (without currencies)
 	for i, tokenID := range params.IDs {
-		keys[i] = fmt.Sprintf("simple_price:%s:%s", tokenID, currenciesStr)
+		keys[i] = fmt.Sprintf("simple_price:%s", tokenID)
 	}
 
 	return keys
@@ -46,7 +37,7 @@ func extractTokensFromKeys(keys []string) []string {
 }
 
 // extractTokenIDFromKey extracts token ID from cache key
-// Cache key format: "simple_price:{tokenID}:{currencies}"
+// Cache key format: "simple_price:{tokenID}"
 func extractTokenIDFromKey(key string) string {
 	parts := strings.Split(key, ":")
 	if len(parts) >= 2 {

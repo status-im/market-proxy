@@ -22,6 +22,11 @@ coingecko_leaderboard:
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request
   request_delay: 2s           # 2 seconds delay between requests
+  currencies:                 # default currencies to fetch
+    - usd
+    - eur
+    - btc
+    - eth
 
 coingecko_coinslist:
   update_interval: 30m        # 30 minutes

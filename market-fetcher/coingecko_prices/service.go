@@ -14,6 +14,7 @@ import (
 type Service struct {
 	cache   cache.Cache
 	fetcher *ChunksFetcher
+	config  *config.Config
 }
 
 // NewService creates a new price service with the given cache and config
@@ -38,6 +39,7 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	return &Service{
 		cache:   cache,
 		fetcher: fetcher,
+		config:  config,
 	}
 }
 
@@ -79,23 +81,30 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 	}
 
 	// Combine results from all cache keys
-	result := make(SimplePriceResponse)
+	fullResponse := make(SimplePriceResponse)
 
 	for i, tokenID := range params.IDs {
 		cacheKey := cacheKeys[i]
 		if data, found := cachedData[cacheKey]; found {
-			var tokenData map[string]interface{}
-			if err := json.Unmarshal(data, &tokenData); err != nil {
+			var cachedResponse map[string]interface{}
+			if err := json.Unmarshal(data, &cachedResponse); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal cached price data for %s: %w", tokenID, err)
 			}
-			// Add token data to result
-			for key, value := range tokenData {
-				result[key] = value
+
+			// Extract token data from the cached response
+			if tokenData, exists := cachedResponse[tokenID]; exists {
+				if tokenMap, ok := tokenData.(map[string]interface{}); ok {
+					// Add all token data to full response (will be filtered later)
+					fullResponse[tokenID] = tokenMap
+				}
 			}
 		}
 	}
 
-	return result, nil
+	// Filter the response according to user parameters
+	filteredResponse := stripResponse(fullResponse, params)
+
+	return filteredResponse, nil
 }
 
 // loadMissingPrices loads price data for missing cache keys using ChunksFetcher
@@ -109,8 +118,11 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 		return make(map[string][]byte), nil
 	}
 
+	// Merge config currencies with user-requested currencies
+	allCurrencies := s.mergeCurrencies(params.Currencies)
+
 	// Use ChunksFetcher to get prices from CoinGecko API
-	prices, err := s.fetcher.FetchPrices(missingTokens, params.Currencies)
+	prices, err := s.fetcher.FetchPrices(missingTokens, allCurrencies)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices: %v", err)
 		return make(map[string][]byte), nil // Return empty data instead of error
@@ -126,8 +138,8 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 		// Create token-specific response in CoinGecko format
 		tokenResponse := make(map[string]interface{})
 
-		// Add prices for each currency
-		for _, currency := range params.Currencies {
+		// Add prices for all fetched currencies (both config and user-requested)
+		for _, currency := range allCurrencies {
 			if currencyPrices, exists := prices[currency]; exists {
 				if price, hasPrice := currencyPrices[tokenID]; hasPrice {
 					tokenResponse[currency] = price
@@ -154,4 +166,38 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 
 	log.Printf("Loaded price data for %d tokens, cached %d keys", len(missingTokens), len(result))
 	return result, nil
+}
+
+// mergeCurrencies merges config currencies with user-requested currencies
+// Config currencies come first, then any additional user currencies that aren't in config
+func (s *Service) mergeCurrencies(userCurrencies []string) []string {
+	// Start with config currencies
+	configCurrencies := s.getConfigCurrencies()
+	allCurrencies := make([]string, len(configCurrencies))
+	copy(allCurrencies, configCurrencies)
+
+	// Create a set of existing currencies for fast lookup
+	currencySet := make(map[string]bool)
+	for _, currency := range configCurrencies {
+		currencySet[currency] = true
+	}
+
+	// Add user currencies that aren't already in config
+	for _, currency := range userCurrencies {
+		if !currencySet[currency] {
+			allCurrencies = append(allCurrencies, currency)
+			currencySet[currency] = true
+		}
+	}
+
+	return allCurrencies
+}
+
+// getConfigCurrencies returns the currencies from config, with fallback to default
+func (s *Service) getConfigCurrencies() []string {
+	if s.config != nil && len(s.config.CoingeckoPrices.Currencies) > 0 {
+		return s.config.CoingeckoPrices.Currencies
+	}
+	// Fallback to default currencies if config is not available or empty
+	return []string{"usd", "eur", "btc", "eth"}
 }

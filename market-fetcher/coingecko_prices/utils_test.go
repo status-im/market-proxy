@@ -14,17 +14,17 @@ func TestCreateCacheKeys(t *testing.T) {
 	}
 	keys1 := createCacheKeys(params1)
 	assert.Len(t, keys1, 1)
-	assert.Equal(t, "simple_price:bitcoin:usd", keys1[0])
+	assert.Equal(t, "simple_price:bitcoin", keys1[0])
 
-	// Test multiple currencies
+	// Test multiple currencies (should not affect cache key)
 	params2 := PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd", "eur"},
 	}
 	keys2 := createCacheKeys(params2)
 	assert.Len(t, keys2, 1)
-	assert.Equal(t, "simple_price:bitcoin:usd,eur", keys2[0])
-	assert.NotEqual(t, keys1[0], keys2[0])
+	assert.Equal(t, "simple_price:bitcoin", keys2[0])
+	assert.Equal(t, keys1[0], keys2[0]) // Should be same since currencies are not in key
 
 	// Test different token
 	params3 := PriceParams{
@@ -33,7 +33,7 @@ func TestCreateCacheKeys(t *testing.T) {
 	}
 	keys3 := createCacheKeys(params3)
 	assert.Len(t, keys3, 1)
-	assert.Equal(t, "simple_price:ethereum:usd", keys3[0])
+	assert.Equal(t, "simple_price:ethereum", keys3[0])
 	assert.NotEqual(t, keys1[0], keys3[0])
 
 	// Test multiple tokens
@@ -43,8 +43,8 @@ func TestCreateCacheKeys(t *testing.T) {
 	}
 	keys4 := createCacheKeys(params4)
 	assert.Len(t, keys4, 2)
-	assert.Equal(t, "simple_price:bitcoin:usd", keys4[0])
-	assert.Equal(t, "simple_price:ethereum:usd", keys4[1])
+	assert.Equal(t, "simple_price:bitcoin", keys4[0])
+	assert.Equal(t, "simple_price:ethereum", keys4[1])
 
 	// All keys should contain the prefix
 	for _, key := range keys4 {
@@ -54,12 +54,12 @@ func TestCreateCacheKeys(t *testing.T) {
 
 func TestExtractTokenIDFromKey(t *testing.T) {
 	// Test valid cache key
-	key := "simple_price:bitcoin:usd,eur"
+	key := "simple_price:bitcoin"
 	tokenID := extractTokenIDFromKey(key)
 	assert.Equal(t, "bitcoin", tokenID)
 
 	// Test another valid key
-	key2 := "simple_price:ethereum:usd"
+	key2 := "simple_price:ethereum"
 	tokenID2 := extractTokenIDFromKey(key2)
 	assert.Equal(t, "ethereum", tokenID2)
 
@@ -76,10 +76,10 @@ func TestExtractTokenIDFromKey(t *testing.T) {
 
 func TestExtractTokensFromKeys(t *testing.T) {
 	keys := []string{
-		"simple_price:bitcoin:usd",
-		"simple_price:ethereum:usd,eur",
-		"simple_price:bitcoin:eur", // Duplicate bitcoin
-		"simple_price:cardano:usd",
+		"simple_price:bitcoin",
+		"simple_price:ethereum",
+		"simple_price:bitcoin", // Duplicate bitcoin
+		"simple_price:cardano",
 	}
 
 	tokens := extractTokensFromKeys(keys)

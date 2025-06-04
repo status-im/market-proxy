@@ -27,6 +27,9 @@ coingecko_leaderboard:
 coingecko_prices:
   chunk_size: 100           # smaller chunks for tests
   request_delay: 100ms      # short delay for tests
+  currencies:               # test currencies
+    - usd
+    - eur
 
 coingecko_coinslist:
   update_interval: 1s       # shorter interval for tests

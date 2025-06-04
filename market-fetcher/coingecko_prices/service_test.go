@@ -19,6 +19,9 @@ func TestService_Basic(t *testing.T) {
 		APITokens: &config.APITokens{
 			Tokens: []string{},
 		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
+		},
 	}
 
 	// Create price service
@@ -47,6 +50,9 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 	cfg := &config.Config{
 		APITokens: &config.APITokens{
 			Tokens: []string{},
+		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
 		},
 	}
 
@@ -93,22 +99,22 @@ func TestService_CacheKeys(t *testing.T) {
 
 	// Test single token
 	assert.Len(t, keys1, 1)
-	assert.Equal(t, "simple_price:bitcoin:usd", keys1[0])
+	assert.Equal(t, "simple_price:bitcoin", keys1[0])
 
-	// Different currencies should create different keys
+	// Different currencies should create same keys (currencies not in key anymore)
 	assert.Len(t, keys2, 1)
-	assert.Equal(t, "simple_price:bitcoin:usd,eur", keys2[0])
-	assert.NotEqual(t, keys1[0], keys2[0])
+	assert.Equal(t, "simple_price:bitcoin", keys2[0])
+	assert.Equal(t, keys1[0], keys2[0])
 
 	// Different token should create different key
 	assert.Len(t, keys3, 1)
-	assert.Equal(t, "simple_price:ethereum:usd", keys3[0])
+	assert.Equal(t, "simple_price:ethereum", keys3[0])
 	assert.NotEqual(t, keys1[0], keys3[0])
 
 	// Multiple tokens should create multiple keys
 	assert.Len(t, keys4, 2)
-	assert.Equal(t, "simple_price:bitcoin:usd", keys4[0])
-	assert.Equal(t, "simple_price:ethereum:usd", keys4[1])
+	assert.Equal(t, "simple_price:bitcoin", keys4[0])
+	assert.Equal(t, "simple_price:ethereum", keys4[1])
 
 	// All keys should contain the prefix
 	for _, key := range keys4 {
@@ -125,6 +131,9 @@ func TestService_StartStop(t *testing.T) {
 	cfg := &config.Config{
 		APITokens: &config.APITokens{
 			Tokens: []string{},
+		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
 		},
 	}
 
@@ -147,6 +156,9 @@ func TestService_StartWithoutCache(t *testing.T) {
 		APITokens: &config.APITokens{
 			Tokens: []string{},
 		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
+		},
 	}
 
 	// Create price service without cache
@@ -168,6 +180,9 @@ func TestService_LoadMissingPrices(t *testing.T) {
 		APITokens: &config.APITokens{
 			Tokens: []string{},
 		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
+		},
 	}
 
 	// Create price service
@@ -179,10 +194,10 @@ func TestService_LoadMissingPrices(t *testing.T) {
 		Currencies: []string{"usd"},
 	}
 
-	// Test missing keys
+	// Test missing keys (simplified format)
 	missingKeys := []string{
-		"simple_price:bitcoin:usd",
-		"simple_price:ethereum:usd",
+		"simple_price:bitcoin",
+		"simple_price:ethereum",
 	}
 
 	// Call loadMissingPrices
@@ -198,4 +213,69 @@ func TestService_LoadMissingPrices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, emptyResult)
 	assert.Len(t, emptyResult, 0)
+}
+
+func TestService_MergeCurrencies(t *testing.T) {
+	// Create test config with some currencies
+	cfg := &config.Config{
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur", "btc"},
+		},
+	}
+
+	// Create price service
+	priceService := &Service{config: cfg}
+
+	// Test merging with no user currencies
+	result1 := priceService.mergeCurrencies([]string{})
+	expected1 := []string{"usd", "eur", "btc"}
+	assert.Equal(t, expected1, result1)
+
+	// Test merging with user currencies that are already in config
+	result2 := priceService.mergeCurrencies([]string{"usd", "eur"})
+	expected2 := []string{"usd", "eur", "btc"}
+	assert.Equal(t, expected2, result2)
+
+	// Test merging with new user currencies
+	result3 := priceService.mergeCurrencies([]string{"eth", "ada"})
+	expected3 := []string{"usd", "eur", "btc", "eth", "ada"}
+	assert.Equal(t, expected3, result3)
+
+	// Test merging with mix of existing and new currencies
+	result4 := priceService.mergeCurrencies([]string{"usd", "eth", "eur", "dot"})
+	expected4 := []string{"usd", "eur", "btc", "eth", "dot"}
+	assert.Equal(t, expected4, result4)
+}
+
+func TestService_GetConfigCurrencies(t *testing.T) {
+	// Test with config currencies
+	cfg1 := &config.Config{
+		APITokens: &config.APITokens{
+			Tokens: []string{},
+		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"usd", "eur"},
+		},
+	}
+	service1 := &Service{config: cfg1}
+	result1 := service1.getConfigCurrencies()
+	assert.Equal(t, []string{"usd", "eur"}, result1)
+
+	// Test with empty config currencies (fallback)
+	cfg2 := &config.Config{
+		APITokens: &config.APITokens{
+			Tokens: []string{},
+		},
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{},
+		},
+	}
+	service2 := &Service{config: cfg2}
+	result2 := service2.getConfigCurrencies()
+	assert.Equal(t, []string{"usd", "eur", "btc", "eth"}, result2)
+
+	// Test with nil config (fallback)
+	service3 := &Service{config: nil}
+	result3 := service3.getConfigCurrencies()
+	assert.Equal(t, []string{"usd", "eur", "btc", "eth"}, result3)
 }
