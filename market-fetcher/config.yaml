@@ -15,12 +15,16 @@ cache:
     key_prefix: "market-proxy:"
 
 coingecko_leaderboard:
-  update_interval_ms: 600000  # milliseconds (10 minutes)
+  update_interval: 10m        # 10 minutes
   limit: 5000
-  request_delay_ms: 0 # milliseconds (0 = no delay, negative = use default)
+  request_delay: 0s           # 0 = no delay
+
+coingecko_prices:
+  chunk_size: 500             # number of tokens to fetch in one request
+  request_delay: 2s           # 2 seconds delay between requests
 
 coingecko_coinslist:
-  update_interval_ms: 1800000  # milliseconds (30 minutes)
+  update_interval: 30m        # 30 minutes
   supported_platforms:
     - ethereum
     - optimistic-ethereum  # Optimism

@@ -40,7 +40,8 @@ func NewService(cfg *config.Config) *Service {
 	apiClient := NewCoinGeckoClient(cfg)
 
 	// Create paginated fetcher with the API client
-	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, cfg.CoingeckoLeaderboard.RequestDelayMs)
+	requestDelayMs := int(cfg.CoingeckoLeaderboard.RequestDelay.Milliseconds())
+	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, requestDelayMs)
 
 	return &Service{
 		config:    cfg,
@@ -56,8 +57,8 @@ func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 
 // Start starts the CoinGecko service
 func (s *Service) Start(ctx context.Context) error {
-	// Convert update interval from milliseconds to time.Duration
-	updateInterval := time.Duration(s.config.CoingeckoLeaderboard.UpdateIntervalMs) * time.Millisecond
+	// Use update interval directly as it's already a time.Duration
+	updateInterval := s.config.CoingeckoLeaderboard.UpdateInterval
 
 	// Create scheduler for periodic updates
 	s.scheduler = scheduler.New(

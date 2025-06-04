@@ -44,8 +44,8 @@ func NewService(config *config.Config) *Service {
 
 // Start starts the tokens service
 func (s *Service) Start(ctx context.Context) error {
-	// Start periodic updates
-	updateInterval := time.Duration(s.config.TokensFetcher.UpdateIntervalMs) * time.Millisecond
+	// Start periodic updates - use update interval directly as it's already a time.Duration
+	updateInterval := s.config.TokensFetcher.UpdateInterval
 
 	// Create and start the scheduler
 	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {

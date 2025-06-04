@@ -20,13 +20,16 @@ func createTestConfig(mockURL, mockWSURL string) (string, error) {
 	// Create configuration file content
 	configContent := `
 coingecko_leaderboard:
-  update_interval_ms: 1000  # shorter interval for tests
+  update_interval: 1s       # shorter interval for tests
   limit: 20                 # fewer tokens for tests
-  request_delay_ms: 100     # short delay for tests
+  request_delay: 100ms      # short delay for tests
+
+coingecko_prices:
+  chunk_size: 100           # smaller chunks for tests
+  request_delay: 100ms      # short delay for tests
 
 coingecko_coinslist:
-  update_interval_ms: 1000  # shorter interval for tests
-  request_delay_ms: 100     # short delay for tests
+  update_interval: 1s       # shorter interval for tests
   supported_platforms: []   # array of supported blockchain platforms
 
 tokens_file: "%s"           # path to tokens file will be inserted

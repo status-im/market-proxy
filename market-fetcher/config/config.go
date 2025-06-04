@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
+	CoingeckoPrices      CoingeckoPricesFetcher      `yaml:"coingecko_prices"`
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
 	TokensFile           string                      `yaml:"tokens_file"`
 	APITokens            *APITokens

@@ -1,6 +1,8 @@
 package config
 
+import "time"
+
 type CoingeckoCoinslistFetcher struct {
-	UpdateIntervalMs   int      `yaml:"update_interval_ms"`
-	SupportedPlatforms []string `yaml:"supported_platforms"`
+	UpdateInterval     time.Duration `yaml:"update_interval"`
+	SupportedPlatforms []string      `yaml:"supported_platforms"`
 }

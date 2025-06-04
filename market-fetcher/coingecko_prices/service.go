@@ -21,10 +21,17 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	// Create API client
 	apiClient := NewCoinGeckoClient(config)
 
-	// Create chunks fetcher with default values
-	// TODO: These should come from config in the future
-	chunkSize := DEFAULT_CHUNK_SIZE
-	requestDelayMs := DEFAULT_REQUEST_DELAY
+	// Get configuration values or use defaults
+	chunkSize := config.CoingeckoPrices.ChunkSize
+	if chunkSize <= 0 {
+		chunkSize = DEFAULT_CHUNK_SIZE
+	}
+
+	requestDelay := config.CoingeckoPrices.RequestDelay
+	requestDelayMs := int(requestDelay.Milliseconds())
+	if requestDelayMs < 0 {
+		requestDelayMs = DEFAULT_REQUEST_DELAY
+	}
 
 	fetcher := NewChunksFetcher(apiClient, chunkSize, requestDelayMs)
 
