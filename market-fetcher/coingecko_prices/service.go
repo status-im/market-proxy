@@ -37,22 +37,14 @@ func (s *Service) Stop() {
 }
 
 // SimplePrices fetches prices for the given parameters using cache
-func (s *Service) SimplePrices(params PriceParams) (*PriceResponse, error) {
+// Returns raw CoinGecko JSON response
+func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) {
 	if len(params.IDs) == 0 {
-		return &PriceResponse{
-			Data:         make(map[string]PriceData),
-			RequestedIDs: params.IDs,
-			FoundIDs:     []string{},
-			MissingIDs:   []string{},
-		}, nil
+		return SimplePriceResponse{}, nil
 	}
 
-	// Create cache keys based on token IDs and currencies
-	cacheKeys := make([]string, len(params.IDs))
-	for i, id := range params.IDs {
-		// Create a cache key that includes currencies for uniqueness
-		cacheKeys[i] = createCacheKey(id, params.Currencies)
-	}
+	// Create cache keys for each token ID
+	cacheKeys := createCacheKeys(params)
 
 	// Create a placeholder loader that does nothing for now
 	// This will be implemented in future steps
@@ -62,48 +54,49 @@ func (s *Service) SimplePrices(params PriceParams) (*PriceResponse, error) {
 		return make(map[string][]byte), nil
 	}
 
-	// Get data from cache
+	// Get data from cache for all keys
 	cachedData, err := s.cache.GetOrLoad(cacheKeys, loader, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get prices from cache: %w", err)
 	}
 
-	// Parse cached data and build response
-	response := &PriceResponse{
-		Data:         make(map[string]PriceData),
-		RequestedIDs: params.IDs,
-		FoundIDs:     []string{},
-		MissingIDs:   []string{},
-	}
+	// Combine results from all cache keys
+	result := make(SimplePriceResponse)
 
-	for i, id := range params.IDs {
+	for i, tokenID := range params.IDs {
 		cacheKey := cacheKeys[i]
 		if data, found := cachedData[cacheKey]; found {
-			var priceData PriceData
-			if err := json.Unmarshal(data, &priceData); err == nil {
-				response.Data[id] = priceData
-				response.FoundIDs = append(response.FoundIDs, id)
-			} else {
-				response.MissingIDs = append(response.MissingIDs, id)
+			var tokenData map[string]interface{}
+			if err := json.Unmarshal(data, &tokenData); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal cached price data for %s: %w", tokenID, err)
 			}
-		} else {
-			response.MissingIDs = append(response.MissingIDs, id)
+			// Add token data to result
+			for key, value := range tokenData {
+				result[key] = value
+			}
 		}
 	}
 
-	return response, nil
+	return result, nil
 }
 
-// createCacheKey creates a cache key for a token ID and currencies
-func createCacheKey(tokenID string, currencies []string) string {
-	// Create a deterministic key that includes currencies
-	// Format: "prices:{tokenID}:{currency1,currency2,...}"
+// createCacheKeys creates cache keys for each token ID
+func createCacheKeys(params PriceParams) []string {
+	keys := make([]string, len(params.IDs))
+
+	// Create currencies string for the key
 	currenciesStr := ""
-	for i, currency := range currencies {
+	for i, currency := range params.Currencies {
 		if i > 0 {
 			currenciesStr += ","
 		}
 		currenciesStr += currency
 	}
-	return fmt.Sprintf("prices:%s:%s", tokenID, currenciesStr)
+
+	// Create a key for each token ID
+	for i, tokenID := range params.IDs {
+		keys[i] = fmt.Sprintf("simple_price:%s:%s", tokenID, currenciesStr)
+	}
+
+	return keys
 }

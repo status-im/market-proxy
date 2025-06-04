@@ -9,11 +9,13 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
 	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
+	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"
 )
 
@@ -22,15 +24,17 @@ type Server struct {
 	binanceService *binance.Service
 	cgService      *coingecko.Service
 	tokensService  *coingecko_tokens.Service
+	pricesService  *coingecko_prices.Service
 	server         *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service) *Server {
 	return &Server{
 		port:           port,
 		binanceService: binanceService,
 		cgService:      cgService,
 		tokensService:  tokensService,
+		pricesService:  pricesService,
 	}
 }
 
@@ -39,6 +43,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
+	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -130,6 +135,66 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.sendJSONResponse(w, status)
+}
+
+// handleSimplePrice implements CoinGecko-compatible simple/price endpoint
+func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters
+	params := coingecko_prices.PriceParams{}
+
+	// Parse IDs (required)
+	idsParam := r.URL.Query().Get("ids")
+	if idsParam == "" {
+		http.Error(w, "Parameter 'ids' is required", http.StatusBadRequest)
+		return
+	}
+	params.IDs = strings.Split(idsParam, ",")
+
+	// Parse currencies (vs_currencies, required)
+	currenciesParam := r.URL.Query().Get("vs_currencies")
+	if currenciesParam == "" {
+		http.Error(w, "Parameter 'vs_currencies' is required", http.StatusBadRequest)
+		return
+	}
+	params.Currencies = strings.Split(currenciesParam, ",")
+
+	// Parse optional boolean parameters
+	if marketCapParam := r.URL.Query().Get("include_market_cap"); marketCapParam != "" {
+		if marketCap, err := strconv.ParseBool(marketCapParam); err == nil {
+			params.IncludeMarketCap = marketCap
+		}
+	}
+
+	if volParam := r.URL.Query().Get("include_24hr_vol"); volParam != "" {
+		if vol, err := strconv.ParseBool(volParam); err == nil {
+			params.Include24hrVol = vol
+		}
+	}
+
+	if changeParam := r.URL.Query().Get("include_24hr_change"); changeParam != "" {
+		if change, err := strconv.ParseBool(changeParam); err == nil {
+			params.Include24hrChange = change
+		}
+	}
+
+	if updatedParam := r.URL.Query().Get("include_last_updated_at"); updatedParam != "" {
+		if updated, err := strconv.ParseBool(updatedParam); err == nil {
+			params.IncludeLastUpdatedAt = updated
+		}
+	}
+
+	// Parse precision parameter
+	params.Precision = r.URL.Query().Get("precision")
+
+	// Call price service
+	response, err := s.pricesService.SimplePrices(params)
+	if err != nil {
+		http.Error(w, "Failed to fetch prices: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Send raw JSON response from cache (CoinGecko format)
+	s.sendJSONResponse(w, response)
 }
 
 // sendJSONResponse is a common wrapper for JSON responses that sets Content-Type,

@@ -27,10 +27,7 @@ func TestService_Basic(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	assert.Len(t, response.Data, 0)
-	assert.Len(t, response.RequestedIDs, 0)
-	assert.Len(t, response.FoundIDs, 0)
-	assert.Len(t, response.MissingIDs, 0)
+	assert.Len(t, response, 0)
 }
 
 func TestService_SimplePricesWithMissingData(t *testing.T) {
@@ -50,25 +47,58 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 	response, err := priceService.SimplePrices(params)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	assert.Equal(t, params.IDs, response.RequestedIDs)
-	assert.Len(t, response.FoundIDs, 0)   // No data should be found since loader returns empty
-	assert.Len(t, response.MissingIDs, 2) // All IDs should be missing
-	assert.Len(t, response.Data, 0)       // No data should be returned
+	assert.Len(t, response, 0) // Should be empty since loader returns empty data
 }
 
 func TestService_CacheKeys(t *testing.T) {
-	// Test cache key generation
-	key1 := createCacheKey("bitcoin", []string{"usd"})
-	key2 := createCacheKey("bitcoin", []string{"usd", "eur"})
-	key3 := createCacheKey("ethereum", []string{"usd"})
+	// Test cache key generation with different parameter combinations
+	params1 := PriceParams{
+		IDs:        []string{"bitcoin"},
+		Currencies: []string{"usd"},
+	}
+	keys1 := createCacheKeys(params1)
 
-	assert.Equal(t, "prices:bitcoin:usd", key1)
-	assert.Equal(t, "prices:bitcoin:usd,eur", key2)
-	assert.Equal(t, "prices:ethereum:usd", key3)
+	params2 := PriceParams{
+		IDs:        []string{"bitcoin"},
+		Currencies: []string{"usd", "eur"},
+	}
+	keys2 := createCacheKeys(params2)
 
-	// Keys should be different for different currencies
-	assert.NotEqual(t, key1, key2)
-	assert.NotEqual(t, key1, key3)
+	params3 := PriceParams{
+		IDs:        []string{"ethereum"},
+		Currencies: []string{"usd"},
+	}
+	keys3 := createCacheKeys(params3)
+
+	params4 := PriceParams{
+		IDs:        []string{"bitcoin", "ethereum"},
+		Currencies: []string{"usd"},
+	}
+	keys4 := createCacheKeys(params4)
+
+	// Test single token
+	assert.Len(t, keys1, 1)
+	assert.Equal(t, "simple_price:bitcoin:usd", keys1[0])
+
+	// Different currencies should create different keys
+	assert.Len(t, keys2, 1)
+	assert.Equal(t, "simple_price:bitcoin:usd,eur", keys2[0])
+	assert.NotEqual(t, keys1[0], keys2[0])
+
+	// Different token should create different key
+	assert.Len(t, keys3, 1)
+	assert.Equal(t, "simple_price:ethereum:usd", keys3[0])
+	assert.NotEqual(t, keys1[0], keys3[0])
+
+	// Multiple tokens should create multiple keys
+	assert.Len(t, keys4, 2)
+	assert.Equal(t, "simple_price:bitcoin:usd", keys4[0])
+	assert.Equal(t, "simple_price:ethereum:usd", keys4[1])
+
+	// All keys should contain the prefix
+	for _, key := range keys4 {
+		assert.Contains(t, key, "simple_price:")
+	}
 }
 
 func TestService_StartStop(t *testing.T) {

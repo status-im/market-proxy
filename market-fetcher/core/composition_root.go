@@ -45,7 +45,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	}
 
 	// Create HTTP server and register it as a core
-	server := api.New(port, binanceService, cgService, tokensService)
+	server := api.New(port, binanceService, cgService, tokensService, pricesService)
 	registry.Register(server)
 
 	// Set update callback directly to our watchlist update function
