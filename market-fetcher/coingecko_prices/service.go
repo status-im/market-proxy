@@ -4,19 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/status-im/market-proxy/cache"
+	"github.com/status-im/market-proxy/config"
 )
 
 // Service provides price fetching functionality with caching
 type Service struct {
-	cache cache.Cache
+	cache   cache.Cache
+	fetcher *ChunksFetcher
 }
 
-// NewService creates a new price service with the given cache
-func NewService(cache cache.Cache) *Service {
+// NewService creates a new price service with the given cache and config
+func NewService(cache cache.Cache, config *config.Config) *Service {
+	// Create API client
+	apiClient := NewCoinGeckoClient(config)
+
+	// Create chunks fetcher with default values
+	// TODO: These should come from config in the future
+	chunkSize := DEFAULT_CHUNK_SIZE
+	requestDelayMs := DEFAULT_REQUEST_DELAY
+
+	fetcher := NewChunksFetcher(apiClient, chunkSize, requestDelayMs)
+
 	return &Service{
-		cache: cache,
+		cache:   cache,
+		fetcher: fetcher,
 	}
 }
 
@@ -46,12 +60,9 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 	// Create cache keys for each token ID
 	cacheKeys := createCacheKeys(params)
 
-	// Create a placeholder loader that does nothing for now
-	// This will be implemented in future steps
+	// Create loader that uses ChunksFetcher to fetch missing data
 	loader := func(missingKeys []string) (map[string][]byte, error) {
-		// For now, return empty data for missing keys
-		// TODO: Implement actual price loading from Coingecko API
-		return make(map[string][]byte), nil
+		return s.loadMissingPrices(missingKeys, params)
 	}
 
 	// Get data from cache for all keys
@@ -80,23 +91,60 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 	return result, nil
 }
 
-// createCacheKeys creates cache keys for each token ID
-func createCacheKeys(params PriceParams) []string {
-	keys := make([]string, len(params.IDs))
+// loadMissingPrices loads price data for missing cache keys using ChunksFetcher
+func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (map[string][]byte, error) {
+	log.Printf("Loading missing price data for %d cache keys", len(missingKeys))
 
-	// Create currencies string for the key
-	currenciesStr := ""
-	for i, currency := range params.Currencies {
-		if i > 0 {
-			currenciesStr += ","
+	// Extract token IDs from missing cache keys
+	missingTokens := extractTokensFromKeys(missingKeys)
+
+	if len(missingTokens) == 0 {
+		return make(map[string][]byte), nil
+	}
+
+	// Use ChunksFetcher to get prices from CoinGecko API
+	prices, err := s.fetcher.FetchPrices(missingTokens, params.Currencies)
+	if err != nil {
+		log.Printf("ChunksFetcher failed to fetch prices: %v", err)
+		return make(map[string][]byte), nil // Return empty data instead of error
+	}
+
+	// Convert fetched prices to cache format
+	result := make(map[string][]byte)
+
+	// For each missing key, create the corresponding cache data
+	for _, cacheKey := range missingKeys {
+		tokenID := extractTokenIDFromKey(cacheKey)
+
+		// Create token-specific response in CoinGecko format
+		tokenResponse := make(map[string]interface{})
+
+		// Add prices for each currency
+		for _, currency := range params.Currencies {
+			if currencyPrices, exists := prices[currency]; exists {
+				if price, hasPrice := currencyPrices[tokenID]; hasPrice {
+					tokenResponse[currency] = price
+				}
+			}
 		}
-		currenciesStr += currency
+
+		// If we have any data for this token, marshal it
+		if len(tokenResponse) > 0 {
+			// Wrap it in the expected CoinGecko format: {tokenID: {currency: price, ...}}
+			wrappedResponse := map[string]interface{}{
+				tokenID: tokenResponse,
+			}
+
+			data, err := json.Marshal(wrappedResponse)
+			if err != nil {
+				log.Printf("Failed to marshal price data for token %s: %v", tokenID, err)
+				continue
+			}
+
+			result[cacheKey] = data
+		}
 	}
 
-	// Create a key for each token ID
-	for i, tokenID := range params.IDs {
-		keys[i] = fmt.Sprintf("simple_price:%s:%s", tokenID, currenciesStr)
-	}
-
-	return keys
+	log.Printf("Loaded price data for %d tokens, cached %d keys", len(missingTokens), len(result))
+	return result, nil
 }

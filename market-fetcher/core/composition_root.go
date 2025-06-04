@@ -23,7 +23,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry.Register(cacheService)
 
 	// Create CoinGecko Prices service with cache dependency
-	pricesService := coingecko_prices.NewService(cacheService)
+	pricesService := coingecko_prices.NewService(cacheService, cfg)
 	registry.Register(pricesService)
 
 	// Create Binance core
