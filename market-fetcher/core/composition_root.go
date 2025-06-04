@@ -7,7 +7,9 @@ import (
 
 	"github.com/status-im/market-proxy/api"
 	"github.com/status-im/market-proxy/binance"
+	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
+	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"
 	"github.com/status-im/market-proxy/config"
 )
@@ -15,6 +17,14 @@ import (
 // Setup creates and registers all services
 func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry := NewRegistry()
+
+	// Create Cache service
+	cacheService := cache.NewService(cfg.Cache)
+	registry.Register(cacheService)
+
+	// Create CoinGecko Prices service with cache dependency
+	pricesService := coingecko_prices.NewService(cacheService)
+	registry.Register(pricesService)
 
 	// Create Binance core
 	binanceService := binance.NewService(cfg)

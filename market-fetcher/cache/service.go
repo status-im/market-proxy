@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -25,6 +26,25 @@ func NewService(config Config) *Service {
 	return &Service{
 		goCache: goCache,
 		config:  config,
+	}
+}
+
+// Start implements core.Interface
+func (s *Service) Start(ctx context.Context) error {
+	// Cache service doesn't need startup logic
+	// Just validate configuration
+	if s.goCache == nil {
+		return fmt.Errorf("cache service not properly initialized")
+	}
+	return nil
+}
+
+// Stop implements core.Interface
+func (s *Service) Stop() {
+	// Cache service doesn't need shutdown logic
+	// Go-cache handles cleanup automatically
+	if s.goCache != nil {
+		s.goCache.Clear()
 	}
 }
 
