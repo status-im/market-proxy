@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/status-im/market-proxy/cache"
 	"gopkg.in/yaml.v2"
 )
 
@@ -12,6 +13,7 @@ type Config struct {
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
 	TokensFile           string                      `yaml:"tokens_file"`
 	APITokens            *APITokens
+	Cache                cache.Config `yaml:"cache"`
 
 	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
 	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
@@ -28,6 +30,11 @@ func LoadConfig(path string) (*Config, error) {
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set default cache config if not provided
+	if config.Cache.GoCache.DefaultExpiration == 0 && config.Cache.GoCache.CleanupInterval == 0 {
+		config.Cache = cache.DefaultCacheConfig()
 	}
 
 	apiTokens, err := LoadAPITokens(config.TokensFile)
