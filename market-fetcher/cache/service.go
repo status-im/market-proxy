@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Service implements Cache interface with go-cache backend
+// Service implements Cache interface with go-cache only
 type Service struct {
 	goCache *GoCache
 	config  Config
@@ -16,6 +16,7 @@ type Service struct {
 func NewService(config Config) *Service {
 	var goCache *GoCache
 
+	// Create go-cache (L1 cache)
 	if config.GoCache.Enabled {
 		goCache = NewGoCache(config.GoCache.DefaultExpiration, config.GoCache.CleanupInterval)
 	} else {
@@ -41,80 +42,89 @@ func (s *Service) Start(ctx context.Context) error {
 
 // Stop implements core.Interface
 func (s *Service) Stop() {
-	// Cache service doesn't need shutdown logic
-	// Go-cache handles cleanup automatically
+	// Clear and close caches
 	if s.goCache != nil {
 		s.goCache.Clear()
 	}
 }
 
-// GetOrLoad retrieves data by keys from cache or loads them using LoaderFunc
-// Implements the Cache interface
+// GetOrLoad retrieves data by keys from local cache or loads them using LoaderFunc
 func (s *Service) GetOrLoad(keys []string, loader LoaderFunc, loadOnlyMissingKeys bool) (map[string][]byte, error) {
 	if len(keys) == 0 {
 		return make(map[string][]byte), nil
 	}
 
-	// Step 1: Get data from go-cache
-	result := s.goCache.Get(keys)
+	// Step 1: Get from local cache
+	result, missingKeys := s.getFromLocalCache(keys)
 
-	// If all data found, return immediately (fastest path)
-	if len(result.MissingKeys) == 0 {
-		return result.Found, nil
+	// Step 2: Load missing data if needed
+	if len(missingKeys) > 0 {
+		keysToLoad := s.determineKeysToLoad(keys, missingKeys, loadOnlyMissingKeys)
+		loadedData, err := s.loadAndCacheLocal(keysToLoad, loader)
+		if err != nil {
+			return nil, err
+		}
+		s.mergeResults(result, loadedData)
 	}
 
-	// Step 2: Determine which keys to load
-	var keysToLoad []string
-	if loadOnlyMissingKeys {
-		// Load only missing keys (saves bandwidth)
-		keysToLoad = result.MissingKeys
-	} else {
-		// Load all keys (ensures consistency)
-		keysToLoad = keys
-	}
+	// Step 3: Prepare final result
+	return s.prepareFinalResult(keys, result, loadOnlyMissingKeys), nil
+}
 
-	// Step 3: Load missing data using LoaderFunc
+// getFromLocalCache retrieves data from go-cache only
+func (s *Service) getFromLocalCache(keys []string) (map[string][]byte, []string) {
+	l1Result := s.goCache.Get(keys)
+	return l1Result.Found, l1Result.MissingKeys
+}
+
+// loadAndCacheLocal loads data using loader function and updates local cache only
+func (s *Service) loadAndCacheLocal(keysToLoad []string, loader LoaderFunc) (map[string][]byte, error) {
 	loadedData, err := loader(keysToLoad)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load data: %w", err)
 	}
 
-	// Step 4: Update cache with loaded data
+	// Update local cache with loaded data
 	if len(loadedData) > 0 {
 		s.goCache.Set(loadedData, 0) // Use default expiration
 	}
 
-	// Step 5: Merge results
-	finalResult := make(map[string][]byte)
-
-	if loadOnlyMissingKeys {
-		// Merge found data from cache with newly loaded data
-		for key, value := range result.Found {
-			finalResult[key] = value
-		}
-		for key, value := range loadedData {
-			finalResult[key] = value
-		}
-	} else {
-		// Use only newly loaded data (it includes all requested keys)
-		// But fallback to cached data for keys not returned by loader
-		for key, value := range loadedData {
-			finalResult[key] = value
-		}
-		// Add any keys that were in cache but not returned by loader
-		for _, key := range keys {
-			if _, exists := finalResult[key]; !exists {
-				if cachedValue, exists := result.Found[key]; exists {
-					finalResult[key] = cachedValue
-				}
-			}
-		}
-	}
-
-	return finalResult, nil
+	return loadedData, nil
 }
 
-// Stats returns basic statistics about the cache service
+// mergeResults merges source map into destination map
+func (s *Service) mergeResults(dest, src map[string][]byte) {
+	for key, value := range src {
+		dest[key] = value
+	}
+}
+
+// determineKeysToLoad decides which keys to load based on loadOnlyMissingKeys parameter
+func (s *Service) determineKeysToLoad(originalKeys, missingKeys []string, loadOnlyMissingKeys bool) []string {
+	if loadOnlyMissingKeys {
+		return missingKeys
+	}
+	return originalKeys
+}
+
+// prepareFinalResult creates the final result map based on loadOnlyMissingKeys parameter
+func (s *Service) prepareFinalResult(originalKeys []string, cachedData map[string][]byte, loadOnlyMissingKeys bool) map[string][]byte {
+	if loadOnlyMissingKeys {
+		// Return all cached data (includes both cached and loaded data)
+		return cachedData
+	}
+
+	// Ensure all original keys are present in result
+	result := make(map[string][]byte)
+	for _, key := range originalKeys {
+		if value, exists := cachedData[key]; exists {
+			result[key] = value
+		}
+	}
+	return result
+}
+
+// Stats returns statistics about the cache service
 func (s *Service) Stats() ServiceStats {
 	return ServiceStats{
 		GoCacheItems: s.goCache.ItemCount(),
@@ -125,15 +135,15 @@ func (s *Service) Stats() ServiceStats {
 // ServiceStats represents cache service statistics
 type ServiceStats struct {
 	GoCacheItems int  // Number of items in go-cache
-	Enabled      bool // Whether cache is enabled
+	Enabled      bool // Whether go-cache is enabled
 }
 
-// Clear clears all data from the cache
+// Clear clears all data from cache
 func (s *Service) Clear() {
 	s.goCache.Clear()
 }
 
-// Delete removes specific keys from the cache
+// Delete removes specific keys from cache
 func (s *Service) Delete(keys []string) {
 	s.goCache.Delete(keys)
 }

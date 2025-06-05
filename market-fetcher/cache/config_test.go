@@ -5,27 +5,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
-func TestDefaultCacheConfig(t *testing.T) {
+func TestDefaultConfig(t *testing.T) {
 	config := DefaultCacheConfig()
 
-	// Test GoCache defaults
+	// Test go-cache defaults
 	assert.True(t, config.GoCache.Enabled)
 	assert.Equal(t, 5*time.Minute, config.GoCache.DefaultExpiration)
 	assert.Equal(t, 10*time.Minute, config.GoCache.CleanupInterval)
-
-	// Test Redis defaults
-	assert.False(t, config.Redis.Enabled)
-	assert.Equal(t, "localhost:6379", config.Redis.Address)
-	assert.Equal(t, "", config.Redis.Password)
-	assert.Equal(t, 0, config.Redis.Database)
-	assert.Equal(t, 10*time.Minute, config.Redis.DefaultExpiration)
-	assert.Equal(t, "market-proxy:", config.Redis.KeyPrefix)
 }
 
-func TestConfigYAMLMarshaling(t *testing.T) {
+func TestConfig_YAMLSerialization(t *testing.T) {
 	config := DefaultCacheConfig()
 
 	// Marshal to YAML
@@ -41,57 +33,22 @@ func TestConfigYAMLMarshaling(t *testing.T) {
 	assert.Equal(t, config.GoCache.Enabled, unmarshaledConfig.GoCache.Enabled)
 	assert.Equal(t, config.GoCache.DefaultExpiration, unmarshaledConfig.GoCache.DefaultExpiration)
 	assert.Equal(t, config.GoCache.CleanupInterval, unmarshaledConfig.GoCache.CleanupInterval)
-	assert.Equal(t, config.Redis.Enabled, unmarshaledConfig.Redis.Enabled)
-	assert.Equal(t, config.Redis.Address, unmarshaledConfig.Redis.Address)
 }
 
-func TestCustomCacheConfig(t *testing.T) {
-	yamlConfig := `
+func TestConfig_YAMLDeserialization(t *testing.T) {
+	yamlData := `
 go_cache:
-  enabled: true
-  default_expiration: 2m
-  cleanup_interval: 5m
-redis:
-  enabled: true
-  address: "redis.example.com:6379"
-  password: "secret"
-  database: 1
+  enabled: false
   default_expiration: 15m
-  key_prefix: "test:"
+  cleanup_interval: 30m
 `
 
 	var config Config
-	err := yaml.Unmarshal([]byte(yamlConfig), &config)
+	err := yaml.Unmarshal([]byte(yamlData), &config)
 	assert.NoError(t, err)
 
-	// Test parsed values
-	assert.True(t, config.GoCache.Enabled)
-	assert.Equal(t, 2*time.Minute, config.GoCache.DefaultExpiration)
-	assert.Equal(t, 5*time.Minute, config.GoCache.CleanupInterval)
-
-	assert.True(t, config.Redis.Enabled)
-	assert.Equal(t, "redis.example.com:6379", config.Redis.Address)
-	assert.Equal(t, "secret", config.Redis.Password)
-	assert.Equal(t, 1, config.Redis.Database)
-	assert.Equal(t, 15*time.Minute, config.Redis.DefaultExpiration)
-	assert.Equal(t, "test:", config.Redis.KeyPrefix)
-}
-
-func TestGoCacheWithConfig(t *testing.T) {
-	config := DefaultCacheConfig()
-
-	// Create cache with config
-	cache := NewGoCache(config.GoCache.DefaultExpiration, config.GoCache.CleanupInterval)
-
-	// Test that cache works with config values
-	testData := map[string][]byte{
-		"test": []byte("value"),
-	}
-
-	cache.Set(testData, 0) // Use default expiration from config
-
-	result := cache.Get([]string{"test"})
-	assert.Len(t, result.Found, 1)
-	assert.Equal(t, []byte("value"), result.Found["test"])
-	assert.Len(t, result.MissingKeys, 0)
+	// Verify go-cache config
+	assert.False(t, config.GoCache.Enabled)
+	assert.Equal(t, 15*time.Minute, config.GoCache.DefaultExpiration)
+	assert.Equal(t, 30*time.Minute, config.GoCache.CleanupInterval)
 }
