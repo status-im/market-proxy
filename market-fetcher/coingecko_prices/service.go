@@ -122,7 +122,15 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 	allCurrencies := s.mergeCurrencies(params.Currencies)
 
 	// Use ChunksFetcher to get prices from CoinGecko API
-	prices, err := s.fetcher.FetchPrices(missingTokens, allCurrencies)
+	fetchParams := PriceParams{
+		IDs:                  missingTokens,
+		Currencies:           allCurrencies,
+		IncludeMarketCap:     true,
+		Include24hrVol:       true,
+		Include24hrChange:    true,
+		IncludeLastUpdatedAt: true,
+	}
+	prices, err := s.fetcher.FetchPrices(fetchParams)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices: %v", err)
 		return make(map[string][]byte), nil // Return empty data instead of error

@@ -44,18 +44,18 @@ func NewChunksFetcher(apiClient APIClient, chunkSize int, requestDelayMs int) *C
 }
 
 // FetchPrices fetches prices for all token IDs in chunks
-func (f *ChunksFetcher) FetchPrices(tokenIds []string, currencies []string) (map[string]map[string]float64, error) {
+func (f *ChunksFetcher) FetchPrices(params PriceParams) (map[string]map[string]float64, error) {
 	// Track overall execution time
 	startTime := time.Now()
 
 	// Handle empty input
-	if len(tokenIds) == 0 {
+	if len(params.IDs) == 0 {
 		return make(map[string]map[string]float64), nil
 	}
 
 	// Calculate number of chunks
-	numChunks := (len(tokenIds) + f.chunkSize - 1) / f.chunkSize
-	log.Printf("Fetcher: Fetching prices for %d tokens in %d chunks", len(tokenIds), numChunks)
+	numChunks := (len(params.IDs) + f.chunkSize - 1) / f.chunkSize
+	log.Printf("Fetcher: Fetching prices for %d tokens in %d chunks", len(params.IDs), numChunks)
 
 	// Initialize result map
 	result := make(map[string]map[string]float64)
@@ -65,17 +65,27 @@ func (f *ChunksFetcher) FetchPrices(tokenIds []string, currencies []string) (map
 		// Calculate chunk boundaries
 		start := i * f.chunkSize
 		end := start + f.chunkSize
-		if end > len(tokenIds) {
-			end = len(tokenIds)
+		if end > len(params.IDs) {
+			end = len(params.IDs)
 		}
 
 		// Get chunk of token IDs
-		chunk := tokenIds[start:end]
+		chunk := params.IDs[start:end]
 		log.Printf("Fetcher: Fetching chunk %d/%d with %d tokens", i+1, numChunks, len(chunk))
 
 		// Fetch prices for this chunk
 		chunkStartTime := time.Now()
-		prices, err := f.apiClient.FetchPrices(chunk, currencies)
+		chunkParams := PriceParams{
+			IDs:        chunk,
+			Currencies: params.Currencies,
+			// Use the same optional parameters as the original request
+			IncludeMarketCap:     params.IncludeMarketCap,
+			Include24hrVol:       params.Include24hrVol,
+			Include24hrChange:    params.Include24hrChange,
+			IncludeLastUpdatedAt: params.IncludeLastUpdatedAt,
+			Precision:            params.Precision,
+		}
+		prices, err := f.apiClient.FetchPrices(chunkParams)
 		if err != nil {
 			log.Printf("Fetcher: Error fetching chunk: %v", err)
 			return nil, err
@@ -103,16 +113,16 @@ func (f *ChunksFetcher) FetchPrices(tokenIds []string, currencies []string) (map
 	}
 
 	// Log completion
-	tokensPerSecond := float64(len(tokenIds)) / time.Since(startTime).Seconds()
+	tokensPerSecond := float64(len(params.IDs)) / time.Since(startTime).Seconds()
 	log.Printf("Fetcher: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
-		len(tokenIds), numChunks, tokensPerSecond)
+		len(params.IDs), numChunks, tokensPerSecond)
 
 	return result, nil
 }
 
 // fetchChunk fetches prices for a single chunk of token IDs
-func (cf *ChunksFetcher) fetchChunk(tokenIds []string, currencies []string) (map[string]map[string]float64, error) {
-	return cf.apiClient.FetchPrices(tokenIds, currencies)
+func (cf *ChunksFetcher) fetchChunk(params PriceParams) (map[string]map[string]float64, error) {
+	return cf.apiClient.FetchPrices(params)
 }
 
 // handleChunkError handles errors during chunk processing

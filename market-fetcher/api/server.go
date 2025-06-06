@@ -137,7 +137,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	s.sendJSONResponse(w, status)
 }
 
-// handleSimplePrice implements CoinGecko-compatible simple/price endpoint
+// handleSimplePrice implements CoinGecko-compatible /api/v3/simple/price endpoint
 func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	params := coingecko_prices.PriceParams{}
@@ -182,9 +182,6 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 			params.IncludeLastUpdatedAt = updated
 		}
 	}
-
-	// Parse precision parameter
-	params.Precision = r.URL.Query().Get("precision")
 
 	// Call price service
 	response, err := s.pricesService.SimplePrices(params)

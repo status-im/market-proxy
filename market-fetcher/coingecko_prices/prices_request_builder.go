@@ -69,6 +69,14 @@ func (rb *PricesRequestBuilder) WithIncludeLastUpdatedAt(include bool) *PricesRe
 	return rb
 }
 
+// WithPrecision adds precision parameter for decimal places
+func (rb *PricesRequestBuilder) WithPrecision(precision string) *PricesRequestBuilder {
+	if precision != "" {
+		rb.builder.With("precision", precision)
+	}
+	return rb
+}
+
 // WithAllMetadata adds all metadata parameters (market cap, 24hr volume, 24hr change, last updated)
 func (rb *PricesRequestBuilder) WithAllMetadata() *PricesRequestBuilder {
 	return rb.WithIncludeMarketCap(true).

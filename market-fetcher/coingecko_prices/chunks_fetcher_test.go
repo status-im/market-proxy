@@ -14,8 +14,8 @@ type MockAPIClient struct {
 }
 
 // FetchPrices mocks the FetchPrices method
-func (m *MockAPIClient) FetchPrices(tokenIds []string, currencies []string) (map[string]map[string]float64, error) {
-	args := m.Called(tokenIds, currencies)
+func (m *MockAPIClient) FetchPrices(params PriceParams) (map[string]map[string]float64, error) {
+	args := m.Called(params)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -43,23 +43,31 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks
-	mockClient.On("FetchPrices", []string{"token1", "token2"}, []string{"usd"}).
-		Return(map[string]map[string]float64{
-			"usd": {
-				"token1": 1.0,
-				"token2": 2.0,
-			},
-		}, nil)
+	mockClient.On("FetchPrices", PriceParams{
+		IDs:        []string{"token1", "token2"},
+		Currencies: []string{"usd"},
+	}).Return(map[string]map[string]float64{
+		"usd": {
+			"token1": 1.0,
+			"token2": 2.0,
+		},
+	}, nil)
 
-	mockClient.On("FetchPrices", []string{"token3"}, []string{"usd"}).
-		Return(map[string]map[string]float64{
-			"usd": {
-				"token3": 3.0,
-			},
-		}, nil)
+	mockClient.On("FetchPrices", PriceParams{
+		IDs:        []string{"token3"},
+		Currencies: []string{"usd"},
+	}).Return(map[string]map[string]float64{
+		"usd": {
+			"token3": 3.0,
+		},
+	}, nil)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	prices, err := fetcher.FetchPrices([]string{"token1", "token2", "token3"}, []string{"usd"})
+	params := PriceParams{
+		IDs:        []string{"token1", "token2", "token3"},
+		Currencies: []string{"usd"},
+	}
+	prices, err := fetcher.FetchPrices(params)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, prices)
@@ -73,11 +81,17 @@ func TestChunksFetcher_FetchPrices_Error(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectation for error
-	mockClient.On("FetchPrices", []string{"token1", "token2"}, []string{"usd"}).
-		Return(nil, assert.AnError)
+	mockClient.On("FetchPrices", PriceParams{
+		IDs:        []string{"token1", "token2"},
+		Currencies: []string{"usd"},
+	}).Return(nil, assert.AnError)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	prices, err := fetcher.FetchPrices([]string{"token1", "token2"}, []string{"usd"})
+	params := PriceParams{
+		IDs:        []string{"token1", "token2"},
+		Currencies: []string{"usd"},
+	}
+	prices, err := fetcher.FetchPrices(params)
 
 	assert.Error(t, err)
 	assert.Nil(t, prices)
@@ -88,7 +102,11 @@ func TestChunksFetcher_FetchPrices_EmptyInput(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	prices, err := fetcher.FetchPrices([]string{}, []string{"usd"})
+	params := PriceParams{
+		IDs:        []string{},
+		Currencies: []string{"usd"},
+	}
+	prices, err := fetcher.FetchPrices(params)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, prices)
@@ -113,25 +131,33 @@ func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks
-	mockClient.On("FetchPrices", []string{"token1", "token2"}, []string{"usd"}).
-		Return(map[string]map[string]float64{
-			"usd": {
-				"token1": 1.0,
-				"token2": 2.0,
-			},
-		}, nil)
+	mockClient.On("FetchPrices", PriceParams{
+		IDs:        []string{"token1", "token2"},
+		Currencies: []string{"usd"},
+	}).Return(map[string]map[string]float64{
+		"usd": {
+			"token1": 1.0,
+			"token2": 2.0,
+		},
+	}, nil)
 
-	mockClient.On("FetchPrices", []string{"token3"}, []string{"usd"}).
-		Return(map[string]map[string]float64{
-			"usd": {
-				"token3": 3.0,
-			},
-		}, nil)
+	mockClient.On("FetchPrices", PriceParams{
+		IDs:        []string{"token3"},
+		Currencies: []string{"usd"},
+	}).Return(map[string]map[string]float64{
+		"usd": {
+			"token3": 3.0,
+		},
+	}, nil)
 
 	// Use a small delay for testing
 	fetcher := NewChunksFetcher(mockClient, 2, 10)
 	start := time.Now()
-	prices, err := fetcher.FetchPrices([]string{"token1", "token2", "token3"}, []string{"usd"})
+	params := PriceParams{
+		IDs:        []string{"token1", "token2", "token3"},
+		Currencies: []string{"usd"},
+	}
+	prices, err := fetcher.FetchPrices(params)
 	duration := time.Since(start)
 
 	assert.NoError(t, err)

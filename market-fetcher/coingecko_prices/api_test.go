@@ -58,10 +58,11 @@ func TestCoinGeckoClient_FetchPrices_Success(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	prices, err := client.FetchPrices(
-		[]string{"bitcoin", "ethereum"},
-		[]string{"usd", "eur"},
-	)
+	params := PriceParams{
+		IDs:        []string{"bitcoin", "ethereum"},
+		Currencies: []string{"usd", "eur"},
+	}
+	prices, err := client.FetchPrices(params)
 
 	// Verify results
 	assert.NoError(t, err)
@@ -97,10 +98,11 @@ func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	prices, err := client.FetchPrices(
-		[]string{"bitcoin", "ethereum"},
-		[]string{"usd", "eur"},
-	)
+	params := PriceParams{
+		IDs:        []string{"bitcoin", "ethereum"},
+		Currencies: []string{"usd", "eur"},
+	}
+	prices, err := client.FetchPrices(params)
 
 	// Verify error
 	assert.Error(t, err)
@@ -125,10 +127,11 @@ func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	prices, err := client.FetchPrices(
-		[]string{"bitcoin", "ethereum"},
-		[]string{"usd", "eur"},
-	)
+	params := PriceParams{
+		IDs:        []string{"bitcoin", "ethereum"},
+		Currencies: []string{"usd", "eur"},
+	}
+	prices, err := client.FetchPrices(params)
 
 	// Verify error
 	assert.Error(t, err)
@@ -165,10 +168,66 @@ func TestCoinGeckoClient_FetchPrices_ProKey(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	prices, err := client.FetchPrices(
-		[]string{"bitcoin"},
-		[]string{"usd"},
-	)
+	params := PriceParams{
+		IDs:        []string{"bitcoin"},
+		Currencies: []string{"usd"},
+	}
+	prices, err := client.FetchPrices(params)
+
+	// Verify results
+	assert.NoError(t, err)
+	assert.NotNil(t, prices)
+	assert.True(t, client.Healthy())
+	assert.Equal(t, 50000.0, prices["usd"]["bitcoin"])
+}
+
+func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request parameters including optional ones
+		assert.Equal(t, "/api/v3/simple/price", r.URL.Path)
+		assert.Equal(t, "bitcoin", r.URL.Query().Get("ids"))
+		assert.Equal(t, "usd", r.URL.Query().Get("vs_currencies"))
+		assert.Equal(t, "true", r.URL.Query().Get("include_market_cap"))
+		assert.Equal(t, "true", r.URL.Query().Get("include_24hr_vol"))
+		assert.Equal(t, "true", r.URL.Query().Get("include_24hr_change"))
+		assert.Equal(t, "true", r.URL.Query().Get("include_last_updated_at"))
+		assert.Equal(t, "2", r.URL.Query().Get("precision"))
+
+		// Return test response with metadata
+		response := map[string]map[string]interface{}{
+			"bitcoin": {
+				"usd":             50000.0,
+				"usd_market_cap":  950000000000.0,
+				"usd_24h_vol":     25000000000.0,
+				"usd_24h_change":  2.5,
+				"last_updated_at": 1640995200,
+			},
+		}
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	// Create client with test server URL
+	cfg := &config.Config{
+		OverrideCoingeckoPublicURL: server.URL,
+		APITokens: &config.APITokens{
+			Tokens: []string{},
+		},
+	}
+	client := NewCoinGeckoClient(cfg)
+
+	// Test fetching prices with all metadata
+	params := PriceParams{
+		IDs:                  []string{"bitcoin"},
+		Currencies:           []string{"usd"},
+		IncludeMarketCap:     true,
+		Include24hrVol:       true,
+		Include24hrChange:    true,
+		IncludeLastUpdatedAt: true,
+		Precision:            "2",
+	}
+	prices, err := client.FetchPrices(params)
 
 	// Verify results
 	assert.NoError(t, err)

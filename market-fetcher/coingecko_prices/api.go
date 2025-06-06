@@ -13,12 +13,12 @@ import (
 
 // APIClient defines interface for API operations
 type APIClient interface {
-	// FetchPrices fetches prices for the given token IDs and currencies
+	// FetchPrices fetches prices for the given parameters
 	// Returns a map where:
 	// - First key is the currency
 	// - Second key is the token ID
 	// - Value is the price in that currency
-	FetchPrices(tokenIds []string, currencies []string) (map[string]map[string]float64, error)
+	FetchPrices(params PriceParams) (map[string]map[string]float64, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -51,10 +51,10 @@ func (c *CoinGeckoClient) Healthy() bool {
 	return c.successfulFetch.Load()
 }
 
-// FetchPrices fetches prices for the given token IDs and currencies
-func (c *CoinGeckoClient) FetchPrices(tokenIds []string, currencies []string) (map[string]map[string]float64, error) {
+// FetchPrices fetches prices for the given parameters
+func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string]map[string]float64, error) {
 	// Get raw HTTP response and body using private function
-	resp, body, err := c.executeFetchRequest(tokenIds, currencies)
+	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *CoinGeckoClient) FetchPrices(tokenIds []string, currencies []string) (m
 	}
 
 	log.Printf("CoinGecko: Successfully fetched prices for %d tokens in %d currencies",
-		len(tokenIds), len(currencies))
+		len(params.IDs), len(params.Currencies))
 
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
@@ -89,7 +89,7 @@ func (c *CoinGeckoClient) FetchPrices(tokenIds []string, currencies []string) (m
 
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
-func (c *CoinGeckoClient) executeFetchRequest(tokenIds, currencies []string) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(params PriceParams) (*http.Response, []byte, error) {
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()
 
@@ -105,7 +105,24 @@ func (c *CoinGeckoClient) executeFetchRequest(tokenIds, currencies []string) (*h
 		requestBuilder := NewPricesRequestBuilder(baseURL)
 
 		// Configure request with token IDs and currencies
-		requestBuilder.WithIds(tokenIds).WithCurrencies(currencies)
+		requestBuilder.WithIds(params.IDs).WithCurrencies(params.Currencies)
+
+		// Add optional parameters
+		if params.IncludeMarketCap {
+			requestBuilder.WithIncludeMarketCap(true)
+		}
+		if params.Include24hrVol {
+			requestBuilder.WithInclude24hVolume(true)
+		}
+		if params.Include24hrChange {
+			requestBuilder.WithInclude24hChange(true)
+		}
+		if params.IncludeLastUpdatedAt {
+			requestBuilder.WithIncludeLastUpdatedAt(true)
+		}
+		if params.Precision != "" {
+			requestBuilder.WithPrecision(params.Precision)
+		}
 
 		// Add API key if available
 		if apiKey.Key != "" {
@@ -121,7 +138,7 @@ func (c *CoinGeckoClient) executeFetchRequest(tokenIds, currencies []string) (*h
 		}
 
 		// Log the attempt
-		log.Printf("CoinGecko: Attempting request for %d tokens with key type %v", len(tokenIds), apiKey.Type)
+		log.Printf("CoinGecko: Attempting request for %d tokens with key type %v", len(params.IDs), apiKey.Type)
 
 		// Execute the request with retries
 		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
@@ -142,7 +159,7 @@ func (c *CoinGeckoClient) executeFetchRequest(tokenIds, currencies []string) (*h
 
 		// If we got here, the request succeeded
 		log.Printf("CoinGecko: Raw request successful for %d tokens with key type %v in %.2fs",
-			len(tokenIds), apiKey.Type, duration.Seconds())
+			len(params.IDs), apiKey.Type, duration.Seconds())
 
 		return resp, body, nil
 	}
