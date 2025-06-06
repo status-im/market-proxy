@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
@@ -29,13 +30,14 @@ type Service struct {
 		sync.RWMutex
 		data *APIResponse
 	}
-	scheduler *scheduler.Scheduler
-	apiClient *CoinGeckoClient
-	fetcher   *PaginatedFetcher
+	scheduler        *scheduler.Scheduler
+	apiClient        *CoinGeckoClient
+	fetcher          *PaginatedFetcher
+	topPricesUpdater *TopPricesUpdater
 }
 
 // NewService creates a new CoinGecko service
-func NewService(cfg *config.Config) *Service {
+func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher) *Service {
 	// Create API client
 	apiClient := NewCoinGeckoClient(cfg)
 
@@ -43,16 +45,27 @@ func NewService(cfg *config.Config) *Service {
 	requestDelayMs := int(cfg.CoingeckoLeaderboard.RequestDelay.Milliseconds())
 	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, requestDelayMs)
 
-	return &Service{
-		config:    cfg,
-		apiClient: apiClient,
-		fetcher:   fetcher,
+	// Create top prices updater
+	topPricesUpdater := NewTopPricesUpdater(cfg, priceFetcher)
+
+	service := &Service{
+		config:           cfg,
+		apiClient:        apiClient,
+		fetcher:          fetcher,
+		topPricesUpdater: topPricesUpdater,
 	}
+
+	return service
 }
 
 // SetOnUpdateCallback sets a callback function that will be called when data is updated
 func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 	s.onUpdate = onUpdate
+}
+
+// GetTopPricesQuotes returns cached prices quotes for top tokens in specified currency
+func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
+	return s.topPricesUpdater.GetTopPricesQuotes(currency)
 }
 
 // Start starts the CoinGecko service
@@ -72,12 +85,22 @@ func (s *Service) Start(ctx context.Context) error {
 
 	// Start the scheduler with context
 	s.scheduler.Start(ctx, true)
+
+	// Start top prices updater
+	if err := s.topPricesUpdater.Start(ctx); err != nil {
+		log.Printf("Error starting top prices updater: %v", err)
+		return err
+	}
+
 	return nil
 }
 
 func (s *Service) Stop() {
 	if s.scheduler != nil {
 		s.scheduler.Stop()
+	}
+	if s.topPricesUpdater != nil {
+		s.topPricesUpdater.Stop()
 	}
 }
 
@@ -106,6 +129,15 @@ func (s *Service) fetchAndUpdate(ctx context.Context) error {
 	// Record cache size metric
 	if data != nil && data.Data != nil {
 		metrics.RecordTokensCacheSize("markets-leaderboard", len(data.Data))
+	}
+
+	// Update top prices updater with new token IDs
+	if data != nil && data.Data != nil && s.topPricesUpdater != nil {
+		tokenIDs := make([]string, len(data.Data))
+		for i, coin := range data.Data {
+			tokenIDs[i] = coin.ID
+		}
+		s.topPricesUpdater.SetTopTokenIDs(tokenIDs)
 	}
 
 	// Signal update through callback

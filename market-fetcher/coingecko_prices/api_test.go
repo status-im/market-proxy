@@ -62,23 +62,31 @@ func TestCoinGeckoClient_FetchPrices_Success(t *testing.T) {
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
-	prices, err := client.FetchPrices(params)
+	tokenData, err := client.FetchPrices(params)
 
 	// Verify results
 	assert.NoError(t, err)
-	assert.NotNil(t, prices)
+	assert.NotNil(t, tokenData)
 	assert.True(t, client.Healthy())
 
-	// Verify price structure (currency first, then token)
-	assert.Equal(t, 2, len(prices))        // 2 currencies
-	assert.Equal(t, 2, len(prices["usd"])) // 2 tokens in USD
-	assert.Equal(t, 2, len(prices["eur"])) // 2 tokens in EUR
+	// Verify we got data for both tokens
+	assert.Equal(t, 2, len(tokenData)) // 2 tokens
+	assert.Contains(t, tokenData, "bitcoin")
+	assert.Contains(t, tokenData, "ethereum")
 
-	// Verify specific prices
-	assert.Equal(t, 50000.0, prices["usd"]["bitcoin"])
-	assert.Equal(t, 3000.0, prices["usd"]["ethereum"])
-	assert.Equal(t, 45000.0, prices["eur"]["bitcoin"])
-	assert.Equal(t, 2700.0, prices["eur"]["ethereum"])
+	// Parse and verify bitcoin data
+	var bitcoinData map[string]interface{}
+	err = json.Unmarshal(tokenData["bitcoin"], &bitcoinData)
+	assert.NoError(t, err)
+	assert.Equal(t, 50000.0, bitcoinData["usd"])
+	assert.Equal(t, 45000.0, bitcoinData["eur"])
+
+	// Parse and verify ethereum data
+	var ethereumData map[string]interface{}
+	err = json.Unmarshal(tokenData["ethereum"], &ethereumData)
+	assert.NoError(t, err)
+	assert.Equal(t, 3000.0, ethereumData["usd"])
+	assert.Equal(t, 2700.0, ethereumData["eur"])
 }
 
 func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
@@ -102,11 +110,11 @@ func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
-	prices, err := client.FetchPrices(params)
+	tokenData, err := client.FetchPrices(params)
 
 	// Verify error
 	assert.Error(t, err)
-	assert.Nil(t, prices)
+	assert.Nil(t, tokenData)
 	assert.False(t, client.Healthy())
 }
 
@@ -131,11 +139,11 @@ func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
-	prices, err := client.FetchPrices(params)
+	tokenData, err := client.FetchPrices(params)
 
 	// Verify error
 	assert.Error(t, err)
-	assert.Nil(t, prices)
+	assert.Nil(t, tokenData)
 	assert.False(t, client.Healthy())
 }
 
@@ -172,13 +180,18 @@ func TestCoinGeckoClient_FetchPrices_ProKey(t *testing.T) {
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd"},
 	}
-	prices, err := client.FetchPrices(params)
+	tokenData, err := client.FetchPrices(params)
 
 	// Verify results
 	assert.NoError(t, err)
-	assert.NotNil(t, prices)
+	assert.NotNil(t, tokenData)
 	assert.True(t, client.Healthy())
-	assert.Equal(t, 50000.0, prices["usd"]["bitcoin"])
+
+	// Parse and verify bitcoin data
+	var bitcoinData map[string]interface{}
+	err = json.Unmarshal(tokenData["bitcoin"], &bitcoinData)
+	assert.NoError(t, err)
+	assert.Equal(t, 50000.0, bitcoinData["usd"])
 }
 
 func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
@@ -227,11 +240,20 @@ func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
 		IncludeLastUpdatedAt: true,
 		Precision:            "2",
 	}
-	prices, err := client.FetchPrices(params)
+	tokenData, err := client.FetchPrices(params)
 
 	// Verify results
 	assert.NoError(t, err)
-	assert.NotNil(t, prices)
+	assert.NotNil(t, tokenData)
 	assert.True(t, client.Healthy())
-	assert.Equal(t, 50000.0, prices["usd"]["bitcoin"])
+
+	// Parse and verify bitcoin data with metadata
+	var bitcoinData map[string]interface{}
+	err = json.Unmarshal(tokenData["bitcoin"], &bitcoinData)
+	assert.NoError(t, err)
+	assert.Equal(t, 50000.0, bitcoinData["usd"])
+	assert.Equal(t, 950000000000.0, bitcoinData["usd_market_cap"])
+	assert.Equal(t, 25000000000.0, bitcoinData["usd_24h_vol"])
+	assert.Equal(t, 2.5, bitcoinData["usd_24h_change"])
+	assert.Equal(t, float64(1640995200), bitcoinData["last_updated_at"])
 }

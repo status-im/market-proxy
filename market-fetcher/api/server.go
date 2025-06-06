@@ -14,6 +14,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
+	"github.com/status-im/market-proxy/coingecko_common"
 	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"
@@ -76,13 +77,14 @@ func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request) {
-	quotes := s.binanceService.GetLatestQuotes()
-	if len(quotes) == 0 {
-		http.Error(w, "No CoinGecko prices available", http.StatusServiceUnavailable)
-		return
+	// Parse currency parameter, default to "usd"
+	currency := r.URL.Query().Get("currency")
+	if currency == "" {
+		currency = "usd"
 	}
 
-	s.sendJSONResponse(w, quotes)
+	prices := s.cgService.GetTopPricesQuotes(currency)
+	s.sendJSONResponse(w, prices)
 }
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -113,9 +115,10 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
 		"status": "ok",
 		"services": map[string]string{
-			"binance":   "unknown",
-			"coingecko": "unknown",
-			"tokens":    "unknown",
+			"binance":          "unknown",
+			"coingecko":        "unknown",
+			"tokens":           "unknown",
+			"coingecko_prices": "unknown",
 		},
 	}
 
@@ -134,13 +137,18 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		status["services"].(map[string]string)["tokens"] = "up"
 	}
 
+	// Check if CoinGecko Prices service is healthy
+	if s.pricesService.Healthy() {
+		status["services"].(map[string]string)["coingecko_prices"] = "up"
+	}
+
 	s.sendJSONResponse(w, status)
 }
 
 // handleSimplePrice implements CoinGecko-compatible /api/v3/simple/price endpoint
 func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
-	params := coingecko_prices.PriceParams{}
+	params := coingecko_common.PriceParams{}
 
 	// Parse IDs (required)
 	idsParam := r.URL.Query().Get("ids")

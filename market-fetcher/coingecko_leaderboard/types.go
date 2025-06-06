@@ -38,6 +38,9 @@ type Quote struct {
 	PercentChange24h float64 `json:"percent_change_24h"`
 }
 
+// PriceQuotes maps symbol to its quote data
+type PriceQuotes = map[string]Quote
+
 // CoinData represents a cleaned CoinGecko coin with minimal fields
 type CoinData struct {
 	ID                       string  `json:"id"`
