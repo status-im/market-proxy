@@ -86,18 +86,13 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 	for i, tokenID := range params.IDs {
 		cacheKey := cacheKeys[i]
 		if data, found := cachedData[cacheKey]; found {
-			var cachedResponse map[string]interface{}
-			if err := json.Unmarshal(data, &cachedResponse); err != nil {
+			var tokenData map[string]interface{}
+			if err := json.Unmarshal(data, &tokenData); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal cached price data for %s: %w", tokenID, err)
 			}
 
-			// Extract token data from the cached response
-			if tokenData, exists := cachedResponse[tokenID]; exists {
-				if tokenMap, ok := tokenData.(map[string]interface{}); ok {
-					// Add all token data to full response (will be filtered later)
-					fullResponse[tokenID] = tokenMap
-				}
-			}
+			// Add token data directly to full response (will be filtered later)
+			fullResponse[tokenID] = tokenData
 		}
 	}
 
@@ -130,44 +125,17 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 		Include24hrChange:    true,
 		IncludeLastUpdatedAt: true,
 	}
-	prices, err := s.fetcher.FetchPrices(fetchParams)
+	tokenData, err := s.fetcher.FetchPrices(fetchParams)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices: %v", err)
 		return make(map[string][]byte), nil // Return empty data instead of error
 	}
 
-	// Convert fetched prices to cache format
+	// Map token data to cache keys
 	result := make(map[string][]byte)
-
-	// For each missing key, create the corresponding cache data
 	for _, cacheKey := range missingKeys {
 		tokenID := extractTokenIDFromKey(cacheKey)
-
-		// Create token-specific response in CoinGecko format
-		tokenResponse := make(map[string]interface{})
-
-		// Add prices for all fetched currencies (both config and user-requested)
-		for _, currency := range allCurrencies {
-			if currencyPrices, exists := prices[currency]; exists {
-				if price, hasPrice := currencyPrices[tokenID]; hasPrice {
-					tokenResponse[currency] = price
-				}
-			}
-		}
-
-		// If we have any data for this token, marshal it
-		if len(tokenResponse) > 0 {
-			// Wrap it in the expected CoinGecko format: {tokenID: {currency: price, ...}}
-			wrappedResponse := map[string]interface{}{
-				tokenID: tokenResponse,
-			}
-
-			data, err := json.Marshal(wrappedResponse)
-			if err != nil {
-				log.Printf("Failed to marshal price data for token %s: %v", tokenID, err)
-				continue
-			}
-
+		if data, found := tokenData[tokenID]; found {
 			result[cacheKey] = data
 		}
 	}

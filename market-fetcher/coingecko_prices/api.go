@@ -14,11 +14,8 @@ import (
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPrices fetches prices for the given parameters
-	// Returns a map where:
-	// - First key is the currency
-	// - Second key is the token ID
-	// - Value is the price in that currency
-	FetchPrices(params PriceParams) (map[string]map[string]float64, error)
+	// Returns a map where key is token ID and value is raw JSON response for that token
+	FetchPrices(params PriceParams) (map[string][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -52,7 +49,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPrices fetches prices for the given parameters
-func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string]map[string]float64, error) {
+func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string][]byte, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -60,22 +57,18 @@ func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string]map[string
 	}
 	defer resp.Body.Close()
 
-	// Parse the response
-	var rawPrices map[string]map[string]float64
+	// Parse the response using RawMessage to avoid unnecessary marshaling
+	var rawPrices map[string]json.RawMessage
 	if err := json.Unmarshal(body, &rawPrices); err != nil {
 		log.Printf("CoinGecko: Error parsing JSON response: %v", err)
 		return nil, err
 	}
 
-	// Transform the response to have currency as the first key
-	prices := make(map[string]map[string]float64)
-	for tokenId, tokenPrices := range rawPrices {
-		for currency, price := range tokenPrices {
-			if _, exists := prices[currency]; !exists {
-				prices[currency] = make(map[string]float64)
-			}
-			prices[currency][tokenId] = price
-		}
+	// Create result map with individual token responses
+	result := make(map[string][]byte)
+	for tokenId, tokenData := range rawPrices {
+		// Use RawMessage directly as bytes (no additional marshaling needed)
+		result[tokenId] = []byte(tokenData)
 	}
 
 	log.Printf("CoinGecko: Successfully fetched prices for %d tokens in %d currencies",
@@ -84,7 +77,7 @@ func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string]map[string
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
 
-	return prices, nil
+	return result, nil
 }
 
 // executeFetchRequest is a private function that handles the actual request execution
