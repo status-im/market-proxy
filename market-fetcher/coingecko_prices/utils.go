@@ -2,11 +2,12 @@ package coingecko_prices
 
 import (
 	"fmt"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"strings"
 )
 
 // createCacheKeys creates cache keys for each token ID
-func createCacheKeys(params PriceParams) []string {
+func createCacheKeys(params cg.PriceParams) []string {
 	keys := make([]string, len(params.IDs))
 
 	// Create a key for each token ID (without currencies)

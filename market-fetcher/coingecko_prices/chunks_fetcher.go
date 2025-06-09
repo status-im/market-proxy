@@ -2,6 +2,7 @@ package coingecko_prices
 
 import (
 	"fmt"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"log"
 	"time"
 )
@@ -44,7 +45,7 @@ func NewChunksFetcher(apiClient APIClient, chunkSize int, requestDelayMs int) *C
 }
 
 // FetchPrices fetches prices for all token IDs in chunks
-func (f *ChunksFetcher) FetchPrices(params PriceParams) (map[string][]byte, error) {
+func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
 	// Track overall execution time
 	startTime := time.Now()
 
@@ -75,7 +76,7 @@ func (f *ChunksFetcher) FetchPrices(params PriceParams) (map[string][]byte, erro
 
 		// Fetch prices for this chunk
 		chunkStartTime := time.Now()
-		chunkParams := PriceParams{
+		chunkParams := cg.PriceParams{
 			IDs:        chunk,
 			Currencies: params.Currencies,
 			// Use the same optional parameters as the original request
@@ -116,7 +117,7 @@ func (f *ChunksFetcher) FetchPrices(params PriceParams) (map[string][]byte, erro
 }
 
 // fetchChunk fetches prices for a single chunk of token IDs
-func (cf *ChunksFetcher) fetchChunk(params PriceParams) (map[string][]byte, error) {
+func (cf *ChunksFetcher) fetchChunk(params cg.PriceParams) (map[string][]byte, error) {
 	return cf.apiClient.FetchPrices(params)
 }
 

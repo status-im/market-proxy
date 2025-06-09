@@ -1,14 +1,15 @@
 package coingecko_prices
 
 import (
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"math"
 	"strconv"
 	"strings"
 )
 
 // stripResponse filters the cached response to only include user-requested currencies and fields
-func stripResponse(cachedResponse SimplePriceResponse, params PriceParams) SimplePriceResponse {
-	result := make(SimplePriceResponse)
+func stripResponse(cachedResponse cg.SimplePriceResponse, params cg.PriceParams) cg.SimplePriceResponse {
+	result := make(cg.SimplePriceResponse)
 
 	// Create set of requested currencies for fast lookup
 	requestedCurrencies := make(map[string]bool)
@@ -53,7 +54,7 @@ func stripResponse(cachedResponse SimplePriceResponse, params PriceParams) Simpl
 }
 
 // shouldIncludeField determines if a field should be included based on user parameters
-func shouldIncludeField(fieldName string, requestedCurrencies map[string]bool, params PriceParams) bool {
+func shouldIncludeField(fieldName string, requestedCurrencies map[string]bool, params cg.PriceParams) bool {
 	// Check if it's a base currency field (e.g., "usd", "eur", "btc")
 	if requestedCurrencies[fieldName] {
 		return true

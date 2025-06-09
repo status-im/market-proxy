@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/status-im/market-proxy/coingecko_common"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
-	"github.com/status-im/market-proxy/coingecko_common"
 	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"

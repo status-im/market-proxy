@@ -15,7 +15,7 @@ import (
 type APIClient interface {
 	// FetchPrices fetches prices for the given parameters
 	// Returns a map where key is token ID and value is raw JSON response for that token
-	FetchPrices(params PriceParams) (map[string][]byte, error)
+	FetchPrices(params cg.PriceParams) (map[string][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -49,7 +49,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPrices fetches prices for the given parameters
-func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string][]byte, error) {
+func (c *CoinGeckoClient) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -82,7 +82,7 @@ func (c *CoinGeckoClient) FetchPrices(params PriceParams) (map[string][]byte, er
 
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
-func (c *CoinGeckoClient) executeFetchRequest(params PriceParams) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(params cg.PriceParams) (*http.Response, []byte, error) {
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()
 

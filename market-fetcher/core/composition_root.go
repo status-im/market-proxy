@@ -30,8 +30,8 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	binanceService := binance.NewService(cfg)
 	registry.Register(binanceService)
 
-	// Create CoinGecko core with callback
-	cgService := coingecko_leaderboard.NewService(cfg)
+	// Create CoinGecko core with callback and price fetcher
+	cgService := coingecko_leaderboard.NewService(cfg, pricesService)
 	registry.Register(cgService)
 
 	// Create Tokens core

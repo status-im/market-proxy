@@ -1,6 +1,7 @@
 package coingecko_prices
 
 import (
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ type MockAPIClient struct {
 }
 
 // FetchPrices mocks the FetchPrices method
-func (m *MockAPIClient) FetchPrices(params PriceParams) (map[string][]byte, error) {
+func (m *MockAPIClient) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
 	args := m.Called(params)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -43,7 +44,7 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks
-	mockClient.On("FetchPrices", PriceParams{
+	mockClient.On("FetchPrices", cg.PriceParams{
 		IDs:        []string{"token1", "token2"},
 		Currencies: []string{"usd"},
 	}).Return(map[string][]byte{
@@ -51,7 +52,7 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 		"token2": []byte(`{"usd": 2.0}`),
 	}, nil)
 
-	mockClient.On("FetchPrices", PriceParams{
+	mockClient.On("FetchPrices", cg.PriceParams{
 		IDs:        []string{"token3"},
 		Currencies: []string{"usd"},
 	}).Return(map[string][]byte{
@@ -59,7 +60,7 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 	}, nil)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"token1", "token2", "token3"},
 		Currencies: []string{"usd"},
 	}
@@ -78,13 +79,13 @@ func TestChunksFetcher_FetchPrices_Error(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectation for error
-	mockClient.On("FetchPrices", PriceParams{
+	mockClient.On("FetchPrices", cg.PriceParams{
 		IDs:        []string{"token1", "token2"},
 		Currencies: []string{"usd"},
 	}).Return(nil, assert.AnError)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"token1", "token2"},
 		Currencies: []string{"usd"},
 	}
@@ -99,7 +100,7 @@ func TestChunksFetcher_FetchPrices_EmptyInput(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{},
 		Currencies: []string{"usd"},
 	}
@@ -128,7 +129,7 @@ func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks
-	mockClient.On("FetchPrices", PriceParams{
+	mockClient.On("FetchPrices", cg.PriceParams{
 		IDs:        []string{"token1", "token2"},
 		Currencies: []string{"usd"},
 	}).Return(map[string][]byte{
@@ -136,7 +137,7 @@ func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
 		"token2": []byte(`{"usd": 2.0}`),
 	}, nil)
 
-	mockClient.On("FetchPrices", PriceParams{
+	mockClient.On("FetchPrices", cg.PriceParams{
 		IDs:        []string{"token3"},
 		Currencies: []string{"usd"},
 	}).Return(map[string][]byte{
@@ -146,7 +147,7 @@ func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
 	// Use a small delay for testing
 	fetcher := NewChunksFetcher(mockClient, 2, 10)
 	start := time.Now()
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"token1", "token2", "token3"},
 		Currencies: []string{"usd"},
 	}

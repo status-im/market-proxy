@@ -2,6 +2,7 @@ package coingecko_prices
 
 import (
 	"encoding/json"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,7 +59,7 @@ func TestCoinGeckoClient_FetchPrices_Success(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -106,7 +107,7 @@ func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -135,7 +136,7 @@ func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -176,7 +177,7 @@ func TestCoinGeckoClient_FetchPrices_ProKey(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd"},
 	}
@@ -231,7 +232,7 @@ func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
 	client := NewCoinGeckoClient(cfg)
 
 	// Test fetching prices with all metadata
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:                  []string{"bitcoin"},
 		Currencies:           []string{"usd"},
 		IncludeMarketCap:     true,

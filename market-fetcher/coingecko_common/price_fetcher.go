@@ -1,4 +1,4 @@
-package coingecko_prices
+package coingecko_common
 
 // PriceParams represents parameters for price requests
 type PriceParams struct {
@@ -21,3 +21,9 @@ type PriceParams struct {
 // SimplePriceResponse represents the response format compatible with CoinGecko simple/price API
 // This is the raw JSON structure that CoinGecko returns and what we store in cache
 type SimplePriceResponse map[string]interface{}
+
+// PriceFetcher interface for fetching prices of top tokens
+type PriceFetcher interface {
+	// GetTopPrices returns cached prices for top tokens in specified currency
+	SimplePrices(params PriceParams) (SimplePriceResponse, error)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"log"
 
 	"github.com/status-im/market-proxy/cache"
@@ -61,9 +62,9 @@ func (s *Service) Stop() {
 
 // SimplePrices fetches prices for the given parameters using cache
 // Returns raw CoinGecko JSON response
-func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) {
+func (s *Service) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, error) {
 	if len(params.IDs) == 0 {
-		return SimplePriceResponse{}, nil
+		return cg.SimplePriceResponse{}, nil
 	}
 
 	// Create cache keys for each token ID
@@ -81,7 +82,7 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 	}
 
 	// Combine results from all cache keys
-	fullResponse := make(SimplePriceResponse)
+	fullResponse := make(cg.SimplePriceResponse)
 
 	for i, tokenID := range params.IDs {
 		cacheKey := cacheKeys[i]
@@ -103,7 +104,7 @@ func (s *Service) SimplePrices(params PriceParams) (SimplePriceResponse, error) 
 }
 
 // loadMissingPrices loads price data for missing cache keys using ChunksFetcher
-func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (map[string][]byte, error) {
+func (s *Service) loadMissingPrices(missingKeys []string, params cg.PriceParams) (map[string][]byte, error) {
 	log.Printf("Loading missing price data for %d cache keys", len(missingKeys))
 
 	// Extract token IDs from missing cache keys
@@ -117,7 +118,7 @@ func (s *Service) loadMissingPrices(missingKeys []string, params PriceParams) (m
 	allCurrencies := s.mergeCurrencies(params.Currencies)
 
 	// Use ChunksFetcher to get prices from CoinGecko API
-	fetchParams := PriceParams{
+	fetchParams := cg.PriceParams{
 		IDs:                  missingTokens,
 		Currencies:           allCurrencies,
 		IncludeMarketCap:     true,

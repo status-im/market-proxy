@@ -8,9 +8,11 @@ import (
 )
 
 type CoingeckoLeaderboardFetcher struct {
-	UpdateInterval time.Duration `yaml:"update_interval"`
-	Limit          int           `yaml:"limit"`
-	RequestDelay   time.Duration `yaml:"request_delay"` // Delay between requests
+	UpdateInterval       time.Duration `yaml:"update_interval"`
+	Limit                int           `yaml:"limit"`
+	RequestDelay         time.Duration `yaml:"request_delay"`          // Delay between requests
+	PricesUpdateInterval time.Duration `yaml:"prices_update_interval"` // Interval for price updates
+	TopTokensLimit       int           `yaml:"top_tokens_limit"`       // Limit for top tokens prices
 }
 
 type APITokens struct {

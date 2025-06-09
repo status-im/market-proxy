@@ -68,6 +68,28 @@ func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
 	return s.topPricesUpdater.GetTopPricesQuotes(currency)
 }
 
+// updateTopTokensFromCacheData extracts token IDs from cache data and updates top prices updater
+func (s *Service) updateTopTokensFromCacheData() {
+	cacheData := s.GetCacheData()
+	if cacheData == nil || cacheData.Data == nil {
+		return
+	}
+
+	// Extract token IDs from cached data
+	tokenIDs := make([]string, 0, len(cacheData.Data))
+	for _, coinData := range cacheData.Data {
+		if coinData.ID != "" {
+			tokenIDs = append(tokenIDs, coinData.ID)
+		}
+	}
+
+	// Update top prices updater with the token IDs
+	if len(tokenIDs) > 0 {
+		s.topPricesUpdater.SetTopTokenIDs(tokenIDs)
+		log.Printf("Updated top token IDs list with %d tokens", len(tokenIDs))
+	}
+}
+
 // Start starts the CoinGecko service
 func (s *Service) Start(ctx context.Context) error {
 	// Use update interval directly as it's already a time.Duration
@@ -131,14 +153,8 @@ func (s *Service) fetchAndUpdate(ctx context.Context) error {
 		metrics.RecordTokensCacheSize("markets-leaderboard", len(data.Data))
 	}
 
-	// Update top prices updater with new token IDs
-	if data != nil && data.Data != nil && s.topPricesUpdater != nil {
-		tokenIDs := make([]string, len(data.Data))
-		for i, coin := range data.Data {
-			tokenIDs[i] = coin.ID
-		}
-		s.topPricesUpdater.SetTopTokenIDs(tokenIDs)
-	}
+	// Update top tokens list for price fetching
+	s.updateTopTokensFromCacheData()
 
 	// Signal update through callback
 	if s.onUpdate != nil {

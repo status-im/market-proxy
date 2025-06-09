@@ -1,6 +1,7 @@
 package coingecko_prices
 
 import (
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,7 @@ import (
 
 func TestCreateCacheKeys(t *testing.T) {
 	// Test single token
-	params1 := PriceParams{
+	params1 := cg.PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd"},
 	}
@@ -17,7 +18,7 @@ func TestCreateCacheKeys(t *testing.T) {
 	assert.Equal(t, "simple_price:bitcoin", keys1[0])
 
 	// Test multiple currencies (should not affect cache key)
-	params2 := PriceParams{
+	params2 := cg.PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -27,7 +28,7 @@ func TestCreateCacheKeys(t *testing.T) {
 	assert.Equal(t, keys1[0], keys2[0]) // Should be same since currencies are not in key
 
 	// Test different token
-	params3 := PriceParams{
+	params3 := cg.PriceParams{
 		IDs:        []string{"ethereum"},
 		Currencies: []string{"usd"},
 	}
@@ -37,7 +38,7 @@ func TestCreateCacheKeys(t *testing.T) {
 	assert.NotEqual(t, keys1[0], keys3[0])
 
 	// Test multiple tokens
-	params4 := PriceParams{
+	params4 := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd"},
 	}

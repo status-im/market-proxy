@@ -1,6 +1,7 @@
 package coingecko_prices
 
 import (
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,7 @@ import (
 
 func TestStripResponse(t *testing.T) {
 	// Create test response with all possible fields
-	testResponse := SimplePriceResponse{
+	testResponse := cg.SimplePriceResponse{
 		"bitcoin": map[string]interface{}{
 			"usd":             50000.0,
 			"eur":             42000.0,
@@ -38,7 +39,7 @@ func TestStripResponse(t *testing.T) {
 	}
 
 	// Test 1: Only basic currencies
-	params1 := PriceParams{
+	params1 := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -56,7 +57,7 @@ func TestStripResponse(t *testing.T) {
 	assert.NotContains(t, bitcoinData1, "last_updated_at")
 
 	// Test 2: With market cap
-	params2 := PriceParams{
+	params2 := cg.PriceParams{
 		IDs:              []string{"bitcoin"},
 		Currencies:       []string{"usd"},
 		IncludeMarketCap: true,
@@ -70,7 +71,7 @@ func TestStripResponse(t *testing.T) {
 	assert.NotContains(t, bitcoinData2, "usd_24h_vol")
 
 	// Test 3: With all optional fields
-	params3 := PriceParams{
+	params3 := cg.PriceParams{
 		IDs:                  []string{"bitcoin"},
 		Currencies:           []string{"usd", "btc"},
 		IncludeMarketCap:     true,
@@ -94,7 +95,7 @@ func TestStripResponse(t *testing.T) {
 }
 
 func TestStripResponseWithPrecision(t *testing.T) {
-	testResponse := SimplePriceResponse{
+	testResponse := cg.SimplePriceResponse{
 		"bitcoin": map[string]interface{}{
 			"usd":             50123.456789,
 			"usd_market_cap":  950123456789.123,
@@ -103,7 +104,7 @@ func TestStripResponseWithPrecision(t *testing.T) {
 		},
 	}
 
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:                  []string{"bitcoin"},
 		Currencies:           []string{"usd"},
 		IncludeMarketCap:     true,
@@ -127,7 +128,7 @@ func TestShouldIncludeField(t *testing.T) {
 		"eur": true,
 	}
 
-	params := PriceParams{
+	params := cg.PriceParams{
 		Currencies:           []string{"usd", "eur"},
 		IncludeMarketCap:     true,
 		Include24hrVol:       false,

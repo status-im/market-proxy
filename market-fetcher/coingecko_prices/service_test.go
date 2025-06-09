@@ -2,6 +2,7 @@ package coingecko_prices
 
 import (
 	"context"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"testing"
 
 	"github.com/status-im/market-proxy/cache"
@@ -32,7 +33,7 @@ func TestService_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test SimplePrices with empty IDs
-	response, err := priceService.SimplePrices(PriceParams{
+	response, err := priceService.SimplePrices(cg.PriceParams{
 		IDs:        []string{},
 		Currencies: []string{"usd"},
 	})
@@ -60,7 +61,7 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 	priceService := NewService(cacheService, cfg)
 
 	// Test SimplePrices with data not in cache
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd", "eur"},
 	}
@@ -73,25 +74,25 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 
 func TestService_CacheKeys(t *testing.T) {
 	// Test cache key generation with different parameter combinations
-	params1 := PriceParams{
+	params1 := cg.PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd"},
 	}
 	keys1 := createCacheKeys(params1)
 
-	params2 := PriceParams{
+	params2 := cg.PriceParams{
 		IDs:        []string{"bitcoin"},
 		Currencies: []string{"usd", "eur"},
 	}
 	keys2 := createCacheKeys(params2)
 
-	params3 := PriceParams{
+	params3 := cg.PriceParams{
 		IDs:        []string{"ethereum"},
 		Currencies: []string{"usd"},
 	}
 	keys3 := createCacheKeys(params3)
 
-	params4 := PriceParams{
+	params4 := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd"},
 	}
@@ -189,7 +190,7 @@ func TestService_LoadMissingPrices(t *testing.T) {
 	priceService := NewService(cacheService, cfg)
 
 	// Test parameters
-	params := PriceParams{
+	params := cg.PriceParams{
 		IDs:        []string{"bitcoin", "ethereum"},
 		Currencies: []string{"usd"},
 	}
