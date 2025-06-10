@@ -2,12 +2,14 @@ package coingecko_prices
 
 import (
 	"encoding/json"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	cg "github.com/status-im/market-proxy/coingecko_common"
+
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +20,8 @@ func TestNewCoinGeckoClient(t *testing.T) {
 		},
 	}
 
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 	assert.NotNil(t, client)
 	assert.NotNil(t, client.config)
 	assert.NotNil(t, client.keyManager)
@@ -56,7 +59,8 @@ func TestCoinGeckoClient_FetchPrices_Success(t *testing.T) {
 			Tokens: []string{},
 		},
 	}
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 
 	// Test fetching prices
 	params := cg.PriceParams{
@@ -104,7 +108,8 @@ func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
 			Tokens: []string{},
 		},
 	}
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 
 	// Test fetching prices
 	params := cg.PriceParams{
@@ -133,7 +138,8 @@ func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 			Tokens: []string{},
 		},
 	}
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 
 	// Test fetching prices
 	params := cg.PriceParams{
@@ -174,7 +180,8 @@ func TestCoinGeckoClient_FetchPrices_ProKey(t *testing.T) {
 			Tokens: []string{"test-pro-key"},
 		},
 	}
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 
 	// Test fetching prices
 	params := cg.PriceParams{
@@ -229,7 +236,8 @@ func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
 			Tokens: []string{},
 		},
 	}
-	client := NewCoinGeckoClient(cfg)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+	client := NewCoinGeckoClient(cfg, metricsWriter)
 
 	// Test fetching prices with all metadata
 	params := cg.PriceParams{

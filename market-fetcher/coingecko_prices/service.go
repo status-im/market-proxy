@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"log"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/metrics"
 
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/config"
@@ -13,15 +15,19 @@ import (
 
 // Service provides price fetching functionality with caching
 type Service struct {
-	cache   cache.Cache
-	fetcher *ChunksFetcher
-	config  *config.Config
+	cache         cache.Cache
+	fetcher       *ChunksFetcher
+	config        *config.Config
+	metricsWriter *metrics.MetricsWriter
 }
 
 // NewService creates a new price service with the given cache and config
 func NewService(cache cache.Cache, config *config.Config) *Service {
+	// Create metrics writer
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
+
 	// Create API client
-	apiClient := NewCoinGeckoClient(config)
+	apiClient := NewCoinGeckoClient(config, metricsWriter)
 
 	// Get configuration values or use defaults
 	chunkSize := config.CoingeckoPrices.ChunkSize
@@ -38,9 +44,10 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	fetcher := NewChunksFetcher(apiClient, chunkSize, requestDelayMs)
 
 	return &Service{
-		cache:   cache,
-		fetcher: fetcher,
-		config:  config,
+		cache:         cache,
+		fetcher:       fetcher,
+		config:        config,
+		metricsWriter: metricsWriter,
 	}
 }
 
@@ -177,4 +184,9 @@ func (s *Service) getConfigCurrencies() []string {
 	}
 	// Fallback to default currencies if config is not available or empty
 	return []string{"usd", "eur", "btc", "eth"}
+}
+
+// Healthy checks if the service is operational
+func (s *Service) Healthy() bool {
+	return true
 }

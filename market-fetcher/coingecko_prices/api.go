@@ -9,6 +9,7 @@ import (
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 )
 
 // APIClient defines interface for API operations
@@ -29,12 +30,12 @@ type CoinGeckoClient struct {
 }
 
 // NewCoinGeckoClient creates a new CoinGecko API client
-func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
+func NewCoinGeckoClient(cfg *config.Config, metricsWriter *metrics.MetricsWriter) *CoinGeckoClient {
 	// Create retry options with CoinGecko specific settings
 	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
 
-	metricsHandler := cg.NewHttpRequestMetricsWriter("coingecko")
+	metricsHandler := cg.NewHttpRequestMetricsWriter(metricsWriter)
 
 	return &CoinGeckoClient{
 		config:     cfg,
