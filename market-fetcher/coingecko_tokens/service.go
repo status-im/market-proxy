@@ -16,9 +16,10 @@ import (
 
 // Service represents the tokens service that periodically fetches and filters token data
 type Service struct {
-	config *config.Config
-	client *Client
-	cache  struct {
+	config        *config.Config
+	client        *Client
+	metricsWriter *metrics.MetricsWriter
+	cache         struct {
 		sync.RWMutex
 		tokens []Token
 	}
@@ -28,17 +29,20 @@ type Service struct {
 
 // NewService creates a new tokens service
 func NewService(config *config.Config) *Service {
-	baseURL := config.OverrideCoingeckoPublicURL
+	// Create metrics writer
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceCoins)
 
+	baseURL := config.OverrideCoingeckoPublicURL
 	if baseURL == "" {
 		baseURL = coingecko_common.COINGECKO_PUBLIC_URL
 	}
 
-	client := NewClient(baseURL)
+	client := NewClient(baseURL, metricsWriter)
 
 	return &Service{
-		config: config,
-		client: client,
+		config:        config,
+		client:        client,
+		metricsWriter: metricsWriter,
 	}
 }
 
@@ -71,6 +75,10 @@ func (s *Service) Stop() {
 
 // fetchAndUpdate fetches data from CoinGecko and updates the cache
 func (s *Service) fetchAndUpdate() error {
+	// Reset request cycle counters
+	s.metricsWriter.ResetCycleMetrics()
+
+	// Record start time for metrics
 	startTime := time.Now()
 
 	tokens, err := s.client.FetchTokens()
@@ -88,10 +96,11 @@ func (s *Service) fetchAndUpdate() error {
 	// Count tokens per platform
 	tokensByPlatform := CountTokensByPlatform(filteredTokens)
 
-	// Record metrics
-	metrics.RecordTokensCacheSize("tokens-service", len(filteredTokens))
+	// Record metrics using MetricsWriter
+	s.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
+	s.metricsWriter.RecordCacheSize(len(filteredTokens))
+	// Record tokens by platform - this still uses the global metric as it's platform-specific
 	metrics.RecordTokensByPlatform(tokensByPlatform)
-	metrics.RecordFetchMarketDataCycle("tokens-service", startTime)
 
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
 	return nil

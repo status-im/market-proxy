@@ -8,6 +8,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// MetricsPrefix is the prefix used for all metrics
+const MetricsPrefix = "market_fetcher_"
+
 // Service constants
 const (
 	ServiceLBMarkets = "lb-markets"
@@ -17,6 +20,15 @@ const (
 )
 
 var (
+	// TokensByPlatformGauge tracks the number of tokens per platform
+	TokensByPlatformGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: MetricsPrefix + "tokens_by_platform",
+			Help: "Number of tokens per blockchain platform",
+		},
+		[]string{"platform"},
+	)
+
 	// Global Coingecko request counter (all services)
 	CoingeckoRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -99,6 +111,18 @@ var (
 	)
 )
 
+// RecordTokensByPlatform records the number of tokens for each platform
+func RecordTokensByPlatform(tokensByPlatform map[string]int) {
+	// Reset all previous values first to handle platforms that no longer have tokens
+	TokensByPlatformGauge.Reset()
+
+	// Record the count for each platform
+	for platform, count := range tokensByPlatform {
+		TokensByPlatformGauge.WithLabelValues(platform).Set(float64(count))
+		log.Printf("Metrics: Platform %s has %d tokens", platform, count)
+	}
+}
+
 // MetricsWriter provides a unified interface for recording service metrics
 type MetricsWriter struct {
 	serviceName string
@@ -134,42 +158,16 @@ func (mw *MetricsWriter) RecordDataFetchCycle(duration time.Duration) {
 	log.Printf("Metrics: %s data fetch cycle took %.2fs", mw.serviceName, duration.Seconds())
 }
 
-// RecordCycleRequestCount records the total number of requests in a cycle
-func (mw *MetricsWriter) RecordCycleRequestCount(count int) {
-	RequestsPerCycleGauge.WithLabelValues(mw.serviceName).Set(float64(count))
-	log.Printf("Metrics: %s cycle had %d requests", mw.serviceName, count)
-}
-
-// RecordCycleRequestsByStatus records the number of requests by status in current cycle
-func (mw *MetricsWriter) RecordCycleRequestsByStatus(statusCounts map[string]int) {
-	for status, count := range statusCounts {
-		CycleRequestStatusGauge.WithLabelValues(mw.serviceName, status).Set(float64(count))
-		log.Printf("Metrics: %s cycle had %d requests with status %s", mw.serviceName, count, status)
-	}
-}
-
 // RecordCacheSize records the number of items in service cache
 func (mw *MetricsWriter) RecordCacheSize(size int) {
 	ServiceCacheSizeGauge.WithLabelValues(mw.serviceName).Set(float64(size))
 	log.Printf("Metrics: %s cache size is %d items", mw.serviceName, size)
 }
 
-// RecordRequestLatency records the latency for a specific endpoint
-func (mw *MetricsWriter) RecordRequestLatency(duration time.Duration, endpoint string) {
-	RequestLatencyHistogram.WithLabelValues(mw.serviceName, endpoint).Observe(duration.Seconds())
-	log.Printf("Metrics: %s request to %s took %.2fs", mw.serviceName, endpoint, duration.Seconds())
-}
-
 // RecordRetryAttempt records a retry attempt
 func (mw *MetricsWriter) RecordRetryAttempt() {
 	ServiceRetryCounter.WithLabelValues(mw.serviceName).Inc()
 	log.Printf("Metrics: %s recorded a retry attempt", mw.serviceName)
-}
-
-// RecordRateLimitHit records a rate limit hit
-func (mw *MetricsWriter) RecordRateLimitHit() {
-	RateLimitCounter.WithLabelValues(mw.serviceName).Inc()
-	log.Printf("Metrics: %s hit rate limit", mw.serviceName)
 }
 
 // ResetCycleMetrics resets all cycle-related metrics

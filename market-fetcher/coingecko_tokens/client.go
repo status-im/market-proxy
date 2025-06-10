@@ -3,9 +3,11 @@ package coingecko_tokens
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/metrics"
 )
 
 const (
@@ -20,20 +22,25 @@ const (
 // Client handles HTTP communication with the CoinGecko API
 type Client struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *cg.HTTPClientWithRetries
 }
 
 // NewClient creates a new API client
-func NewClient(baseURL string) *Client {
+func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 	if baseURL == "" {
 		baseURL = DefaultCoinGeckoBaseURL
 	}
 
+	// Create retry options
+	retryOpts := cg.DefaultRetryOptions()
+	retryOpts.LogPrefix = "CoinGecko-Tokens"
+
+	// Create metrics handler
+	metricsHandler := cg.NewHttpRequestMetricsWriter(metricsWriter)
+
 	return &Client{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: requestTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
 	}
 }
 
@@ -46,7 +53,7 @@ func (c *Client) FetchTokens() ([]Token, error) {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, body, _, err := c.httpClient.ExecuteRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching tokens: %w", err)
 	}
@@ -54,11 +61,6 @@ func (c *Client) FetchTokens() ([]Token, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var tokens []Token
