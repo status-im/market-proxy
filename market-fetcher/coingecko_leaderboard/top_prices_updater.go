@@ -17,6 +17,7 @@ type TopPricesUpdater struct {
 	config         *config.Config
 	priceFetcher   cg.PriceFetcher
 	priceScheduler *scheduler.Scheduler
+	metricsWriter  *metrics.MetricsWriter
 	// Cache for top tokens prices
 	topPricesCache struct {
 		sync.RWMutex
@@ -32,8 +33,9 @@ type TopPricesUpdater struct {
 // NewTopPricesUpdater creates a new top prices updater
 func NewTopPricesUpdater(cfg *config.Config, priceFetcher cg.PriceFetcher) *TopPricesUpdater {
 	updater := &TopPricesUpdater{
-		config:       cfg,
-		priceFetcher: priceFetcher,
+		config:        cfg,
+		priceFetcher:  priceFetcher,
+		metricsWriter: metrics.NewMetricsWriter(metrics.ServiceLBPrices),
 	}
 
 	// Initialize prices cache
@@ -112,9 +114,6 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 	// Default currencies to fetch
 	currencies := []string{"usd"}
 
-	// Reset request cycle counters
-	metrics.ResetCycleCounters("coingecko_leaderboard_prices")
-
 	// Record start time for metrics
 	startTime := time.Now()
 
@@ -162,7 +161,7 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 	}
 
 	// Record metrics regardless of success or failure
-	metrics.RecordFetchMarketDataCycle("leaderboard-prices", startTime)
+	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 
 	// Update cache
 	u.topPricesCache.Lock()
@@ -174,7 +173,7 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 	for _, quotes := range newPricesData {
 		totalTokens += len(quotes)
 	}
-	metrics.RecordTokensCacheSize("leaderboard-prices", totalTokens)
+	u.metricsWriter.RecordCacheSize(totalTokens)
 
 	log.Printf("Updated prices cache with %d currency-token pairs", totalTokens)
 	return nil
