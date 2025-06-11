@@ -8,7 +8,7 @@ cache:
     cleanup_interval: 10m     # 10 minutes
 
 coingecko_leaderboard:
-  update_interval: 10m        # 10 minutes
+  update_interval: 30m        # 10 minutes
   limit: 5000
   request_delay: 0s           # 0 = no delay
   prices_update_interval: 30s # 30 seconds interval for price updates
@@ -16,7 +16,7 @@ coingecko_leaderboard:
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request
-  request_delay: 2s           # 2 seconds delay between requests
+  request_delay: 0s           # 2 seconds delay between requests
   currencies:                 # default currencies to fetch
     - usd
     - eur

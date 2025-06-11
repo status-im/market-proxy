@@ -132,26 +132,31 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 			log.Printf("No top token IDs configured, skipping price update")
 			newPricesData = make(map[string]PriceQuotes)
 		} else {
-			for _, currency := range currencies {
-				// Use SimplePrices method with proper parameters
-				params := cg.PriceParams{
-					IDs:                  topTokenIDs,
-					Currencies:           []string{currency},
-					IncludeMarketCap:     true,
-					Include24hrVol:       true,
-					Include24hrChange:    true,
-					IncludeLastUpdatedAt: true,
-				}
+			// Limit the number of tokens according to config
+			if u.config.CoingeckoLeaderboard.TopTokensLimit > 0 && len(topTokenIDs) > u.config.CoingeckoLeaderboard.TopTokensLimit {
+				topTokenIDs = topTokenIDs[:u.config.CoingeckoLeaderboard.TopTokensLimit]
+				log.Printf("Limited top tokens to %d tokens as per config", u.config.CoingeckoLeaderboard.TopTokensLimit)
+			}
+			// Make single request with all currencies
+			params := cg.PriceParams{
+				IDs:                  topTokenIDs,
+				Currencies:           currencies,
+				IncludeMarketCap:     true,
+				Include24hrVol:       true,
+				Include24hrChange:    true,
+				IncludeLastUpdatedAt: true,
+			}
 
-				priceResponse, err := u.priceFetcher.SimplePrices(params)
-				if err != nil {
-					log.Printf("Error fetching prices from price fetcher: %v", err)
-					continue
-				}
-
-				if len(priceResponse) > 0 {
+			priceResponse, err := u.priceFetcher.SimplePrices(params)
+			if err != nil {
+				log.Printf("Error fetching prices from price fetcher: %v", err)
+			} else if len(priceResponse) > 0 {
+				// Parse response for each currency
+				for _, currency := range currencies {
 					currencyQuotes := ConvertPriceResponseToPriceQuotes(priceResponse, currency)
-					newPricesData[currency] = currencyQuotes
+					if len(currencyQuotes) > 0 {
+						newPricesData[currency] = currencyQuotes
+					}
 				}
 			}
 		}
