@@ -1,4 +1,4 @@
-tokens_file: "/Users/ricko/status/market-proxy/secrets/coingecko_api_tokens.json"
+tokens_file: "coingecko_api_tokens.json"
 
 # Cache configuration
 cache:

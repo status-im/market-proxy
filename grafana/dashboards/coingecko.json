@@ -21,12 +21,12 @@
     {
       "id": 1,
       "type": "timeseries",
-      "title": "Fetch Cycle Duration",
+      "title": "Data Fetch Cycle Duration by Service",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "h": 12,
-        "w": 24
+        "h": 8,
+        "w": 12
       },
       "fieldConfig": {
         "defaults": {
@@ -88,8 +88,8 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "rate(market_fetcher_fetch_duration_seconds_sum{service=\"markets-leaderboard\",operation=\"fetchAndUpdate\"}[5m]) / rate(market_fetcher_fetch_duration_seconds_count{service=\"markets-leaderboard\",operation=\"fetchAndUpdate\"}[5m])",
-          "legendFormat": "Average Duration",
+          "expr": "rate(market_fetcher_data_fetch_cycle_duration_seconds_sum[5m]) / rate(market_fetcher_data_fetch_cycle_duration_seconds_count[5m])",
+          "legendFormat": "{{service}}",
           "range": true,
           "refId": "A"
         }
@@ -111,12 +111,12 @@
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Cache Size (Number of Tokens)",
+      "title": "Service Cache Sizes",
       "gridPos": {
-        "x": 0,
-        "y": 12,
+        "x": 12,
+        "y": 0,
         "h": 8,
-        "w": 24
+        "w": 12
       },
       "fieldConfig": {
         "defaults": {
@@ -136,7 +136,7 @@
               "group": "A"
             },
             "axisPlacement": "auto",
-            "axisLabel": "Tokens",
+            "axisLabel": "Items",
             "axisColorMode": "text",
             "axisBorderShow": false,
             "scaleDistribution": {
@@ -153,8 +153,7 @@
             }
           },
           "color": {
-            "mode": "palette-classic",
-            "fixedColor": "green"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -178,8 +177,8 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "market_fetcher_cache_size_tokens{service=\"markets-leaderboard\"}",
-          "legendFormat": "Tokens in Cache",
+          "expr": "market_fetcher_service_cache_size",
+          "legendFormat": "{{service}}",
           "range": true,
           "refId": "A"
         }
@@ -201,12 +200,234 @@
     {
       "id": 3,
       "type": "timeseries",
-      "title": "HTTP Requests Per Cycle",
+      "title": "Global CoinGecko Requests by Status (Total Count)",
       "gridPos": {
         "x": 0,
-        "y": 20,
-        "h": 10,
-        "w": 24
+        "y": 8,
+        "h": 8,
+        "w": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "spanNulls": true,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "Total Requests",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rate_limited"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "market_fetcher_coingecko_requests_total",
+          "legendFormat": "{{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["diff", "last", "max"]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Service-Specific CoinGecko Requests (Total Count)",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "h": 8,
+        "w": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "spanNulls": true,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "Total Requests",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "market_fetcher_service_coingecko_requests_total",
+          "legendFormat": "{{service}} - {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["diff", "last", "max"]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Requests Per Cycle by Service",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "h": 8,
+        "w": 12
       },
       "fieldConfig": {
         "defaults": {
@@ -257,53 +478,7 @@
           },
           "unit": "none"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Successful Requests"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Rate Limited Requests"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Error Requests"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "pluginVersion": "10.0.0",
       "targets": [
@@ -313,44 +488,10 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "market_fetcher_http_requests_per_cycle{service=\"coingecko\", status=\"success\"}",
-          "legendFormat": "Successful Requests",
+          "expr": "market_fetcher_requests_per_cycle",
+          "legendFormat": "{{service}}",
           "range": true,
-          "refId": "A",
-          "exemplar": true,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "market_fetcher_http_requests_per_cycle{service=\"coingecko\", status=\"rate_limited\"}",
-          "legendFormat": "Rate Limited Requests",
-          "range": true,
-          "refId": "B",
-          "exemplar": true,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 10
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "market_fetcher_http_requests_per_cycle{service=\"coingecko\", status=\"error\"}",
-          "legendFormat": "Error Requests",
-          "range": true,
-          "refId": "C",
-          "exemplar": true,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 10
+          "refId": "A"
         }
       ],
       "options": {
@@ -367,13 +508,230 @@
       }
     },
     {
-      "id": 4,
+      "id": 6,
+      "type": "timeseries",
+      "title": "Retry Attempts by Service (Total Count)",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "h": 8,
+        "w": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "spanNulls": true,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "Total Retries",
+            "axisColorMode": "text",
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic",
+            "fixedColor": "orange"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "market_fetcher_service_retry_attempts_total",
+          "legendFormat": "{{service}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["diff", "last", "max"]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Token Usage (24h/Month)",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "h": 4,
+        "w": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "displayMode": "basic",
+            "orient": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 250000
+              },
+              {
+                "color": "red",
+                "value": 500000
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*24h.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "24h Usage"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Month.*"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Monthly Usage"
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "increase(market_fetcher_coingecko_requests_total{status=\"success\"}[24h])",
+          "legendFormat": "Successful requests (24h)",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "increase(market_fetcher_coingecko_requests_total{status=\"success\"}[30d])",
+          "legendFormat": "Successful requests (Month)",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "increase(market_fetcher_coingecko_requests_total[24h])",
+          "legendFormat": "Total requests (24h)",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "increase(market_fetcher_coingecko_requests_total[30d])",
+          "legendFormat": "Total requests (Month)",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 8,
       "type": "timeseries",
       "title": "Tokens by Platform",
       "gridPos": {
         "x": 0,
-        "y": 30,
-        "h": 12,
+        "y": 28,
+        "h": 8,
         "w": 24
       },
       "fieldConfig": {
@@ -438,11 +796,7 @@
           "expr": "market_fetcher_tokens_by_platform",
           "legendFormat": "{{platform}}",
           "range": true,
-          "refId": "A",
-          "exemplar": true,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1
+          "refId": "A"
         }
       ],
       "options": {
@@ -459,24 +813,25 @@
       }
     }
   ],
-  "refresh": "10m",
+  "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
     "coingecko",
-    "metrics"
+    "metrics",
+    "market-fetcher"
   ],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "CoinGecko API Metrics",
-  "uid": "coingecko-metrics",
-  "version": 1,
+  "title": "Market Fetcher - CoinGecko Services",
+  "uid": "market-fetcher-coingecko",
+  "version": 2,
   "weekStart": ""
 } 
