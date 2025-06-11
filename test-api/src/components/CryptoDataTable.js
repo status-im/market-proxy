@@ -77,6 +77,16 @@ const SecondaryPrice = styled.div`
   margin-top: 2px;
 `;
 
+const PriceSource = styled.div`
+  padding: 1px 4px;
+  border-radius: 3px;
+  background-color: ${props => props.$endpoint === 'prices' ? '#3861FB15' : '#16C78415'};
+  color: ${props => props.$endpoint === 'prices' ? '#3861FB' : '#16C784'};
+  font-size: 9px;
+  margin-top: 1px;
+  display: inline-block;
+`;
+
 const DataSource = styled.div`
   padding: 2px 6px;
   border-radius: 4px;
@@ -128,10 +138,10 @@ const PageInfo = styled.div`
   color: #616E85;
 `;
 
-function CryptoDataTable({ data, priceData, source }) {
+function CryptoDataTable({ data, priceData, source, priceEndpoint }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    
+
     const formatNumber = (num) => {
         if (!num && num !== 0) return '—';
         return new Intl.NumberFormat('en-US', {
@@ -243,7 +253,8 @@ function CryptoDataTable({ data, priceData, source }) {
                     }
 
                     // Get price data for this token if available
-                    const tokenPriceData = priceData[symbol];
+                    // Try both symbol (for 'prices' endpoint) and id (for 'simpleprices' endpoint)
+                    const tokenPriceData = priceData[symbol] || priceData[id];
 
                     return (
                         <tr key={id}>
@@ -262,7 +273,10 @@ function CryptoDataTable({ data, priceData, source }) {
                                 <PriceContainer>
                                     <MainPrice>{formatNumber(price)}</MainPrice>
                                     {tokenPriceData?.price && (
-                                        <SecondaryPrice>{formatNumber(tokenPriceData.price)}</SecondaryPrice>
+                                        <SecondaryPrice>
+                                            {formatNumber(tokenPriceData.price)}
+                                            <PriceSource $endpoint={priceEndpoint}>{priceEndpoint}</PriceSource>
+                                        </SecondaryPrice>
                                     )}
                                 </PriceContainer>
                             </Td>
@@ -274,6 +288,7 @@ function CryptoDataTable({ data, priceData, source }) {
                                     {tokenPriceData?.percent_change_24h !== undefined && (
                                         <SecondaryPrice>
                                             {formatPercentage(tokenPriceData.percent_change_24h)}
+                                            <PriceSource $endpoint={priceEndpoint}>{priceEndpoint}</PriceSource>
                                         </SecondaryPrice>
                                     )}
                                 </PriceContainer>
@@ -281,9 +296,25 @@ function CryptoDataTable({ data, priceData, source }) {
                             <Td>
                                 <PriceContainer>
                                     <MainPrice>{formatNumber(volume24h)}</MainPrice>
+                                    {tokenPriceData?.volume_24h && (
+                                        <SecondaryPrice>
+                                            {formatNumber(tokenPriceData.volume_24h)}
+                                            <PriceSource $endpoint={priceEndpoint}>{priceEndpoint}</PriceSource>
+                                        </SecondaryPrice>
+                                    )}
                                 </PriceContainer>
                             </Td>
-                            <Td>{formatNumber(marketCap)}</Td>
+                            <Td>
+                                <PriceContainer>
+                                    <MainPrice>{formatNumber(marketCap)}</MainPrice>
+                                    {tokenPriceData?.market_cap && (
+                                        <SecondaryPrice>
+                                            {formatNumber(tokenPriceData.market_cap)}
+                                            <PriceSource $endpoint={priceEndpoint}>{priceEndpoint}</PriceSource>
+                                        </SecondaryPrice>
+                                    )}
+                                </PriceContainer>
+                            </Td>
                             <Td>
                                 <SwapButton>Swap</SwapButton>
                             </Td>

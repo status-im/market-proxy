@@ -1,7 +1,12 @@
 import { useEffect } from 'react';
 import useApiRequest from './useApiRequest';
 
-export default function useCoinGeckoPriceData() {
+export default function useCoinGeckoPriceData(endpoint = 'prices') {
+  const endpointUrls = {
+    'prices': '/v1/leaderboard/prices',      // by symbol (binance compatible)
+    'simpleprices': '/v1/leaderboard/simpleprices'  // by token ID
+  };
+
   const {
     data: coinGeckoPriceData,
     isLoading,
@@ -9,7 +14,7 @@ export default function useCoinGeckoPriceData() {
     stats,
     fetchData
   } = useApiRequest({
-    url: `${process.env.REACT_APP_API_URL}/v1/leaderboard/prices`,
+    url: `${process.env.REACT_APP_API_URL}${endpointUrls[endpoint]}`,
     processData: (data) => data || {},
     validateData: (data) => {
       // Check that data exists and is an object with keys
@@ -26,7 +31,7 @@ export default function useCoinGeckoPriceData() {
     const interval = setInterval(fetchData, 1000); // Fetch every second
     
     return () => clearInterval(interval);
-  }, []);
+  }, [endpoint]); // Add endpoint to dependencies
 
   return { coinGeckoPriceData: coinGeckoPriceData || {}, isLoading, error, stats };
 } 

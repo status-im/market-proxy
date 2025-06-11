@@ -61,6 +61,7 @@ add_cors_config() {
 
 # Add CORS configuration for all endpoints
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/prices"
+add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/simpleprices"
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/markets"
 add_cors_config "$NGINX_CONF" "\/v1\/coins\/list"
 

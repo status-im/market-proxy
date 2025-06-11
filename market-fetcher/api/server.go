@@ -6,12 +6,13 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/status-im/market-proxy/coingecko_common"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/status-im/market-proxy/coingecko_common"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
@@ -42,6 +43,7 @@ func New(port string, binanceService *binance.Service, cgService *coingecko.Serv
 func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
+	mux.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
 	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
@@ -77,6 +79,15 @@ func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request) {
+	quotes := s.binanceService.GetLatestQuotes()
+	if len(quotes) == 0 {
+		http.Error(w, "No CoinGecko prices available", http.StatusServiceUnavailable)
+		return
+	}
+
+	s.sendJSONResponse(w, quotes)
+}
+func (s *Server) handleLeaderboardSimplePrices(w http.ResponseWriter, r *http.Request) {
 	// Parse currency parameter, default to "usd"
 	currency := r.URL.Query().Get("currency")
 	if currency == "" {
