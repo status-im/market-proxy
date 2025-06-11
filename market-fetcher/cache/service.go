@@ -49,7 +49,7 @@ func (s *Service) Stop() {
 }
 
 // GetOrLoad retrieves data by keys from local cache or loads them using LoaderFunc
-func (s *Service) GetOrLoad(keys []string, loader LoaderFunc, loadOnlyMissingKeys bool) (map[string][]byte, error) {
+func (s *Service) GetOrLoad(keys []string, loader LoaderFunc, loadOnlyMissingKeys bool, ttl time.Duration) (map[string][]byte, error) {
 	if len(keys) == 0 {
 		return make(map[string][]byte), nil
 	}
@@ -60,7 +60,7 @@ func (s *Service) GetOrLoad(keys []string, loader LoaderFunc, loadOnlyMissingKey
 	// Step 2: Load missing data if needed
 	if len(missingKeys) > 0 {
 		keysToLoad := s.determineKeysToLoad(keys, missingKeys, loadOnlyMissingKeys)
-		loadedData, err := s.loadAndCacheLocal(keysToLoad, loader)
+		loadedData, err := s.loadAndCacheLocal(keysToLoad, loader, ttl)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func (s *Service) getFromLocalCache(keys []string) (map[string][]byte, []string)
 }
 
 // loadAndCacheLocal loads data using loader function and updates local cache only
-func (s *Service) loadAndCacheLocal(keysToLoad []string, loader LoaderFunc) (map[string][]byte, error) {
+func (s *Service) loadAndCacheLocal(keysToLoad []string, loader LoaderFunc, ttl time.Duration) (map[string][]byte, error) {
 	loadedData, err := loader(keysToLoad)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load data: %w", err)
@@ -86,7 +86,7 @@ func (s *Service) loadAndCacheLocal(keysToLoad []string, loader LoaderFunc) (map
 
 	// Update local cache with loaded data
 	if len(loadedData) > 0 {
-		s.goCache.Set(loadedData, 0) // Use default expiration
+		s.goCache.Set(loadedData, ttl)
 	}
 
 	return loadedData, nil
@@ -138,12 +138,16 @@ type ServiceStats struct {
 	Enabled      bool // Whether go-cache is enabled
 }
 
-// Clear clears all data from cache
-func (s *Service) Clear() {
-	s.goCache.Clear()
+// Delete removes items from cache by keys
+func (s *Service) Delete(keys []string) {
+	if s.goCache != nil {
+		s.goCache.Delete(keys)
+	}
 }
 
-// Delete removes specific keys from cache
-func (s *Service) Delete(keys []string) {
-	s.goCache.Delete(keys)
+// Clear removes all items from cache
+func (s *Service) Clear() {
+	if s.goCache != nil {
+		s.goCache.Clear()
+	}
 }

@@ -83,7 +83,7 @@ func (s *Service) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, e
 	}
 
 	// Get data from cache for all keys
-	cachedData, err := s.cache.GetOrLoad(cacheKeys, loader, true)
+	cachedData, err := s.cache.GetOrLoad(cacheKeys, loader, true, s.config.CoingeckoPrices.TTL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get prices from cache: %w", err)
 	}

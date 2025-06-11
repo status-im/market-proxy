@@ -22,7 +22,7 @@ func TestService_Basic(t *testing.T) {
 	}
 
 	// Test with empty cache - should call loader
-	data, err := service.GetOrLoad([]string{"key1", "key2"}, loader, true)
+	data, err := service.GetOrLoad([]string{"key1", "key2"}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 2)
 	assert.Equal(t, []byte("loaded_key1"), data["key1"])
@@ -35,7 +35,7 @@ func TestService_Basic(t *testing.T) {
 		return loader(missingKeys)
 	}
 
-	data, err = service.GetOrLoad([]string{"key1", "key2"}, countingLoader, true)
+	data, err = service.GetOrLoad([]string{"key1", "key2"}, countingLoader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 2)
 	assert.Equal(t, 0, loaderCallCount) // Loader should not be called
@@ -66,7 +66,7 @@ func TestService_PartialCacheHit(t *testing.T) {
 	}
 
 	// Test with mixed cached and missing keys
-	data, err := service.GetOrLoad([]string{"cached_key", "missing_key1", "missing_key2"}, loader, true)
+	data, err := service.GetOrLoad([]string{"cached_key", "missing_key1", "missing_key2"}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 3)
 	assert.Equal(t, []byte("cached_value"), data["cached_key"])
@@ -100,7 +100,7 @@ func TestService_LoadOnlyMissingKeys(t *testing.T) {
 	}
 
 	// Test loadOnlyMissingKeys = true
-	data, err := service.GetOrLoad([]string{"key1", "key2", "key3"}, loader, true)
+	data, err := service.GetOrLoad([]string{"key1", "key2", "key3"}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 3)
 	assert.Equal(t, []string{"key2", "key3"}, requestedKeys) // Only missing keys requested
@@ -120,7 +120,7 @@ func TestService_LoadOnlyMissingKeys(t *testing.T) {
 		return result, nil
 	}
 
-	data, err = service2.GetOrLoad([]string{"key1", "key2", "key3"}, loader2, false)
+	data, err = service2.GetOrLoad([]string{"key1", "key2", "key3"}, loader2, false, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 3)
 	assert.Equal(t, []string{"key1", "key2", "key3"}, requestedKeys) // All keys requested
@@ -136,7 +136,7 @@ func TestService_LoaderError(t *testing.T) {
 	}
 
 	// Test error handling
-	data, err := service.GetOrLoad([]string{"key1"}, loader, true)
+	data, err := service.GetOrLoad([]string{"key1"}, loader, true, 5*time.Minute)
 	assert.Error(t, err)
 	assert.Nil(t, data)
 	assert.Contains(t, err.Error(), "failed to load data")
@@ -152,7 +152,7 @@ func TestService_EmptyKeys(t *testing.T) {
 	}
 
 	// Test with empty keys slice
-	data, err := service.GetOrLoad([]string{}, loader, true)
+	data, err := service.GetOrLoad([]string{}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 0)
 }
@@ -199,7 +199,7 @@ func TestService_DisabledCache(t *testing.T) {
 		return result, nil
 	}
 
-	data, err := service.GetOrLoad([]string{"key1"}, loader, true)
+	data, err := service.GetOrLoad([]string{"key1"}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 1)
 	assert.Equal(t, []byte("loaded_key1"), data["key1"])
@@ -217,7 +217,7 @@ func TestService_Implementation(t *testing.T) {
 		return map[string][]byte{"test": []byte("value")}, nil
 	}
 
-	data, err := cache.GetOrLoad([]string{"test"}, loader, true)
+	data, err := cache.GetOrLoad([]string{"test"}, loader, true, 5*time.Minute)
 	assert.NoError(t, err)
 	assert.Len(t, data, 1)
 }

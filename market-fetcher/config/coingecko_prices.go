@@ -7,4 +7,5 @@ type CoingeckoPricesFetcher struct {
 	ChunkSize    int           `yaml:"chunk_size"`    // Number of tokens to fetch in one request
 	RequestDelay time.Duration `yaml:"request_delay"` // Delay between requests
 	Currencies   []string      `yaml:"currencies"`    // Default currencies to fetch
+	TTL          time.Duration `yaml:"ttl"`           // Time to live for cached price data
 }

@@ -633,7 +633,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": [
           {
@@ -670,7 +670,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "increase(market_fetcher_coingecko_requests_total{status=\"success\"}[24h])",
+          "expr": "round(increase(market_fetcher_coingecko_requests_total{status=\"success\"}[24h]))",
           "legendFormat": "Successful requests (24h)",
           "range": true,
           "refId": "A"
@@ -681,7 +681,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "increase(market_fetcher_coingecko_requests_total{status=\"success\"}[30d])",
+          "expr": "round(increase(market_fetcher_coingecko_requests_total{status=\"success\"}[30d]))",
           "legendFormat": "Successful requests (Month)",
           "range": true,
           "refId": "B"
@@ -692,7 +692,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "increase(market_fetcher_coingecko_requests_total[24h])",
+          "expr": "round(increase(market_fetcher_coingecko_requests_total[24h]))",
           "legendFormat": "Total requests (24h)",
           "range": true,
           "refId": "C"
@@ -703,7 +703,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "increase(market_fetcher_coingecko_requests_total[30d])",
+          "expr": "round(increase(market_fetcher_coingecko_requests_total[30d]))",
           "legendFormat": "Total requests (Month)",
           "range": true,
           "refId": "D"
