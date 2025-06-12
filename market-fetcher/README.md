@@ -1,6 +1,6 @@
 # Market-Fetcher
 
-Go application that caches token lists from CoinGecko and price updates from Binance, providing a REST API for accessing token and price data.
+Go application that provides cached cryptocurrency data with real-time price updates via REST API. The service fetches token lists and market data from CoinGecko, price updates from Binance WebSocket, and offers CoinGecko-compatible endpoints with intelligent caching.
 
 ## Features
 
@@ -8,8 +8,8 @@ Go application that caches token lists from CoinGecko and price updates from Bin
 - Real-time price updates from Binance WebSocket
 - Configurable update intervals and token limits
 - REST API endpoints for accessing token and price data
-- Automatic reconnection handling for WebSocket connections
 - Rate limit handling for CoinGecko API
+- Monitoring 
 
 ## Local Development
 
@@ -17,16 +17,51 @@ Go application that caches token lists from CoinGecko and price updates from Bin
 
 1. Create a configuration file `config.yaml`:
 ```yaml
-coingecko_fetcher:
-  update_interval: 10800  # seconds (3 hours)
-  tokens_file: "coingecko_api_tokens.json"
-  limit: 500  # number of tokens to fetch
+# Cache configuration
+cache:
+  go_cache:
+    default_expiration: 10m    # Default cache TTL
+    cleanup_interval: 5m       # Cache cleanup frequency
+
+# Token list fetcher
+coingecko_coinslist:
+  update_interval: 30m
+  supported_platforms:
+    - ethereum
+    - optimistic-ethereum
+    - arbitrum-one
+    - base
+    - polygon-pos
+    - binance-smart-chain
+
+# Market data fetcher  
+coingecko_leaderboard:
+  update_interval: 5m
+  limit: 100                   # Number of top tokens
+  request_delay: 1s            # Delay between requests
+  prices_update_interval: 2m   # Price refresh interval
+  top_tokens_limit: 50         # Tokens for price tracking
+
+# Price service with caching
+coingecko_prices:
+  chunk_size: 250              # Tokens per API request
+  request_delay: 200ms         # Delay between chunks
+  ttl: 2m                      # Price cache TTL
+  currencies:                  # Default currencies to cache
+    - usd
+    - eur
+    - btc
+    - eth
+
+# API tokens file
+tokens_file: "coingecko_api_tokens.json"
 ```
 
 2. Create `coingecko_api_tokens.json` (optional, for Pro API access):
 ```json
 {
-  "api_tokens": ["your-api-key-here"]
+  "api_tokens": ["your-coingecko-api-key"],
+  "demo_api_tokens": ["demo-key"]
 }
 ```
 
@@ -42,10 +77,9 @@ Build and run the container:
 ./build_docker_locally_run.sh
 ```
 
+The service will be available at `http://localhost:8080` by default.
 
-The service will be available at `http://localhost:8080` by default. 
-
-Trying to access the API:
+To access the API:
 
 ```
 curl http://localhost:8080/api/v1/leaderboard/markets
@@ -68,22 +102,20 @@ docker run -p 8080:8080 market-fetcher
 
 The service is configured via a `config.yaml` file. Below are the key configuration sections:
 
-### coingecko_fetcher
+#### Cache Configuration
 
 ```yaml
-coingecko_fetcher:
-  update_interval_ms: 600000  # milliseconds (10 minutes)
-  tokens_file: "coingecko_api_tokens.json"  # file containing API tokens
-  limit: 5000  # number of tokens to fetch
-  request_delay_ms: 0  # delay between requests, 0 = no delay
+cache:
+  go_cache:
+    default_expiration: 10m    # Default TTL for cached items
+    cleanup_interval: 5m       # How often to clean up expired items
 ```
-
-### coingecko_coinslist
+#### CoinGecko Tokens Service
 
 ```yaml
 coingecko_coinslist:
-  update_interval_ms: 1800000  # milliseconds (30 minutes)
-  supported_platforms:  # list of blockchain platforms to include
+  update_interval: 30m         # How often to refresh token list
+  supported_platforms:         # Blockchain platforms to include
     - ethereum
     - optimistic-ethereum  # Optimism
     - arbitrum-one         # Arbitrum
@@ -99,19 +131,29 @@ coingecko_coinslist:
     - polygon-pos          # Polygon
 ```
 
-#### coingecko_coinslist Parameters
+#### CoinGecko Leaderboard Service
 
-- `update_interval_ms`: The interval in milliseconds at which to fetch token data
-- `supported_platforms`: List of blockchain platforms to include in the token data. Tokens will be filtered to only include those available on the supported platforms.
+```yaml
+coingecko_leaderboard:
+  update_interval: 5m          # Market data refresh interval
+  limit: 100                   # Number of top tokens to fetch
+  request_delay: 1s            # Delay between API requests
+  prices_update_interval: 2m   # How often to update price data
+  top_tokens_limit: 50         # Tokens to track for prices
+```
 
-### coingecko_api_tokens.json
+#### CoinGecko Prices Service
 
-API tokens configuration for CoinGecko:
-```json
-{
-  "api_tokens": ["your-api-key-here"],
-  "demo_api_tokens": ["demo-key"]
-}
+```yaml
+coingecko_prices:
+  chunk_size: 250              # Tokens per API request (max 250)
+  request_delay: 200ms         # Delay between chunk requests
+  ttl: 2m                      # Cache TTL for price data
+  currencies:                  # Default currencies to cache
+    - usd
+    - eur
+    - btc
+    - eth
 ```
 ## Request Flow
 
@@ -155,10 +197,10 @@ Returns token market data from CoinGecko:
 ```json
 {
   "data": [
-    {
-      "id": "bitcoin",
-      "symbol": "btc",
-      "name": "Bitcoin",
+  {
+    "id": "bitcoin",
+    "symbol": "btc", 
+    "name": "Bitcoin",
       "image": "https://...",
       "current_price": 50000.00,
       "market_cap": 1000000000000,
@@ -176,10 +218,10 @@ Returns a list of all tokens with their supported blockchain platforms:
   {
     "id": "ethereum",
     "symbol": "eth",
-    "name": "Ethereum",
+    "name": "Ethereum", 
     "platforms": {
       "ethereum": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-    }
+  }
   },
   {
     "id": "status",
@@ -188,8 +230,8 @@ Returns a list of all tokens with their supported blockchain platforms:
     "platforms": {
       "ethereum": "0x744d70fdbe2ba4cf95131626614a1763df805b9e",
       "status": "0x744d70fdbe2ba4cf95131626614a1763df805b9e"
-    }
   }
+}
 ]
 ```
 
@@ -201,10 +243,10 @@ Returns service health status:
   "services": {
     "binance": "up",
     "coingecko": "up"
-  }
+}
 }
 ```
 
 ## Environment Variables
 
-- `PORT` - HTTP server port (default: 8080) 
+- `PORT` - HTTP server port (default: 8080)

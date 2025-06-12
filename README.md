@@ -84,7 +84,19 @@ This will:
 - Market data fetching from CoinGecko with rate limit handling
 - Real-time price updates via Binance WebSocket
 - Blockchain platform-specific token filtering
-- REST API for accessing token lists, prices
+- REST API for accessing token lists
+- CoinGecko-compatible Simple Price API endpoint
+
+## API Endpoints
+
+The proxy provides the following endpoints:
+
+- `/v1/simple/price` - CoinGecko-compatible simple price endpoint
+- `/v1/leaderboard/prices` - Price data (binance)
+- `/v1/leaderboard/simpleprices` - Price data (coingecko)
+- `/v1/leaderboard/markets` - Market data from leaderboard  
+- `/v1/coins/list` - Supported coins list with platform information
+
 
 ## Subprojects
 
