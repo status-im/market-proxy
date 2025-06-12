@@ -2,14 +2,16 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
+	"time"
 )
 
 type CoingeckoLeaderboardFetcher struct {
-	UpdateIntervalMs int `yaml:"update_interval_ms"`
-	Limit            int `yaml:"limit"`
-	RequestDelayMs   int `yaml:"request_delay_ms"` // Delay between requests in milliseconds
+	UpdateInterval       time.Duration `yaml:"update_interval"`
+	Limit                int           `yaml:"limit"`
+	RequestDelay         time.Duration `yaml:"request_delay"`          // Delay between requests
+	PricesUpdateInterval time.Duration `yaml:"prices_update_interval"` // Interval for price updates
+	TopTokensLimit       int           `yaml:"top_tokens_limit"`       // Limit for top tokens prices
 }
 
 type APITokens struct {
@@ -24,7 +26,7 @@ func LoadAPITokens(filename string) (*APITokens, error) {
 		return &APITokens{Tokens: []string{}}, nil
 	}
 
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

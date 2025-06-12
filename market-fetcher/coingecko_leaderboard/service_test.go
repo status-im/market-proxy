@@ -11,7 +11,7 @@ import (
 func TestService_Healthy_Logic(t *testing.T) {
 	// Create a new service
 	cfg := &config.Config{}
-	svc := NewService(cfg)
+	svc := NewService(cfg, nil)
 
 	// Test case 1: Empty cache, client not healthy
 	// Just test the direct logic without using the Healthy method
@@ -28,10 +28,10 @@ func TestService_Healthy_Logic(t *testing.T) {
 		},
 	}
 
-	// Set cache data
-	svc.cache.Lock()
-	svc.cache.data = &APIResponse{Data: mockData}
-	svc.cache.Unlock()
+	// Set cache data via MarketsUpdater
+	svc.marketsUpdater.cache.Lock()
+	svc.marketsUpdater.cache.data = &APIResponse{Data: mockData}
+	svc.marketsUpdater.cache.Unlock()
 
 	// Verify data is in cache
 	cacheData := svc.GetCacheData()
@@ -39,17 +39,17 @@ func TestService_Healthy_Logic(t *testing.T) {
 	assert.NotEmpty(t, cacheData.Data)
 
 	// Clear cache
-	svc.cache.Lock()
-	svc.cache.data = nil
-	svc.cache.Unlock()
+	svc.marketsUpdater.cache.Lock()
+	svc.marketsUpdater.cache.data = nil
+	svc.marketsUpdater.cache.Unlock()
 
 	// Verify no data in cache
 	assert.Nil(t, svc.GetCacheData())
 
 	// Test with empty cache data
-	svc.cache.Lock()
-	svc.cache.data = &APIResponse{Data: []CoinData{}}
-	svc.cache.Unlock()
+	svc.marketsUpdater.cache.Lock()
+	svc.marketsUpdater.cache.data = &APIResponse{Data: []CoinData{}}
+	svc.marketsUpdater.cache.Unlock()
 
 	// Verify cache exists but is empty
 	cacheData = svc.GetCacheData()

@@ -1,33 +1,42 @@
 package config
 
 import (
-	"io/ioutil"
+	"fmt"
 	"log"
+	"os"
 
-	"gopkg.in/yaml.v2"
+	"github.com/status-im/market-proxy/cache"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
+	CoingeckoPrices      CoingeckoPricesFetcher      `yaml:"coingecko_prices"`
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
 	TokensFile           string                      `yaml:"tokens_file"`
 	APITokens            *APITokens
+	Cache                cache.Config `yaml:"cache"`
 
 	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
 	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
 	OverrideBinanceWSURL       string `yaml:"override_binance_wsurl"`
 }
 
-func LoadConfig(path string) (*Config, error) {
-	data, err := ioutil.ReadFile(path)
+func LoadConfig(filename string) (*Config, error) {
+	data, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
 	var config Config
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err
+	}
+
+	// Set default cache config if not provided
+	if config.Cache.GoCache.DefaultExpiration == 0 && config.Cache.GoCache.CleanupInterval == 0 {
+		config.Cache = cache.DefaultCacheConfig()
 	}
 
 	apiTokens, err := LoadAPITokens(config.TokensFile)

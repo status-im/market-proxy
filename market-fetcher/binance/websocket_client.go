@@ -66,7 +66,10 @@ func (c *SimpleWebSocketClient) Start(ctx context.Context) {
 	c.conn = conn
 
 	// Set read deadline
-	c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT))
+	if err := c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT)); err != nil {
+		c.onError(fmt.Errorf("failed to set read deadline: %v", err))
+		return
+	}
 
 	// Setup ping/pong handlers
 	c.setupPingPong()
@@ -95,7 +98,9 @@ func (c *SimpleWebSocketClient) setupPingPong() {
 	// Set ping handler to respond with pong containing the same data
 	c.conn.SetPingHandler(func(appData string) error {
 		// Reset read deadline
-		c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT))
+		if err := c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT)); err != nil {
+			return fmt.Errorf("failed to set read deadline in ping handler: %v", err)
+		}
 		// Respond with pong containing the same data
 		err := c.conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(10*time.Second))
 		if err != nil {
@@ -122,7 +127,10 @@ func (c *SimpleWebSocketClient) startMessageLoop(ctx context.Context) {
 				return
 			default:
 				// Read message with timeout
-				c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT))
+				if err := c.conn.SetReadDeadline(time.Now().Add(PONG_TIMEOUT)); err != nil {
+					c.onError(fmt.Errorf("failed to set read deadline in message loop: %v", err))
+					return
+				}
 				_, message, err := c.conn.ReadMessage()
 
 				if err != nil {

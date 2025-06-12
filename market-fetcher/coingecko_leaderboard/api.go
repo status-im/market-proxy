@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	cg "github.com/status-im/market-proxy/coingecko"
+	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 )
 
 // APIClient defines interface for API operations
@@ -33,12 +34,13 @@ func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko"
 
-	metricsHandler := cg.NewHttpRequestMetricsWriter("coingecko")
+	// Create metrics writer for this service
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceLBMarkets)
 
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
 	}
 }
 
@@ -87,7 +89,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 	// Try each key until one succeeds
 	for _, apiKey := range availableKeys {
 		// Get the appropriate base URL for this key type
-		baseURL := c.getApiBaseUrl(apiKey.Type)
+		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		// Create request builder for markets endpoint
 		requestBuilder := NewMarketRequestBuilder(baseURL)
@@ -137,26 +139,4 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 
 	// If we got here, all keys failed
 	return nil, nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
-}
-
-// getApiBaseUrl returns the appropriate API URL based on the key type
-func (c *CoinGeckoClient) getApiBaseUrl(keyType cg.KeyType) string {
-	// Use Pro URL only if we're using a Pro key
-	if keyType == cg.ProKey {
-		log.Printf("CoinGecko: Using Pro API URL based on key type")
-		if c.config.OverrideCoingeckoProURL != "" {
-			log.Printf("CoinGecko: Using overridden Pro API URL: %s", c.config.OverrideCoingeckoProURL)
-			return c.config.OverrideCoingeckoProURL
-		}
-		return cg.COINGECKO_PRO_URL
-	}
-
-	log.Printf("CoinGecko: Using Public API URL based on key type")
-	// if OverrideCoingeckoPublicURL is set, use that
-	if c.config.OverrideCoingeckoPublicURL != "" {
-		log.Printf("CoinGecko: Using overridden public API URL: %s", c.config.OverrideCoingeckoPublicURL)
-		return c.config.OverrideCoingeckoPublicURL
-	}
-	// Otherwise, use the default public URL
-	return cg.COINGECKO_PUBLIC_URL
 }

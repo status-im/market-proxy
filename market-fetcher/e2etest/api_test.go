@@ -2,7 +2,7 @@ package e2etest
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -24,7 +24,7 @@ func TestHealthEndpoint(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
 	// Check response format
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err, "Should be able to read response body")
 
 	var healthResponse map[string]interface{}
@@ -59,7 +59,7 @@ func TestLeaderboardMarketsEndpoint(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
 	// Check response format
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err, "Should be able to read response body")
 
 	var marketsResponse map[string]interface{}
@@ -101,7 +101,7 @@ func TestLeaderboardPricesEndpoint(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
 	// Check response format
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err, "Should be able to read response body")
 
 	var pricesResponse []map[string]interface{}
@@ -136,7 +136,7 @@ func TestCoinsListEndpoint(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
 	// Check response format
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err, "Should be able to read response body")
 
 	var coinsResponse []map[string]interface{}

@@ -93,7 +93,7 @@ type fetchParams struct {
 func (pf *PaginatedFetcher) prepareFetchParams() *fetchParams {
 	// Calculate total pages (will be 1 for small requests)
 	totalPages := (pf.totalLimit + pf.maxLimit - 1) / pf.maxLimit // Ceiling division
-	log.Printf("Fetcher: Fetching %d items in %d pages", pf.totalLimit, totalPages)
+	log.Printf("MarketsFetcher: Fetching %d items in %d pages", pf.totalLimit, totalPages)
 
 	return &fetchParams{
 		totalPages: totalPages,
@@ -109,7 +109,7 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, all
 	pageLimit := pf.calculatePageLimit(page, params)
 
 	// Log page fetch attempt
-	log.Printf("Fetcher: Fetching page %d/%d with limit %d", page, params.totalPages, pageLimit)
+	log.Printf("MarketsFetcher: Fetching page %d/%d with limit %d", page, params.totalPages, pageLimit)
 	pageStartTime := time.Now()
 
 	// Fetch the page
@@ -123,19 +123,19 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, all
 
 	// No items in response
 	if pageResponse == nil || len(pageResponse.Data) == 0 {
-		log.Printf("Fetcher: Got empty page %d, stopping pagination", page)
+		log.Printf("MarketsFetcher: Got empty page %d, stopping pagination", page)
 		return []CoinData{}, false, nil
 	}
 
 	// Track successful page
 	(*completedPages)++
 
-	log.Printf("Fetcher: Completed page %d/%d with %d items in %.2fs",
+	log.Printf("MarketsFetcher: Completed page %d/%d with %d items in %.2fs",
 		page, params.totalPages, len(pageResponse.Data), pageTime.Seconds())
 
 	// Check if we've reached our limit
 	if len(*allItems)+len(pageResponse.Data) >= pf.totalLimit {
-		log.Printf("Fetcher: Reached target limit of %d items", pf.totalLimit)
+		log.Printf("MarketsFetcher: Reached target limit of %d items", pf.totalLimit)
 		return pageResponse.Data, false, nil
 	}
 
@@ -153,11 +153,11 @@ func (pf *PaginatedFetcher) calculatePageLimit(page int, params *fetchParams) in
 
 // handlePageError handles errors during page processing
 func (pf *PaginatedFetcher) handlePageError(err error, allItems []CoinData) (*APIResponse, error) {
-	log.Printf("Fetcher: Error fetching page: %v", err)
+	log.Printf("MarketsFetcher: Error fetching page: %v", err)
 
 	// If we have some data already, return what we have
 	if len(allItems) > 0 {
-		log.Printf("Fetcher: Returning partial data (%d items)", len(allItems))
+		log.Printf("MarketsFetcher: Returning partial data (%d items)", len(allItems))
 		return &APIResponse{Data: allItems}, nil
 	}
 
@@ -170,10 +170,10 @@ func (pf *PaginatedFetcher) applyDelayIfNeeded(currentPage, totalPages int) {
 	// If there are more pages to fetch, wait before the next request
 	// Only wait if requestDelay > 0
 	if currentPage < totalPages && pf.requestDelay > 0 {
-		log.Printf("Fetcher: Waiting for %.2fs before fetching next page", pf.requestDelay.Seconds())
+		log.Printf("MarketsFetcher: Waiting for %.2fs before fetching next page", pf.requestDelay.Seconds())
 		time.Sleep(pf.requestDelay)
 	} else if currentPage < totalPages {
-		log.Printf("Fetcher: No delay configured, fetching next page immediately")
+		log.Printf("MarketsFetcher: No delay configured, fetching next page immediately")
 	}
 }
 
@@ -181,7 +181,7 @@ func (pf *PaginatedFetcher) applyDelayIfNeeded(currentPage, totalPages int) {
 func (pf *PaginatedFetcher) logSummary(startTime time.Time, items []CoinData, completedPages int) {
 	totalTime := time.Since(startTime)
 	itemsPerSecond := float64(len(items)) / totalTime.Seconds()
-	log.Printf("Fetcher: Fetched %d/%d items in %d pages (%.2f items/sec)",
+	log.Printf("MarketsFetcher: Fetched %d/%d items in %d pages (%.2f items/sec)",
 		len(items), pf.totalLimit, completedPages, itemsPerSecond)
 }
 

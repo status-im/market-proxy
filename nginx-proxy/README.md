@@ -28,9 +28,10 @@ graph TD
 The nginx market proxy handles requests through the following process:
 
 1. Receives HTTP GET requests for market data:
-   - `/api/v1/leaderboard/markets` - returns token market data from CoinGecko
-   - `/api/v1/leaderboard/prices` - returns price data from Binance
-   - `/api/v1/coins/list` - returns a list of tokens with their supported blockchain platforms
+   - `/v1/simple/price` - CoinGecko-compatible simple price endpoint
+   - `/v1/leaderboard/markets` - returns token market data from CoinGecko
+   - `/v1/leaderboard/prices` - returns price data from Binance
+   - `/v1/coins/list` - returns a list of tokens with their supported blockchain platforms
    - `/health` - returns service health status
 2. Validates the request format
 3. Checks if the requested data is available in the cache
@@ -49,6 +50,7 @@ see response format in [../market-fetcher/README.md](../market-fetcher/README.md
 
 Requests must be in one of the following formats:
 ```
+GET /v1/simple/price?ids={coin_ids}&vs_currencies={currencies}
 GET /v1/leaderboard/markets
 GET /v1/leaderboard/prices
 GET /v1/coins/list
@@ -56,13 +58,16 @@ GET /v1/coins/list
 
 Examples:
 ```bash
+# Get simple price data (CoinGecko-compatible)
+curl -X GET "http://localhost:8080/v1/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,eur"
+
 # Get market data
 curl -X GET http://localhost:8080/v1/leaderboard/markets
 
 # Get price data
 curl -X GET http://localhost:8080/v1/leaderboard/prices
 
-# Get tokens by platform
+# Get tokens by platform (CoinGecko-compatible)
 curl -X GET http://localhost:8080/v1/coins/list
 ```
 

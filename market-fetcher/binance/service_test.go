@@ -7,58 +7,8 @@ import (
 
 	"github.com/status-im/market-proxy/config"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 )
-
-// mockWebSocketConn implements a mock WebSocket connection for testing
-type mockWebSocketConn struct {
-	readChan  chan []byte
-	writeChan chan []byte
-	closeChan chan struct{}
-}
-
-func newMockWebSocketConn() *mockWebSocketConn {
-	return &mockWebSocketConn{
-		readChan:  make(chan []byte, 100),
-		writeChan: make(chan []byte, 100),
-		closeChan: make(chan struct{}),
-	}
-}
-
-func (m *mockWebSocketConn) ReadMessage() (messageType int, p []byte, err error) {
-	select {
-	case msg := <-m.readChan:
-		return websocket.TextMessage, msg, nil
-	case <-m.closeChan:
-		return 0, nil, websocket.ErrCloseSent
-	}
-}
-
-func (m *mockWebSocketConn) WriteMessage(messageType int, data []byte) error {
-	select {
-	case m.writeChan <- data:
-		return nil
-	case <-m.closeChan:
-		return websocket.ErrCloseSent
-	}
-}
-
-func (m *mockWebSocketConn) WriteControl(messageType int, data []byte, deadline time.Time) error {
-	return nil
-}
-
-func (m *mockWebSocketConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (m *mockWebSocketConn) SetPingHandler(h func(string) error) {
-}
-
-func (m *mockWebSocketConn) Close() error {
-	close(m.closeChan)
-	return nil
-}
 
 func TestService_SetWatchList(t *testing.T) {
 	cfg := &config.Config{}

@@ -1,4 +1,4 @@
-package tokens
+package coingecko_tokens
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/status-im/market-proxy/coingecko"
+	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
@@ -16,9 +16,10 @@ import (
 
 // Service represents the tokens service that periodically fetches and filters token data
 type Service struct {
-	config *config.Config
-	client *Client
-	cache  struct {
+	config        *config.Config
+	client        *Client
+	metricsWriter *metrics.MetricsWriter
+	cache         struct {
 		sync.RWMutex
 		tokens []Token
 	}
@@ -28,24 +29,25 @@ type Service struct {
 
 // NewService creates a new tokens service
 func NewService(config *config.Config) *Service {
-	baseURL := config.OverrideCoingeckoPublicURL
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceCoins)
 
+	baseURL := config.OverrideCoingeckoPublicURL
 	if baseURL == "" {
-		baseURL = coingecko.COINGECKO_PUBLIC_URL
+		baseURL = coingecko_common.COINGECKO_PUBLIC_URL
 	}
 
-	client := NewClient(baseURL)
+	client := NewClient(baseURL, metricsWriter)
 
 	return &Service{
-		config: config,
-		client: client,
+		config:        config,
+		client:        client,
+		metricsWriter: metricsWriter,
 	}
 }
 
 // Start starts the tokens service
 func (s *Service) Start(ctx context.Context) error {
-	// Start periodic updates
-	updateInterval := time.Duration(s.config.TokensFetcher.UpdateIntervalMs) * time.Millisecond
+	updateInterval := s.config.TokensFetcher.UpdateInterval
 
 	// Create and start the scheduler
 	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
@@ -56,7 +58,6 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	})
 
-	// The scheduler will execute the task immediately on start
 	s.scheduler.Start(ctx, true)
 
 	return nil
@@ -71,6 +72,10 @@ func (s *Service) Stop() {
 
 // fetchAndUpdate fetches data from CoinGecko and updates the cache
 func (s *Service) fetchAndUpdate() error {
+	// Reset request cycle counters
+	s.metricsWriter.ResetCycleMetrics()
+
+	// Record start time for metrics
 	startTime := time.Now()
 
 	tokens, err := s.client.FetchTokens()
@@ -88,10 +93,12 @@ func (s *Service) fetchAndUpdate() error {
 	// Count tokens per platform
 	tokensByPlatform := CountTokensByPlatform(filteredTokens)
 
-	// Record metrics
-	metrics.RecordTokensCacheSize("tokens-service", len(filteredTokens))
+	// Record per-service metrics using MetricsWriter
+	s.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
+	s.metricsWriter.RecordCacheSize(len(filteredTokens))
+
+	// Record tokens by platform
 	metrics.RecordTokensByPlatform(tokensByPlatform)
-	metrics.RecordFetchMarketDataCycle("tokens-service", startTime)
 
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
 	return nil

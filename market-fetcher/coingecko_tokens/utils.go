@@ -1,4 +1,4 @@
-package tokens
+package coingecko_tokens
 
 // FilterTokensByPlatform filters tokens to keep only the supported platforms
 // It returns a new slice of tokens with only the supported platforms in each token's platforms map

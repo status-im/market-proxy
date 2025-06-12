@@ -3,36 +3,8 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
-
-func createTestConfig(t *testing.T) string {
-	content := `
-tokens_file: "test_tokens.json"
-coingecko_leaderboard:
-  update_interval_ms: 60000
-  limit: 100
-  request_delay_ms: 1000
-coingecko_coinslist:
-  update_interval_ms: 1800000
-  supported_platforms:
-    - ethereum
-    - optimistic-ethereum
-    - arbitrum-one
-`
-	tmpfile, err := os.CreateTemp("", "config-*.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := tmpfile.Write([]byte(content)); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpfile.Name()
-}
 
 func createTestTokens(t *testing.T) string {
 	tokens := `{
@@ -68,11 +40,11 @@ func TestLoadConfig(t *testing.T) {
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
   limit: 100
-  request_delay_ms: 1000
+  request_delay: 1s
 coingecko_coinslist:
-  update_interval_ms: 1800000
+  update_interval: 30m
   supported_platforms:
     - ethereum
     - polygon-pos
@@ -82,17 +54,17 @@ coingecko_coinslist:
 				if cfg.TokensFile != "test_tokens.json" {
 					t.Errorf("TokensFile = %v, want test_tokens.json", cfg.TokensFile)
 				}
-				if cfg.CoingeckoLeaderboard.UpdateIntervalMs != 60000 {
-					t.Errorf("UpdateIntervalMs = %v, want 60000", cfg.CoingeckoLeaderboard.UpdateIntervalMs)
+				if cfg.CoingeckoLeaderboard.UpdateInterval != time.Minute {
+					t.Errorf("UpdateInterval = %v, want 1m", cfg.CoingeckoLeaderboard.UpdateInterval)
 				}
-				if cfg.CoingeckoLeaderboard.RequestDelayMs != 1000 {
-					t.Errorf("RequestDelayMs = %v, want 1000", cfg.CoingeckoLeaderboard.RequestDelayMs)
+				if cfg.CoingeckoLeaderboard.RequestDelay != time.Second {
+					t.Errorf("RequestDelay = %v, want 1s", cfg.CoingeckoLeaderboard.RequestDelay)
 				}
 				if cfg.CoingeckoLeaderboard.Limit != 100 {
 					t.Errorf("Limit = %v, want 100", cfg.CoingeckoLeaderboard.Limit)
 				}
-				if cfg.TokensFetcher.UpdateIntervalMs != 1800000 {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
+				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
+					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 2 {
 					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
@@ -114,7 +86,7 @@ coingecko_coinslist:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: invalid
+  update_interval: invalid
   limit: 100
 `,
 			wantErr: true,
@@ -124,7 +96,7 @@ coingecko_leaderboard:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -138,14 +110,14 @@ coingecko_leaderboard:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
   limit: 100
-  request_delay_ms: 0
+  request_delay: 0s
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoingeckoLeaderboard.RequestDelayMs != 0 {
-					t.Errorf("RequestDelayMs = %v, want 0", cfg.CoingeckoLeaderboard.RequestDelayMs)
+				if cfg.CoingeckoLeaderboard.RequestDelay != 0 {
+					t.Errorf("RequestDelay = %v, want 0s", cfg.CoingeckoLeaderboard.RequestDelay)
 				}
 			},
 		},
@@ -154,10 +126,10 @@ coingecko_leaderboard:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
   limit: 100
 coingecko_coinslist:
-  update_interval_ms: 1800000
+  update_interval: 30m
   supported_platforms:
     - ethereum
     - optimistic-ethereum
@@ -166,8 +138,8 @@ coingecko_coinslist:
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.TokensFetcher.UpdateIntervalMs != 1800000 {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateIntervalMs = %v, want 1800000", cfg.TokensFetcher.UpdateIntervalMs)
+				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
+					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				expectedPlatforms := []string{"ethereum", "optimistic-ethereum", "arbitrum-one", "base"}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != len(expectedPlatforms) {
@@ -187,10 +159,10 @@ coingecko_coinslist:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
   limit: 100
 coingecko_coinslist:
-  update_interval_ms: 1800000
+  update_interval: 30m
   supported_platforms: []
 `,
 			wantErr: false,
@@ -315,11 +287,11 @@ func TestLoadConfigWithRealFiles(t *testing.T) {
 	content := `
 tokens_file: "` + tokensFile + `"
 coingecko_leaderboard:
-  update_interval_ms: 60000
+  update_interval: 1m
   limit: 100
-  request_delay_ms: 1000
+  request_delay: 1s
 coingecko_coinslist:
-  update_interval_ms: 1800000
+  update_interval: 30m
   supported_platforms:
     - ethereum
     - optimistic-ethereum

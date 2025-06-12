@@ -1,12 +1,30 @@
 tokens_file: "coingecko_api_tokens.json"
 
+# Cache configuration
+cache:
+  go_cache:
+    default_expiration: 5m    # 5 minutes
+    cleanup_interval: 10m     # 10 minutes
+
 coingecko_leaderboard:
-  update_interval_ms: 600000  # milliseconds (10 minutes)
+  update_interval: 30m        # 10 minutes
   limit: 5000
-  request_delay_ms: 0 # milliseconds (0 = no delay, negative = use default)
+  request_delay: 1s           # 0 = no delay
+  prices_update_interval: 30s # 30 seconds interval for price updates
+  top_tokens_limit: 500       # maximum number of top tokens to track prices
+
+coingecko_prices:
+  chunk_size: 500             # number of tokens to fetch in one request
+  request_delay: 1s           # 2 seconds delay between requests
+  ttl: 30s                    # time to live for cached price data (30 seconds)
+  currencies:                 # default currencies to fetch
+    - usd
+    - eur
+    - btc
+    - eth
 
 coingecko_coinslist:
-  update_interval_ms: 1800000  # milliseconds (30 minutes)
+  update_interval: 30m        # 30 minutes
   supported_platforms:
     - ethereum
     - optimistic-ethereum  # Optimism
