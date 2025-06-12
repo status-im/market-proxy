@@ -21,7 +21,9 @@ func TestSimpleWebSocketClient_Start_Stop(t *testing.T) {
 			if err != nil {
 				return
 			}
-			conn.WriteMessage(websocket.TextMessage, message)
+			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
 		}
 	})
 	defer server.Close()
@@ -77,7 +79,9 @@ func TestSimpleWebSocketClient_MessageHandling(t *testing.T) {
 	// Create a test server that sends one message and then waits
 	server, wsURL := createTestServer(t, func(conn *websocket.Conn) {
 		// Send a test message
-		conn.WriteMessage(websocket.TextMessage, testMessage)
+		if err := conn.WriteMessage(websocket.TextMessage, testMessage); err != nil {
+			return
+		}
 
 		// Wait for test to finish
 		<-time.After(500 * time.Millisecond)
@@ -159,7 +163,9 @@ func TestSimpleWebSocketClient_Stop_WaitsForLoop(t *testing.T) {
 	// Create a test server with controlled message flow
 	server, wsURL := createTestServer(t, func(conn *websocket.Conn) {
 		// Send a single message and wait
-		conn.WriteMessage(websocket.TextMessage, []byte("test message"))
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("test message")); err != nil {
+			return
+		}
 
 		// Wait for test to signal completion
 		select {

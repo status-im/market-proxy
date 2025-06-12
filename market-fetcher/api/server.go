@@ -247,7 +247,10 @@ func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("ETag", "\""+etag+"\"")
 
 	// Write the response
-	w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		log.Printf("Error writing response: %v", err)
+		return
+	}
 }
 
 // Stop gracefully shuts down the server

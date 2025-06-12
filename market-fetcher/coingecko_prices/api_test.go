@@ -48,7 +48,11 @@ func TestCoinGeckoClient_FetchPrices_Success(t *testing.T) {
 				"eur": 2700.0,
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -127,7 +131,10 @@ func TestCoinGeckoClient_FetchPrices_Error(t *testing.T) {
 func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 	// Create test server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("invalid json"))
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("invalid json")); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -169,7 +176,11 @@ func TestCoinGeckoClient_FetchPrices_ProKey(t *testing.T) {
 				"usd": 50000.0,
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -225,7 +236,11 @@ func TestCoinGeckoClient_FetchPrices_WithMetadata(t *testing.T) {
 				"last_updated_at": 1640995200,
 			},
 		}
-		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}))
 	defer server.Close()
 

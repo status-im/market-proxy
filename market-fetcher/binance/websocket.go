@@ -77,7 +77,11 @@ func (wsc *WebSocketClient) reconnect(ctx context.Context) error {
 		// Error handler - handles reconnection
 		func(err error) {
 			log.Printf("WebSocket error: %v", err)
-			go wsc.reconnect(ctx)
+			go func() {
+				if reconnectErr := wsc.reconnect(ctx); reconnectErr != nil {
+					log.Printf("Failed to reconnect: %v", reconnectErr)
+				}
+			}()
 		},
 	)
 

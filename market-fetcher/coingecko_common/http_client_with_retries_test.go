@@ -56,7 +56,9 @@ func TestHTTPClientWithRetries_Timeouts(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -126,13 +128,17 @@ func TestHTTPClientWithRetries_Retries(t *testing.T) {
 		// Fail the first two attempts
 		if attempts <= 2 {
 			w.WriteHeader(http.StatusServiceUnavailable) // 503 Service Unavailable
-			w.Write([]byte(`{"error":"service unavailable"}`))
+			if _, err := w.Write([]byte(`{"error":"service unavailable"}`)); err != nil {
+				return
+			}
 			return
 		}
 
 		// Succeed on the third attempt
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -191,7 +197,9 @@ func TestHTTPClientWithRetries_MaxRetriesExceeded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
 		w.WriteHeader(http.StatusServiceUnavailable) // 503 Service Unavailable
-		w.Write([]byte(`{"error":"service unavailable"}`))
+		if _, err := w.Write([]byte(`{"error":"service unavailable"}`)); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -236,7 +244,9 @@ func TestHTTPClientWithRetries_NonRetryableError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
 		w.WriteHeader(http.StatusBadRequest) // 400 Bad Request - non-retryable
-		w.Write([]byte(`{"error":"bad request"}`))
+		if _, err := w.Write([]byte(`{"error":"bad request"}`)); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -383,7 +393,9 @@ func TestHTTPClientWithRetries_NoHandler(t *testing.T) {
 	// Create a server that always succeeds
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+			return
+		}
 	}))
 	defer server.Close()
 
