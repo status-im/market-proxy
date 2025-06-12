@@ -36,12 +36,11 @@ func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 
 	// Create metrics writer for this service
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceLBMarkets)
-	metricsHandler := cg.NewHttpRequestMetricsWriter(metricsWriter)
 
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
 	}
 }
 

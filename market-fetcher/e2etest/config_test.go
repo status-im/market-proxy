@@ -2,7 +2,6 @@ package e2etest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -12,7 +11,7 @@ import (
 // createTestConfig creates a test configuration and returns the path to the file
 func createTestConfig(mockURL, mockWSURL string) (string, error) {
 	// Create a temporary directory for configuration
-	tempDir, err := ioutil.TempDir("", "market-proxy-test")
+	tempDir, err := os.MkdirTemp("", "market-proxy-test")
 	if err != nil {
 		return "", err
 	}
@@ -52,7 +51,7 @@ override_binance_wsurl: "%s"         # URL for Binance WebSocket
 }
 `
 
-	if err := ioutil.WriteFile(tokensFilePath, []byte(tokensContent), 0644); err != nil {
+	if err := os.WriteFile(tokensFilePath, []byte(tokensContent), 0644); err != nil {
 		os.RemoveAll(tempDir)
 		return "", err
 	}
@@ -62,7 +61,7 @@ override_binance_wsurl: "%s"         # URL for Binance WebSocket
 
 	// Create configuration file
 	configPath := filepath.Join(tempDir, "config.yaml")
-	if err := ioutil.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		os.RemoveAll(tempDir)
 		return "", err
 	}

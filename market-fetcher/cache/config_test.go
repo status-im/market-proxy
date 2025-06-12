@@ -12,7 +12,6 @@ func TestDefaultConfig(t *testing.T) {
 	config := DefaultCacheConfig()
 
 	// Test go-cache defaults
-	assert.True(t, config.GoCache.Enabled)
 	assert.Equal(t, 5*time.Minute, config.GoCache.DefaultExpiration)
 	assert.Equal(t, 10*time.Minute, config.GoCache.CleanupInterval)
 }
@@ -30,7 +29,6 @@ func TestConfig_YAMLSerialization(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Compare
-	assert.Equal(t, config.GoCache.Enabled, unmarshaledConfig.GoCache.Enabled)
 	assert.Equal(t, config.GoCache.DefaultExpiration, unmarshaledConfig.GoCache.DefaultExpiration)
 	assert.Equal(t, config.GoCache.CleanupInterval, unmarshaledConfig.GoCache.CleanupInterval)
 }
@@ -38,7 +36,6 @@ func TestConfig_YAMLSerialization(t *testing.T) {
 func TestConfig_YAMLDeserialization(t *testing.T) {
 	yamlData := `
 go_cache:
-  enabled: false
   default_expiration: 15m
   cleanup_interval: 30m
 `
@@ -48,7 +45,6 @@ go_cache:
 	assert.NoError(t, err)
 
 	// Verify go-cache config
-	assert.False(t, config.GoCache.Enabled)
 	assert.Equal(t, 15*time.Minute, config.GoCache.DefaultExpiration)
 	assert.Equal(t, 30*time.Minute, config.GoCache.CleanupInterval)
 }

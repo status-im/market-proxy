@@ -1,11 +1,12 @@
 package config
 
 import (
-	"io/ioutil"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/status-im/market-proxy/cache"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -21,10 +22,10 @@ type Config struct {
 	OverrideBinanceWSURL       string `yaml:"override_binance_wsurl"`
 }
 
-func LoadConfig(path string) (*Config, error) {
-	data, err := ioutil.ReadFile(path)
+func LoadConfig(filename string) (*Config, error) {
+	data, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
 	var config Config

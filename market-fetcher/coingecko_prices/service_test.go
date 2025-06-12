@@ -301,7 +301,6 @@ func TestService_TTLCaching(t *testing.T) {
 		GoCache: cache.GoCacheConfig{
 			DefaultExpiration: 1 * time.Second, // Short default expiration
 			CleanupInterval:   500 * time.Millisecond,
-			Enabled:           true,
 		},
 	}
 	cacheService := cache.NewService(cacheConfig)
@@ -374,7 +373,6 @@ func TestService_TTLCachingWithDifferentKeys(t *testing.T) {
 		GoCache: cache.GoCacheConfig{
 			DefaultExpiration: 1 * time.Second,
 			CleanupInterval:   500 * time.Millisecond,
-			Enabled:           true,
 		},
 	}
 	cacheService := cache.NewService(cacheConfig)

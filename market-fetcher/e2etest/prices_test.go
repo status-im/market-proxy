@@ -2,7 +2,7 @@ package e2etest
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -25,7 +25,7 @@ func TestSimplePriceEndpoint(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
 		// Check response format
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}
@@ -46,7 +46,7 @@ func TestSimplePriceEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}
@@ -63,7 +63,7 @@ func TestSimplePriceEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}
@@ -118,7 +118,7 @@ func TestSimplePriceEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK")
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}
@@ -136,7 +136,7 @@ func TestSimplePriceEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK even for non-existent tokens")
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}
@@ -176,7 +176,7 @@ func TestSimplePriceEndpointPerformance(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK for large requests")
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err, "Should be able to read response body")
 
 		var priceResponse map[string]interface{}

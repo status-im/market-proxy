@@ -39,11 +39,6 @@ func TestService_Basic(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, data, 2)
 	assert.Equal(t, 0, loaderCallCount) // Loader should not be called
-
-	// Verify cache stats
-	stats := service.Stats()
-	assert.Equal(t, 2, stats.GoCacheItems)
-	assert.True(t, stats.Enabled)
 }
 
 func TestService_PartialCacheHit(t *testing.T) {
@@ -74,8 +69,7 @@ func TestService_PartialCacheHit(t *testing.T) {
 	assert.Equal(t, []byte("loaded_missing_key2"), data["missing_key2"])
 
 	// Verify cache now contains all data
-	stats := service.Stats()
-	assert.Equal(t, 3, stats.GoCacheItems)
+	assert.Equal(t, 3, service.goCache.ItemCount())
 }
 
 func TestService_LoadOnlyMissingKeys(t *testing.T) {
@@ -169,43 +163,15 @@ func TestService_ClearAndDelete(t *testing.T) {
 	}
 	service.goCache.Set(testData, 0)
 
-	assert.Equal(t, 3, service.Stats().GoCacheItems)
+	assert.Equal(t, 3, service.goCache.ItemCount())
 
 	// Test Delete
 	service.Delete([]string{"key1", "key3"})
-	assert.Equal(t, 1, service.Stats().GoCacheItems)
+	assert.Equal(t, 1, service.goCache.ItemCount())
 
 	// Test Clear
 	service.Clear()
-	assert.Equal(t, 0, service.Stats().GoCacheItems)
-}
-
-func TestService_DisabledCache(t *testing.T) {
-	config := Config{
-		GoCache: GoCacheConfig{
-			Enabled:           false,
-			DefaultExpiration: 5 * time.Minute,
-			CleanupInterval:   10 * time.Minute,
-		},
-	}
-	service := NewService(config)
-
-	// Even with disabled cache, service should work
-	loader := func(missingKeys []string) (map[string][]byte, error) {
-		result := make(map[string][]byte)
-		for _, key := range missingKeys {
-			result[key] = []byte("loaded_" + key)
-		}
-		return result, nil
-	}
-
-	data, err := service.GetOrLoad([]string{"key1"}, loader, true, 5*time.Minute)
-	assert.NoError(t, err)
-	assert.Len(t, data, 1)
-	assert.Equal(t, []byte("loaded_key1"), data["key1"])
-
-	stats := service.Stats()
-	assert.False(t, stats.Enabled)
+	assert.Equal(t, 0, service.goCache.ItemCount())
 }
 
 func TestService_Implementation(t *testing.T) {

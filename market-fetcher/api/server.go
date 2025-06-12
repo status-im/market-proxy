@@ -58,14 +58,27 @@ func (s *Server) Start(ctx context.Context) error {
 	log.Printf("Server starting at http://localhost:%s", s.port)
 	log.Println("Prometheus metrics available at /metrics endpoint")
 
-	// Start the server in a goroutine
+	// Create error channel for server
+	errChan := make(chan error, 1)
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("Server error: %v", err)
+			errChan <- err
 		}
 	}()
 
-	return nil
+	// Wait for either context cancellation or server error
+	select {
+	case <-ctx.Done():
+		log.Println("Context cancelled, shutting down server...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }
 
 func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request) {
@@ -88,11 +101,8 @@ func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request)
 	s.sendJSONResponse(w, quotes)
 }
 func (s *Server) handleLeaderboardSimplePrices(w http.ResponseWriter, r *http.Request) {
-	// Parse currency parameter, default to "usd"
+	// Parse currency parameter
 	currency := r.URL.Query().Get("currency")
-	if currency == "" {
-		currency = "usd"
-	}
 
 	prices := s.cgService.GetTopPricesQuotes(currency)
 	s.sendJSONResponse(w, prices)

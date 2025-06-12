@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/metrics"
@@ -15,8 +14,6 @@ const (
 	DefaultCoinGeckoBaseURL = "https://api.coingecko.com"
 	// Endpoint for coin list with platforms
 	CoinsListEndpoint = "/api/v3/coins/list?include_platform=true"
-	// Timeout for HTTP requests
-	requestTimeout = 30 * time.Second
 )
 
 // Client handles HTTP communication with the CoinGecko API
@@ -35,12 +32,9 @@ func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko-Tokens"
 
-	// Create metrics handler
-	metricsHandler := cg.NewHttpRequestMetricsWriter(metricsWriter)
-
 	return &Client{
 		baseURL:    baseURL,
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
 	}
 }
 

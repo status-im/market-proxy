@@ -21,6 +21,7 @@ const (
 
 var (
 	// TokensByPlatformGauge tracks the number of tokens per platform
+	// Cardinality: ~15 (number of supported blockchain platforms)
 	TokensByPlatformGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "tokens_by_platform",
@@ -30,6 +31,7 @@ var (
 	)
 
 	// Global Coingecko request counter (all services)
+	// Cardinality: ~5 (success, error, rate_limited, timeout, etc.)
 	CoingeckoRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "coingecko_requests_total",
@@ -39,6 +41,7 @@ var (
 	)
 
 	// Service-specific Coingecko request counter
+	// Cardinality: ~20 (4 services × 5 statuses)
 	ServiceCoingeckoRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "service_coingecko_requests_total",
@@ -48,6 +51,7 @@ var (
 	)
 
 	// Data fetch cycle duration per service
+	// Cardinality: ~4 (number of services)
 	DataFetchCycleDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: MetricsPrefix + "data_fetch_cycle_duration_seconds",
@@ -57,6 +61,7 @@ var (
 	)
 
 	// Requests per cycle gauge (resets each cycle)
+	// Cardinality: ~4 (number of services)
 	RequestsPerCycleGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "requests_per_cycle",
@@ -66,6 +71,7 @@ var (
 	)
 
 	// Request status counts per cycle
+	// Cardinality: ~20 (4 services × 5 statuses)
 	CycleRequestStatusGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "cycle_request_status_count",
@@ -75,6 +81,7 @@ var (
 	)
 
 	// Service cache size
+	// Cardinality: ~4 (number of services)
 	ServiceCacheSizeGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "service_cache_size",
@@ -84,6 +91,7 @@ var (
 	)
 
 	// Request latency per endpoint
+	// Cardinality: ~20 (4 services × 5 endpoints per service)
 	RequestLatencyHistogram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: MetricsPrefix + "request_latency_seconds",
@@ -93,6 +101,7 @@ var (
 	)
 
 	// Retry attempts counter
+	// Cardinality: ~4 (number of services)
 	ServiceRetryCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "service_retry_attempts_total",
@@ -102,6 +111,7 @@ var (
 	)
 
 	// Rate limit hits counter
+	// Cardinality: ~4 (number of services)
 	RateLimitCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "rate_limit_hits_total",
@@ -140,14 +150,9 @@ func (mw *MetricsWriter) GetServiceName() string {
 	return mw.serviceName
 }
 
-// RecordCoingeckoRequestTotal records a global Coingecko API request
-func (mw *MetricsWriter) RecordCoingeckoRequestTotal(status string) {
-	CoingeckoRequestsTotal.WithLabelValues(status).Inc()
-	log.Printf("Metrics: Global Coingecko request recorded with status %s", status)
-}
-
 // RecordServiceCoingeckoRequest records a service-specific Coingecko API request
 func (mw *MetricsWriter) RecordServiceCoingeckoRequest(status string) {
+	CoingeckoRequestsTotal.WithLabelValues(status).Inc()
 	ServiceCoingeckoRequestsTotal.WithLabelValues(mw.serviceName, status).Inc()
 	log.Printf("Metrics: %s Coingecko request recorded with status %s", mw.serviceName, status)
 }
@@ -186,7 +191,6 @@ func (mw *MetricsWriter) ResetCycleMetrics() {
 // Implement HttpStatusHandler interface for MetricsWriter
 // OnRequest records an HTTP request with its status
 func (mw *MetricsWriter) OnRequest(status string) {
-	mw.RecordCoingeckoRequestTotal(status)
 	mw.RecordServiceCoingeckoRequest(status)
 }
 

@@ -83,7 +83,6 @@ func (u *MarketsUpdater) GetTopTokenIDs() []string {
 
 // Start starts the markets updater with periodic updates
 func (u *MarketsUpdater) Start(ctx context.Context) error {
-	// Use update interval directly as it's already a time.Duration
 	updateInterval := u.config.CoingeckoLeaderboard.UpdateInterval
 
 	// Create scheduler for periodic updates

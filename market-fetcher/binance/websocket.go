@@ -16,11 +16,10 @@ const (
 
 // WebSocketClient manages WebSocket connection to Binance
 type WebSocketClient struct {
-	onMessage  func(message []byte) error
-	wsURL      string
-	mu         sync.Mutex
-	started    atomic.Bool
-	cancelFunc context.CancelFunc
+	onMessage func(message []byte) error
+	wsURL     string
+	mu        sync.Mutex
+	started   atomic.Bool
 
 	// The underlying simple WebSocket client
 	client *SimpleWebSocketClient

@@ -46,8 +46,13 @@ func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 	})
 }
 
-// GetTopPricesQuotes returns cached prices quotes for top tokens in specified currency
+// GetTopPricesQuotes returns cached prices quotes for top tokens with default currency fallback
 func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
+	// Set default currency if not provided
+	if currency == "" {
+		currency = "usd"
+	}
+
 	return s.topPricesUpdater.GetTopPricesQuotes(currency)
 }
 

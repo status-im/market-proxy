@@ -23,13 +23,9 @@ type Service struct {
 
 // NewService creates a new price service with the given cache and config
 func NewService(cache cache.Cache, config *config.Config) *Service {
-	// Create metrics writer
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
-
-	// Create API client
 	apiClient := NewCoinGeckoClient(config, metricsWriter)
 
-	// Get configuration values or use defaults
 	chunkSize := config.CoingeckoPrices.ChunkSize
 	if chunkSize <= 0 {
 		chunkSize = DEFAULT_CHUNK_SIZE
@@ -53,10 +49,8 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 
 // Start implements core.Interface
 func (s *Service) Start(ctx context.Context) error {
-	// Price service doesn't need startup logic for now
-	// Just validate that cache is available
 	if s.cache == nil {
-		return fmt.Errorf("price service: cache dependency not provided")
+		return fmt.Errorf("cache dependency not provided")
 	}
 	return nil
 }

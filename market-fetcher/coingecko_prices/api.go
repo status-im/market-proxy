@@ -33,14 +33,12 @@ type CoinGeckoClient struct {
 func NewCoinGeckoClient(cfg *config.Config, metricsWriter *metrics.MetricsWriter) *CoinGeckoClient {
 	// Create retry options with CoinGecko specific settings
 	retryOpts := cg.DefaultRetryOptions()
-	retryOpts.LogPrefix = "CoinGecko"
-
-	metricsHandler := cg.NewHttpRequestMetricsWriter(metricsWriter)
+	retryOpts.LogPrefix = "CoinGeckoPrices"
 
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsHandler),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
 	}
 }
 
@@ -81,8 +79,6 @@ func (c *CoinGeckoClient) FetchPrices(params cg.PriceParams) (map[string][]byte,
 	return result, nil
 }
 
-// executeFetchRequest is a private function that handles the actual request execution
-// and returns the raw HTTP response and body
 func (c *CoinGeckoClient) executeFetchRequest(params cg.PriceParams) (*http.Response, []byte, error) {
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()

@@ -6,35 +6,6 @@ import (
 	"time"
 )
 
-func createTestConfig(t *testing.T) string {
-	content := `
-tokens_file: "test_tokens.json"
-coingecko_leaderboard:
-  update_interval: 1m
-  limit: 100
-  request_delay: 1s
-coingecko_coinslist:
-  update_interval: 30m
-  supported_platforms:
-    - ethereum
-    - optimistic-ethereum
-    - arbitrum-one
-`
-	tmpfile, err := os.CreateTemp("", "config-*.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := tmpfile.Write([]byte(content)); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpfile.Name()
-}
-
 func createTestTokens(t *testing.T) string {
 	tokens := `{
 		"api_tokens": ["test-token-1", "test-token-2"]

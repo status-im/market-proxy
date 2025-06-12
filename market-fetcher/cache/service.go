@@ -14,15 +14,8 @@ type Service struct {
 
 // NewService creates a new cache service with the given configuration
 func NewService(config Config) *Service {
-	var goCache *GoCache
-
-	// Create go-cache (L1 cache)
-	if config.GoCache.Enabled {
-		goCache = NewGoCache(config.GoCache.DefaultExpiration, config.GoCache.CleanupInterval)
-	} else {
-		// Create a minimal cache even if disabled for consistency
-		goCache = NewGoCache(1*time.Minute, 2*time.Minute)
-	}
+	// Create go-cache with configuration values
+	goCache := NewGoCache(config.GoCache.DefaultExpiration, config.GoCache.CleanupInterval)
 
 	return &Service{
 		goCache: goCache,
@@ -122,20 +115,6 @@ func (s *Service) prepareFinalResult(originalKeys []string, cachedData map[strin
 		}
 	}
 	return result
-}
-
-// Stats returns statistics about the cache service
-func (s *Service) Stats() ServiceStats {
-	return ServiceStats{
-		GoCacheItems: s.goCache.ItemCount(),
-		Enabled:      s.config.GoCache.Enabled,
-	}
-}
-
-// ServiceStats represents cache service statistics
-type ServiceStats struct {
-	GoCacheItems int  // Number of items in go-cache
-	Enabled      bool // Whether go-cache is enabled
 }
 
 // Delete removes items from cache by keys

@@ -29,7 +29,6 @@ type Service struct {
 
 // NewService creates a new tokens service
 func NewService(config *config.Config) *Service {
-	// Create metrics writer
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceCoins)
 
 	baseURL := config.OverrideCoingeckoPublicURL
@@ -48,7 +47,6 @@ func NewService(config *config.Config) *Service {
 
 // Start starts the tokens service
 func (s *Service) Start(ctx context.Context) error {
-	// Start periodic updates - use update interval directly as it's already a time.Duration
 	updateInterval := s.config.TokensFetcher.UpdateInterval
 
 	// Create and start the scheduler
@@ -60,7 +58,6 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	})
 
-	// The scheduler will execute the task immediately on start
 	s.scheduler.Start(ctx, true)
 
 	return nil
@@ -96,10 +93,11 @@ func (s *Service) fetchAndUpdate() error {
 	// Count tokens per platform
 	tokensByPlatform := CountTokensByPlatform(filteredTokens)
 
-	// Record metrics using MetricsWriter
+	// Record per-service metrics using MetricsWriter
 	s.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 	s.metricsWriter.RecordCacheSize(len(filteredTokens))
-	// Record tokens by platform - this still uses the global metric as it's platform-specific
+
+	// Record tokens by platform
 	metrics.RecordTokensByPlatform(tokensByPlatform)
 
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))

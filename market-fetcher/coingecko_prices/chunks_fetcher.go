@@ -1,7 +1,6 @@
 package coingecko_prices
 
 import (
-	"fmt"
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"log"
 	"time"
@@ -114,43 +113,4 @@ func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 		len(params.IDs), numChunks, tokensPerSecond)
 
 	return result, nil
-}
-
-// fetchChunk fetches prices for a single chunk of token IDs
-func (cf *ChunksFetcher) fetchChunk(params cg.PriceParams) (map[string][]byte, error) {
-	return cf.apiClient.FetchPrices(params)
-}
-
-// handleChunkError handles errors during chunk processing
-func (cf *ChunksFetcher) handleChunkError(err error, allData map[string][]byte) (map[string][]byte, error) {
-	log.Printf("PriceFetcher: Error fetching chunk: %v", err)
-
-	// If we have some data already, return what we have
-	if len(allData) > 0 {
-		log.Printf("PriceFetcher: Returning partial data (%d tokens)", len(allData))
-		return allData, nil
-	}
-
-	// If no data at all, return the error
-	return nil, fmt.Errorf("failed to fetch prices: %v", err)
-}
-
-// applyDelayIfNeeded applies delay between chunk requests if configured
-func (cf *ChunksFetcher) applyDelayIfNeeded(currentChunk, totalChunks int) {
-	// If there are more chunks to fetch, wait before the next request
-	// Only wait if requestDelay > 0
-	if currentChunk < totalChunks && cf.requestDelay > 0 {
-		log.Printf("PriceFetcher: Waiting for %.2fs before fetching next chunk", cf.requestDelay.Seconds())
-		time.Sleep(cf.requestDelay)
-	} else if currentChunk < totalChunks {
-		log.Printf("PriceFetcher: No delay configured, fetching next chunk immediately")
-	}
-}
-
-// logSummary logs a summary of the fetch operation
-func (cf *ChunksFetcher) logSummary(startTime time.Time, data map[string][]byte, completedChunks int) {
-	totalTime := time.Since(startTime)
-	tokensPerSecond := float64(len(data)) / totalTime.Seconds()
-	log.Printf("PriceFetcher: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
-		len(data), completedChunks, tokensPerSecond)
 }

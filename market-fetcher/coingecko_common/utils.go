@@ -6,7 +6,7 @@ import (
 	"github.com/status-im/market-proxy/config"
 )
 
-// GetApiBaseUrl возвращает нужный API URL в зависимости от типа ключа и конфига
+// GetApiBaseUrl returns the appropriate API URL based on the key type and config
 func GetApiBaseUrl(cfg *config.Config, keyType KeyType) string {
 	if keyType == ProKey {
 		log.Printf("CoinGecko: Using Pro API URL based on key type")

@@ -1,10 +1,11 @@
 package coingecko_prices
 
 import (
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"math"
 	"strconv"
 	"strings"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 // stripResponse filters the cached response to only include user-requested currencies and fields
@@ -108,12 +109,4 @@ func roundToPrecision(value float64, precision int) float64 {
 
 	multiplier := math.Pow(10, float64(precision))
 	return math.Round(value*multiplier) / multiplier
-}
-
-// formatNumber formats a number according to precision (for display purposes if needed)
-func formatNumber(value float64, precision int) string {
-	if precision <= 0 {
-		return strconv.FormatFloat(value, 'f', -1, 64)
-	}
-	return strconv.FormatFloat(value, 'f', precision, 64)
 }

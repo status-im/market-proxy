@@ -3,7 +3,6 @@ tokens_file: "coingecko_api_tokens.json"
 # Cache configuration
 cache:
   go_cache:
-    enabled: true
     default_expiration: 5m    # 5 minutes
     cleanup_interval: 10m     # 10 minutes
 
