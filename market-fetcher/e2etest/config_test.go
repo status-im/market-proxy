@@ -32,6 +32,7 @@ coingecko_prices:
 
 coingecko_coinslist:
   update_interval: 1s       # shorter interval for tests
+  request_delay: 100ms      # short delay for tests
   supported_platforms: []   # array of supported blockchain platforms
 
 tokens_file: "%s"           # path to tokens file will be inserted

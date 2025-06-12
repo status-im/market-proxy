@@ -58,27 +58,14 @@ func (s *Server) Start(ctx context.Context) error {
 	log.Printf("Server starting at http://localhost:%s", s.port)
 	log.Println("Prometheus metrics available at /metrics endpoint")
 
-	// Create error channel for server
-	errChan := make(chan error, 1)
+	// Start the server in a goroutine
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errChan <- err
+			log.Printf("Server error: %v", err)
 		}
 	}()
 
-	// Wait for either context cancellation or server error
-	select {
-	case <-ctx.Done():
-		log.Println("Context cancelled, shutting down server...")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := s.server.Shutdown(shutdownCtx); err != nil {
-			return err
-		}
-		return nil
-	case err := <-errChan:
-		return err
-	}
+	return nil
 }
 
 func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request) {
