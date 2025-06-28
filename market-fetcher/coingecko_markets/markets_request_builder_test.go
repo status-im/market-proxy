@@ -1,4 +1,4 @@
-package coingecko_leaderboard
+package coingecko_markets
 
 import (
 	"net/url"
