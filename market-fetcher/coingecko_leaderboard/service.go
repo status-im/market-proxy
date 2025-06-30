@@ -17,9 +17,9 @@ type Service struct {
 }
 
 // NewService creates a new CoinGecko service
-func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher) *Service {
+func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher, marketsFetcher coingecko_common.MarketsFetcher) *Service {
 	// Create markets updater
-	marketsUpdater := NewMarketsUpdater(cfg)
+	marketsUpdater := NewMarketsUpdater(cfg, marketsFetcher)
 
 	// Create top prices updater
 	topPricesUpdater := NewTopPricesUpdater(cfg, priceFetcher)

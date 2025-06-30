@@ -11,7 +11,7 @@ import (
 func TestService_Healthy_Logic(t *testing.T) {
 	// Create a new service
 	cfg := &config.Config{}
-	svc := NewService(cfg, nil)
+	svc := NewService(cfg, nil, nil)
 
 	// Test case 1: Empty cache, client not healthy
 	// Just test the direct logic without using the Healthy method

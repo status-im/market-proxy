@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/coingecko_markets"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
@@ -27,16 +28,18 @@ type Server struct {
 	cgService      *coingecko.Service
 	tokensService  *coingecko_tokens.Service
 	pricesService  *coingecko_prices.Service
+	marketsService *coingecko_markets.Service
 	server         *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service) *Server {
 	return &Server{
 		port:           port,
 		binanceService: binanceService,
 		cgService:      cgService,
 		tokensService:  tokensService,
 		pricesService:  pricesService,
+		marketsService: marketsService,
 	}
 }
 
@@ -46,6 +49,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
+	mux.HandleFunc("/api/v1/coins/markets", s.handleCoinsMarkets)
 	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
@@ -117,16 +121,83 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 	s.sendJSONResponse(w, tokens)
 }
 
+// handleCoinsMarkets implements CoinGecko-compatible /api/v3/coins/markets endpoint
+func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
+	params := coingecko_common.MarketsParams{}
+
+	// Parse vs_currency (required in CoinGecko, but we'll default to USD)
+	currency := r.URL.Query().Get("vs_currency")
+	if currency != "" {
+		params.Currency = currency
+	}
+
+	// Parse order parameter
+	order := r.URL.Query().Get("order")
+	if order != "" {
+		params.Order = order
+	}
+
+	// Parse page parameter
+	if pageParam := r.URL.Query().Get("page"); pageParam != "" {
+		if page, err := strconv.Atoi(pageParam); err == nil && page > 0 {
+			params.Page = page
+		}
+	}
+
+	// Parse per_page parameter
+	if perPageParam := r.URL.Query().Get("per_page"); perPageParam != "" {
+		if perPage, err := strconv.Atoi(perPageParam); err == nil && perPage > 0 {
+			params.PerPage = perPage
+		}
+	}
+
+	// Parse ids parameter (optional)
+	if idsParam := r.URL.Query().Get("ids"); idsParam != "" {
+		params.IDs = strings.Split(idsParam, ",")
+	}
+
+	// Parse category parameter (optional)
+	if categoryParam := r.URL.Query().Get("category"); categoryParam != "" {
+		params.Category = categoryParam
+	}
+
+	// Parse sparkline parameter
+	if sparklineParam := r.URL.Query().Get("sparkline"); sparklineParam != "" {
+		if sparkline, err := strconv.ParseBool(sparklineParam); err == nil {
+			params.SparklineEnabled = sparkline
+		}
+	}
+
+	// Parse price_change_percentage parameter
+	if priceChangeParam := r.URL.Query().Get("price_change_percentage"); priceChangeParam != "" {
+		params.PriceChangePercentage = strings.Split(priceChangeParam, ",")
+	}
+
+	// Call markets service
+	data, err := s.marketsService.MarketsTyped(params)
+	if err != nil {
+		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if data == nil {
+		http.Error(w, "No data available", http.StatusServiceUnavailable)
+		return
+	}
+
+	s.sendJSONResponse(w, data)
+}
+
 // handleHealth responds with 200 OK to indicate the service is running
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if services are initialized
 	status := map[string]interface{}{
 		"status": "ok",
 		"services": map[string]string{
-			"binance":          "unknown",
-			"coingecko":        "unknown",
-			"tokens":           "unknown",
-			"coingecko_prices": "unknown",
+			"binance":           "unknown",
+			"coingecko":         "unknown",
+			"tokens":            "unknown",
+			"coingecko_prices":  "unknown",
+			"coingecko_markets": "unknown",
 		},
 	}
 
@@ -148,6 +219,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if CoinGecko Prices service is healthy
 	if s.pricesService.Healthy() {
 		status["services"].(map[string]string)["coingecko_prices"] = "up"
+	}
+
+	// Check if CoinGecko Markets service is healthy
+	if s.marketsService.Healthy() {
+		status["services"].(map[string]string)["coingecko_markets"] = "up"
 	}
 
 	s.sendJSONResponse(w, status)
