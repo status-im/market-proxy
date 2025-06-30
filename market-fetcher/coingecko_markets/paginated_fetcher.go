@@ -65,7 +65,7 @@ func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
 
 	// Fetch pages sequentially
 	for page := 1; page <= params.totalPages; page++ {
-		pageItems, shouldContinue, err := pf.processSinglePage(page, params, &allItems, &completedPages)
+		pageItems, shouldContinue, err := pf.processSinglePage(page, params, len(allItems), &completedPages)
 
 		// Handle any errors during page processing
 		if err != nil {
@@ -118,7 +118,7 @@ func (pf *PaginatedFetcher) prepareFetchParams() *fetchParams {
 
 // processSinglePage processes a single page of data
 // Returns: page items, should continue fetching flag, error
-func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, allItems *[][]byte, completedPages *int) ([][]byte, bool, error) {
+func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, currentItemsCount int, completedPages *int) ([][]byte, bool, error) {
 	// Calculate limit for this page
 	pageLimit := pf.calculatePageLimit(page, params)
 
@@ -148,7 +148,7 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, all
 		page, params.totalPages, len(pageResponse), pageTime.Seconds())
 
 	// Check if we've reached our limit
-	if len(*allItems)+len(pageResponse) >= pf.totalLimit {
+	if currentItemsCount+len(pageResponse) >= pf.totalLimit {
 		log.Printf("MarketsFetcher: Reached target limit of %d items", pf.totalLimit)
 		return pageResponse, false, nil
 	}

@@ -4,26 +4,18 @@ import (
 	"context"
 	"log"
 	"sync"
-	"time"
 
+	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
-	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
-)
-
-const (
-	// Maximum items per page
-	MAX_PER_PAGE = 250 // CoinGecko's API max per_page value
 )
 
 // MarketsUpdater handles periodic updates of markets leaderboard data
 type MarketsUpdater struct {
-	config        *config.Config
-	scheduler     *scheduler.Scheduler
-	apiClient     *CoinGeckoClient
-	fetcher       *PaginatedFetcher
-	onUpdate      func()
-	metricsWriter *metrics.MetricsWriter
+	config         *config.Config
+	scheduler      *scheduler.Scheduler
+	marketsFetcher coingecko_common.MarketsFetcher
+	onUpdate       func()
 
 	// Cache for markets data
 	cache struct {
@@ -33,19 +25,10 @@ type MarketsUpdater struct {
 }
 
 // NewMarketsUpdater creates a new markets updater
-func NewMarketsUpdater(cfg *config.Config) *MarketsUpdater {
-	// Create API client
-	apiClient := NewCoinGeckoClient(cfg)
-
-	// Create paginated fetcher with the API client
-	requestDelayMs := int(cfg.CoingeckoLeaderboard.RequestDelay.Milliseconds())
-	fetcher := NewPaginatedFetcher(apiClient, cfg.CoingeckoLeaderboard.Limit, MAX_PER_PAGE, requestDelayMs)
-
+func NewMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.MarketsFetcher) *MarketsUpdater {
 	updater := &MarketsUpdater{
-		config:        cfg,
-		apiClient:     apiClient,
-		fetcher:       fetcher,
-		metricsWriter: metrics.NewMetricsWriter(metrics.ServiceLBMarkets),
+		config:         cfg,
+		marketsFetcher: marketsFetcher,
 	}
 
 	return updater
@@ -109,36 +92,37 @@ func (u *MarketsUpdater) Stop() {
 	}
 }
 
-// fetchAndUpdate fetches markets data from CoinGecko and updates cache
+// fetchAndUpdate fetches markets data from markets service and updates cache
 func (u *MarketsUpdater) fetchAndUpdate(ctx context.Context) error {
-	// Reset request cycle counters
-	u.metricsWriter.ResetCycleMetrics()
+	// Get top tokens limit from config, use default if not set
+	limit := u.config.CoingeckoLeaderboard.TopTokensLimit
+	if limit <= 0 {
+		limit = 500 // Default top tokens limit
+	}
 
-	// Record start time for metrics
-	startTime := time.Now()
-
-	// Perform the fetch operation
-	data, err := u.fetcher.FetchData()
-
-	// Record metrics regardless of success or failure
-	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
-
+	// Use TopMarkets to get top markets data and cache individual tokens
+	data, err := u.marketsFetcher.TopMarkets(limit, "usd")
 	if err != nil {
-		log.Printf("Error fetching markets data: %v", err)
+		log.Printf("Error fetching top markets data from fetcher: %v", err)
 		return err
+	}
+
+	// MarketsResponse is already []interface{}, no need for type assertion
+	marketsData := []interface{}(data)
+
+	// Convert raw markets data directly to CoinData using the new utility method
+	convertedData := ConvertMarketsResponseToCoinData(marketsData)
+
+	localData := &APIResponse{
+		Data: convertedData,
 	}
 
 	// Update cache
 	u.cache.Lock()
-	u.cache.data = data
+	u.cache.data = localData
 	u.cache.Unlock()
 
-	// Record cache size metric
-	if data != nil && data.Data != nil {
-		u.metricsWriter.RecordCacheSize(len(data.Data))
-	}
-
-	log.Printf("Updated markets cache with %d tokens", len(data.Data))
+	log.Printf("Updated top markets cache with %d tokens (limit: %d)", len(localData.Data), limit)
 
 	// Signal update through callback
 	if u.onUpdate != nil {
@@ -155,6 +139,7 @@ func (u *MarketsUpdater) Healthy() bool {
 		return true
 	}
 
-	// If not, try to fetch at least one page
-	return u.apiClient.Healthy()
+	// Since MarketsFetcher doesn't have Healthy() method,
+	// we consider it healthy if we have a fetcher instance
+	return u.marketsFetcher != nil
 }

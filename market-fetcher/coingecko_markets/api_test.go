@@ -198,9 +198,13 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
 	}
 
-	// Verify the first item
-	if result[0].ID != "bitcoin" || result[0].Symbol != "btc" {
-		t.Errorf("Expected Bitcoin data, got %v", result[0])
+	// Verify the first item by parsing JSON
+	var firstItem CoinGeckoData
+	if err := json.Unmarshal(result[0], &firstItem); err != nil {
+		t.Fatalf("Failed to unmarshal first item: %v", err)
+	}
+	if firstItem.ID != "bitcoin" || firstItem.Symbol != "btc" {
+		t.Errorf("Expected Bitcoin data, got %v", firstItem)
 	}
 
 	// Check that the HTTP client was called once

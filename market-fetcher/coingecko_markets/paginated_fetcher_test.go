@@ -1,14 +1,16 @@
 package coingecko_markets
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
-// MockAPIClient is a mock implementation of the APIClient interface for testing
+// MockAPIClient for testing PaginatedFetcher
 type MockAPIClient struct {
 	// Define how many items to return per page
 	itemsPerPage [][]CoinGeckoData
@@ -20,50 +22,48 @@ type MockAPIClient struct {
 	isHealthy bool
 }
 
-// FetchPage implements the APIClient.FetchPage method for mocking
-func (m *MockAPIClient) FetchPage(params cg.MarketsParams) ([]CoinGeckoData, error) {
-	// Extract page and limit from params
-	page := params.Page
-	if page <= 0 {
-		page = 1
-	}
-
-	limit := params.PerPage
-	if limit <= 0 {
-		limit = 250
-	}
-
-	// Record this page request
-	m.requestedPages = append(m.requestedPages, page)
+// FetchPage implements APIClient interface for mock
+func (m *MockAPIClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
+	// Record the page request
+	m.requestedPages = append(m.requestedPages, params.Page)
 
 	// Check if this page should return an error
-	if err, exists := m.errorPages[page]; exists {
+	if err, exists := m.errorPages[params.Page]; exists {
 		return nil, err
 	}
 
+	// Calculate the page index (0-based)
+	pageIndex := params.Page - 1
+
 	// Check if we have data for this page
-	if page <= len(m.itemsPerPage) && page > 0 {
-		// Get predefined items for this page
-		items := m.itemsPerPage[page-1]
-
-		// Apply limit if needed
-		if limit < len(items) {
-			return items[:limit], nil
-		}
-
-		return items, nil
+	if pageIndex >= len(m.itemsPerPage) {
+		// Return empty page if we're beyond available data
+		return [][]byte{}, nil
 	}
 
-	// Return empty slice for pages beyond what we have defined
-	return []CoinGeckoData{}, nil
+	// Get the items for this page
+	pageItems := m.itemsPerPage[pageIndex]
+
+	// Convert CoinGeckoData to [][]byte
+	result := make([][]byte, 0, len(pageItems))
+	for _, item := range pageItems {
+		// Marshal each item to JSON bytes
+		jsonBytes, err := json.Marshal(item)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal mock data: %w", err)
+		}
+		result = append(result, jsonBytes)
+	}
+
+	return result, nil
 }
 
-// Healthy implements the APIClient.Healthy method for mocking
+// Healthy implements APIClient interface for mock
 func (m *MockAPIClient) Healthy() bool {
-	return m.isHealthy // Use the isHealthy field
+	return m.isHealthy
 }
 
-// TestPaginatedFetcher_SinglePage tests fetching a single page of data
+// TestPaginatedFetcher_SinglePage tests fetching data that fits in a single page
 func TestPaginatedFetcher_SinglePage(t *testing.T) {
 	// Create mock data
 	mockItems := []CoinGeckoData{
@@ -72,10 +72,11 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 		{ID: "ripple", Symbol: "xrp", Name: "Ripple"},
 	}
 
-	// Create mock API client with one page of data
+	// Create mock API client
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with total limit matching our mock data
@@ -95,8 +96,8 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 	}
 
 	// Check that we got the right number of items
-	if len(response.Data) != len(mockItems) {
-		t.Errorf("Expected %d items, got %d", len(mockItems), len(response.Data))
+	if len(response) != len(mockItems) {
+		t.Errorf("Expected %d items, got %d", len(mockItems), len(response))
 	}
 
 	// Check that we requested exactly one page
@@ -104,8 +105,12 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 		t.Errorf("Expected one page request for page 1, got: %v", mockClient.requestedPages)
 	}
 
-	// Check the actual items
-	for i, item := range response.Data {
+	// Check the actual items by parsing JSON
+	for i, itemBytes := range response {
+		var item CoinGeckoData
+		if err := json.Unmarshal(itemBytes, &item); err != nil {
+			t.Fatalf("Failed to unmarshal item %d: %v", i, err)
+		}
 		if item.ID != mockItems[i].ID {
 			t.Errorf("Expected item %d to be %s, got %s", i, mockItems[i].ID, item.ID)
 		}
@@ -133,6 +138,7 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with total limit requiring all pages, and minimal delay for tests
@@ -153,8 +159,8 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 	}
 
 	// Check that we got the right number of items
-	if len(response.Data) != totalItems {
-		t.Errorf("Expected %d items, got %d", totalItems, len(response.Data))
+	if len(response) != totalItems {
+		t.Errorf("Expected %d items, got %d", totalItems, len(response))
 	}
 
 	// Check that we requested all three pages
@@ -163,13 +169,21 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 	}
 
 	// Check the first item (should be from page 1)
-	if response.Data[0].ID != "bitcoin" {
-		t.Errorf("Expected first item to be bitcoin, got %s", response.Data[0].ID)
+	var firstItem CoinGeckoData
+	if err := json.Unmarshal(response[0], &firstItem); err != nil {
+		t.Fatalf("Failed to unmarshal first item: %v", err)
+	}
+	if firstItem.ID != "bitcoin" {
+		t.Errorf("Expected first item to be bitcoin, got %s", firstItem.ID)
 	}
 
 	// Check the last item (should be from page 3)
-	if response.Data[4].ID != "cardano" {
-		t.Errorf("Expected last item to be cardano, got %s", response.Data[4].ID)
+	var lastItem CoinGeckoData
+	if err := json.Unmarshal(response[4], &lastItem); err != nil {
+		t.Fatalf("Failed to unmarshal last item: %v", err)
+	}
+	if lastItem.ID != "cardano" {
+		t.Errorf("Expected last item to be cardano, got %s", lastItem.ID)
 	}
 }
 
@@ -192,6 +206,7 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with a limit less than the total available items
@@ -212,8 +227,8 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 	}
 
 	// Check that we got exactly the limit number of items
-	if len(response.Data) != limit {
-		t.Errorf("Expected %d items (limit), got %d", limit, len(response.Data))
+	if len(response) != limit {
+		t.Errorf("Expected %d items (limit), got %d", limit, len(response))
 	}
 
 	// Check that we requested both pages
@@ -222,11 +237,20 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 	}
 
 	// Check the first and last items to ensure they're correct
-	if response.Data[0].ID != "bitcoin" {
-		t.Errorf("Expected first item to be bitcoin, got %s", response.Data[0].ID)
+	var firstItem CoinGeckoData
+	if err := json.Unmarshal(response[0], &firstItem); err != nil {
+		t.Fatalf("Failed to unmarshal first item: %v", err)
 	}
-	if response.Data[3].ID != "litecoin" {
-		t.Errorf("Expected fourth item to be litecoin, got %s", response.Data[3].ID)
+	if firstItem.ID != "bitcoin" {
+		t.Errorf("Expected first item to be bitcoin, got %s", firstItem.ID)
+	}
+
+	var fourthItem CoinGeckoData
+	if err := json.Unmarshal(response[3], &fourthItem); err != nil {
+		t.Fatalf("Failed to unmarshal fourth item: %v", err)
+	}
+	if fourthItem.ID != "litecoin" {
+		t.Errorf("Expected fourth item to be litecoin, got %s", fourthItem.ID)
 	}
 }
 
@@ -236,6 +260,7 @@ func TestPaginatedFetcher_ErrorFirstPage(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   map[int]error{1: errors.New("API error on first page")},
+		isHealthy:    true,
 	}
 
 	// Create fetcher
@@ -271,6 +296,7 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items},
 		errorPages:   map[int]error{2: errors.New("API error on second page")},
+		isHealthy:    true,
 	}
 
 	// Create fetcher with total limit requiring multiple pages
@@ -279,22 +305,22 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 		Order:    "market_cap_desc",
 		PerPage:  2,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 5, 0, params)
+	fetcher := NewPaginatedFetcher(mockClient, 4, 0, params) // need 2 pages
 
-	// Call FetchData
+	// Call FetchData - should return partial data
 	response, err := fetcher.FetchData()
 
-	// Should not get an error since we got partial data
+	// Should not get an error - should return partial data
 	if err != nil {
-		t.Errorf("Expected no error with partial data, got: %v", err)
+		t.Fatalf("Expected no error (partial data), got: %v", err)
 	}
 
-	// Should get partial data (just from the first page)
-	if len(response.Data) != len(page1Items) {
-		t.Errorf("Expected %d items from first page, got %d", len(page1Items), len(response.Data))
+	// Should have the data from the first page
+	if len(response) != len(page1Items) {
+		t.Errorf("Expected %d items from first page, got %d", len(page1Items), len(response))
 	}
 
-	// Check that we requested both pages
+	// Should have tried both pages
 	if len(mockClient.requestedPages) != 2 {
 		t.Errorf("Expected two page requests, got: %v", mockClient.requestedPages)
 	}
@@ -306,6 +332,7 @@ func TestPaginatedFetcher_ZeroLimit(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with zero total limit
@@ -325,8 +352,8 @@ func TestPaginatedFetcher_ZeroLimit(t *testing.T) {
 	}
 
 	// Should get empty response
-	if len(response.Data) != 0 {
-		t.Errorf("Expected 0 items with zero limit, got %d", len(response.Data))
+	if len(response) != 0 {
+		t.Errorf("Expected 0 items with zero limit, got %d", len(response))
 	}
 
 	// Should not make any API requests
@@ -347,6 +374,7 @@ func TestPaginatedFetcher_LargeRequest(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with a large limit
@@ -367,8 +395,8 @@ func TestPaginatedFetcher_LargeRequest(t *testing.T) {
 	}
 
 	// Should get only the available items
-	if len(response.Data) != len(mockItems) {
-		t.Errorf("Expected %d available items, got %d", len(mockItems), len(response.Data))
+	if len(response) != len(mockItems) {
+		t.Errorf("Expected %d available items, got %d", len(mockItems), len(response))
 	}
 
 	// Should have requested two pages (the second returning empty)
@@ -399,6 +427,7 @@ func TestPaginatedFetcher_RequestDelay(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with a significant delay (100ms for test)
@@ -447,6 +476,7 @@ func TestPaginatedFetcher_ZeroDelay(t *testing.T) {
 	mockClient := &MockAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
+		isHealthy:    true,
 	}
 
 	// Create fetcher with zero delay
