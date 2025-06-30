@@ -28,10 +28,14 @@ type MarketsParams struct {
 }
 
 // MarketsResponse represents markets data response structure
-type MarketsResponse interface{}
+type MarketsResponse []interface{}
 
 // MarketsFetcher interface for fetching markets data
 type MarketsFetcher interface {
 	// Markets returns markets data for specified parameters
 	Markets(params MarketsParams) (MarketsResponse, error)
+
+	// TopMarkets fetches top markets data for specified number of tokens,
+	// caches individual tokens by their coingecko id and returns the response
+	TopMarkets(limit int, currency string) (MarketsResponse, error)
 }

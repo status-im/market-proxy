@@ -79,7 +79,9 @@ func (s *Service) loadAndCacheLocal(keysToLoad []string, loader LoaderFunc, ttl 
 
 	// Update local cache with loaded data
 	if len(loadedData) > 0 {
-		s.goCache.Set(loadedData, ttl)
+		if err := s.goCache.Set(loadedData, ttl); err != nil {
+			return nil, fmt.Errorf("failed to cache data: %w", err)
+		}
 	}
 
 	return loadedData, nil
@@ -129,4 +131,22 @@ func (s *Service) Clear() {
 	if s.goCache != nil {
 		s.goCache.Clear()
 	}
+}
+
+// Set stores data in cache with the specified TTL
+func (s *Service) Set(data map[string][]byte, ttl time.Duration) error {
+	if s.goCache == nil {
+		return fmt.Errorf("cache service not initialized")
+	}
+	return s.goCache.Set(data, ttl)
+}
+
+// Get retrieves data by keys from cache
+func (s *Service) Get(keys []string) (map[string][]byte, []string, error) {
+	if s.goCache == nil {
+		return nil, keys, fmt.Errorf("cache service not initialized")
+	}
+
+	result := s.goCache.Get(keys)
+	return result.Found, result.MissingKeys, nil
 }

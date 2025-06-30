@@ -53,10 +53,11 @@ func (gc *GoCache) Get(keys []string) GetResult {
 // Set stores key-value pairs with specified timeout
 // If timeout is 0, uses cache's default expiration
 // If timeout is -1 (cache.NoExpiration), item never expires
-func (gc *GoCache) Set(data map[string][]byte, timeout time.Duration) {
+func (gc *GoCache) Set(data map[string][]byte, timeout time.Duration) error {
 	for key, value := range data {
 		gc.cache.Set(key, value, timeout)
 	}
+	return nil
 }
 
 // Delete removes items from cache by keys

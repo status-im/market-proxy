@@ -15,7 +15,7 @@ import (
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPage fetches a single page of data with given parameters
-	FetchPage(params cg.MarketsParams) ([]CoinGeckoData, error)
+	FetchPage(params cg.MarketsParams) ([][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -50,7 +50,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPage fetches a single page of data from CoinGecko with retry capability
-func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinGeckoData, error) {
+func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -58,20 +58,26 @@ func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinGeckoData, e
 	}
 	defer resp.Body.Close()
 
-	// Parse the response
-	var data []CoinGeckoData
-	if err := json.Unmarshal(body, &data); err != nil {
+	// Parse the response as array of RawMessage
+	var rawData []json.RawMessage
+	if err := json.Unmarshal(body, &rawData); err != nil {
 		log.Printf("CoinGecko: Error parsing JSON response: %v", err)
 		return nil, err
 	}
 
+	// Convert each RawMessage to []byte (no additional marshaling needed)
+	tokensData := make([][]byte, 0, len(rawData))
+	for _, tokenData := range rawData {
+		tokensData = append(tokensData, []byte(tokenData))
+	}
+
 	log.Printf("CoinGecko: Successfully processed page %d with %d items",
-		params.Page, len(data))
+		params.Page, len(tokensData))
 
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
 
-	return data, nil
+	return tokensData, nil
 }
 
 // executeFetchRequest is a private function that handles the actual request execution

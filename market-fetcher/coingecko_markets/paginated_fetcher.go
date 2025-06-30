@@ -55,12 +55,12 @@ func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int
 }
 
 // FetchData fetches data with pagination
-func (pf *PaginatedFetcher) FetchData() (*APIResponse, error) {
+func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
 	params := pf.prepareFetchParams()
 
 	// Track metrics
 	startTime := time.Now()
-	allItems := make([]CoinGeckoData, 0, pf.totalLimit)
+	allItems := make([][]byte, 0, pf.totalLimit)
 	completedPages := 0
 
 	// Fetch pages sequentially
@@ -93,9 +93,7 @@ func (pf *PaginatedFetcher) FetchData() (*APIResponse, error) {
 	pf.logSummary(startTime, allItems, completedPages)
 
 	// Return results
-	return &APIResponse{
-		Data: allItems,
-	}, nil
+	return allItems, nil
 }
 
 // fetchParams contains parameters needed for pagination
@@ -120,7 +118,7 @@ func (pf *PaginatedFetcher) prepareFetchParams() *fetchParams {
 
 // processSinglePage processes a single page of data
 // Returns: page items, should continue fetching flag, error
-func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, allItems *[]CoinGeckoData, completedPages *int) ([]CoinGeckoData, bool, error) {
+func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, allItems *[][]byte, completedPages *int) ([][]byte, bool, error) {
 	// Calculate limit for this page
 	pageLimit := pf.calculatePageLimit(page, params)
 
@@ -138,24 +136,24 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, all
 	pageTime := time.Since(pageStartTime)
 
 	// No items in response
-	if pageResponse == nil || len(pageResponse.Data) == 0 {
+	if pageResponse == nil || len(pageResponse) == 0 {
 		log.Printf("MarketsFetcher: Got empty page %d, stopping pagination", page)
-		return []CoinGeckoData{}, false, nil
+		return [][]byte{}, false, nil
 	}
 
 	// Track successful page
 	(*completedPages)++
 
 	log.Printf("MarketsFetcher: Completed page %d/%d with %d items in %.2fs",
-		page, params.totalPages, len(pageResponse.Data), pageTime.Seconds())
+		page, params.totalPages, len(pageResponse), pageTime.Seconds())
 
 	// Check if we've reached our limit
-	if len(*allItems)+len(pageResponse.Data) >= pf.totalLimit {
+	if len(*allItems)+len(pageResponse) >= pf.totalLimit {
 		log.Printf("MarketsFetcher: Reached target limit of %d items", pf.totalLimit)
-		return pageResponse.Data, false, nil
+		return pageResponse, false, nil
 	}
 
-	return pageResponse.Data, true, nil
+	return pageResponse, true, nil
 }
 
 // calculatePageLimit calculates the limit for a specific page
@@ -168,13 +166,13 @@ func (pf *PaginatedFetcher) calculatePageLimit(page int, params *fetchParams) in
 }
 
 // handlePageError handles errors during page processing
-func (pf *PaginatedFetcher) handlePageError(err error, allItems []CoinGeckoData) (*APIResponse, error) {
+func (pf *PaginatedFetcher) handlePageError(err error, allItems [][]byte) ([][]byte, error) {
 	log.Printf("MarketsFetcher: Error fetching page: %v", err)
 
 	// If we have some data already, return what we have
 	if len(allItems) > 0 {
 		log.Printf("MarketsFetcher: Returning partial data (%d items)", len(allItems))
-		return &APIResponse{Data: allItems}, nil
+		return allItems, nil
 	}
 
 	// If no data at all, return the error
@@ -194,7 +192,7 @@ func (pf *PaginatedFetcher) applyDelayIfNeeded(currentPage, totalPages int) {
 }
 
 // logSummary logs a summary of the fetch operation
-func (pf *PaginatedFetcher) logSummary(startTime time.Time, items []CoinGeckoData, completedPages int) {
+func (pf *PaginatedFetcher) logSummary(startTime time.Time, items [][]byte, completedPages int) {
 	totalTime := time.Since(startTime)
 	itemsPerSecond := float64(len(items)) / totalTime.Seconds()
 	log.Printf("MarketsFetcher: Fetched %d/%d items in %d pages (%.2f items/sec)",
@@ -202,19 +200,17 @@ func (pf *PaginatedFetcher) logSummary(startTime time.Time, items []CoinGeckoDat
 }
 
 // fetchSinglePage fetches a single page of data using the API client
-func (pf *PaginatedFetcher) fetchSinglePage(page, limit int) (*APIResponse, error) {
+func (pf *PaginatedFetcher) fetchSinglePage(page, limit int) ([][]byte, error) {
 	// Create a copy of params and set page and limit
 	params := pf.params
 	params.Page = page
 	params.PerPage = limit
 
-	// Fetch raw CoinGeckoData from API
+	// Fetch raw bytes from API
 	rawItems, err := pf.apiClient.FetchPage(params)
 	if err != nil {
 		return nil, err
 	}
 
-	return &APIResponse{
-		Data: rawItems,
-	}, nil
+	return rawItems, nil
 }
