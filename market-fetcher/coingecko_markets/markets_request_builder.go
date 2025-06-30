@@ -55,6 +55,50 @@ func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder 
 	return rb
 }
 
+// WithCategory adds category parameter
+func (rb *MarketsRequestBuilder) WithCategory(category string) *MarketsRequestBuilder {
+	rb.builder.With("category", category)
+	return rb
+}
+
+// WithIDs adds ids parameter (comma-separated list of coin IDs)
+func (rb *MarketsRequestBuilder) WithIDs(ids []string) *MarketsRequestBuilder {
+	if len(ids) > 0 {
+		// Join the IDs with commas
+		idsStr := ""
+		for i, id := range ids {
+			if i > 0 {
+				idsStr += ","
+			}
+			idsStr += id
+		}
+		rb.builder.With("ids", idsStr)
+	}
+	return rb
+}
+
+// WithSparkline adds sparkline parameter
+func (rb *MarketsRequestBuilder) WithSparkline(enabled bool) *MarketsRequestBuilder {
+	rb.builder.With("sparkline", strconv.FormatBool(enabled))
+	return rb
+}
+
+// WithPriceChangePercentage adds price_change_percentage parameter
+func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string) *MarketsRequestBuilder {
+	if len(percentages) > 0 {
+		// Join the percentages with commas
+		percentagesStr := ""
+		for i, percentage := range percentages {
+			if i > 0 {
+				percentagesStr += ","
+			}
+			percentagesStr += percentage
+		}
+		rb.builder.With("price_change_percentage", percentagesStr)
+	}
+	return rb
+}
+
 // WithApiKey sets the API key and its type (delegated to base builder)
 func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType cg.KeyType) *MarketsRequestBuilder {
 	rb.builder.WithApiKey(apiKey, keyType)

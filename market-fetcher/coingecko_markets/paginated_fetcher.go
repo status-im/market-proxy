@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 const (
 	// Default request delay in milliseconds
 	DEFAULT_REQUEST_DELAY = 2000
+	DEFAULT_PER_PAGE      = 250
 )
 
 // PaginatedFetcher handles fetching data with pagination support
@@ -16,11 +19,12 @@ type PaginatedFetcher struct {
 	apiClient    APIClient
 	maxLimit     int
 	totalLimit   int
-	requestDelay time.Duration // Delay between requests
+	requestDelay time.Duration    // Delay between requests
+	params       cg.MarketsParams // Markets parameters
 }
 
 // NewPaginatedFetcher creates a new paginated fetcher
-func NewPaginatedFetcher(apiClient APIClient, totalLimit int, maxPerPage int, requestDelayMs int) *PaginatedFetcher {
+func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int, params cg.MarketsParams) *PaginatedFetcher {
 	// Convert delay to time.Duration - allowing 0 as valid value
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {
@@ -30,11 +34,23 @@ func NewPaginatedFetcher(apiClient APIClient, totalLimit int, maxPerPage int, re
 		requestDelay = DEFAULT_REQUEST_DELAY * time.Millisecond
 	}
 
+	// Set default parameters if not provided
+	if params.Currency == "" {
+		params.Currency = "usd"
+	}
+	if params.Order == "" {
+		params.Order = "market_cap_desc"
+	}
+	if params.PerPage <= 0 {
+		params.PerPage = DEFAULT_PER_PAGE
+	}
+
 	return &PaginatedFetcher{
 		apiClient:    apiClient,
-		maxLimit:     maxPerPage,
+		maxLimit:     params.PerPage,
 		totalLimit:   totalLimit,
 		requestDelay: requestDelay,
+		params:       params,
 	}
 }
 
@@ -187,7 +203,12 @@ func (pf *PaginatedFetcher) logSummary(startTime time.Time, items []CoinData, co
 
 // fetchSinglePage fetches a single page of data using the API client
 func (pf *PaginatedFetcher) fetchSinglePage(page, limit int) (*APIResponse, error) {
-	items, err := pf.apiClient.FetchPage(page, limit)
+	// Create a copy of params and set page and limit
+	params := pf.params
+	params.Page = page
+	params.PerPage = limit
+
+	items, err := pf.apiClient.FetchPage(params)
 	if err != nil {
 		return nil, err
 	}

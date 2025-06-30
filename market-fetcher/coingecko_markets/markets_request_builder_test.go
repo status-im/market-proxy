@@ -85,6 +85,167 @@ func TestMarketsRequestBuilder_SpecificBehavior(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "With category",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithCategory("layer-1")
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("category") != "layer-1" {
+					t.Errorf("Expected category 'layer-1', got %s", query.Get("category"))
+				}
+			},
+		},
+		{
+			name: "With IDs",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithIDs([]string{"bitcoin", "ethereum", "solana"})
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("ids") != "bitcoin,ethereum,solana" {
+					t.Errorf("Expected ids 'bitcoin,ethereum,solana', got %s", query.Get("ids"))
+				}
+			},
+		},
+		{
+			name: "With empty IDs",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithIDs([]string{})
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				// Empty IDs should not add the parameter
+				if query.Has("ids") {
+					t.Errorf("Expected no ids parameter for empty slice, got %s", query.Get("ids"))
+				}
+			},
+		},
+		{
+			name: "With sparkline enabled",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithSparkline(true)
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("sparkline") != "true" {
+					t.Errorf("Expected sparkline 'true', got %s", query.Get("sparkline"))
+				}
+			},
+		},
+		{
+			name: "With sparkline disabled",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithSparkline(false)
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("sparkline") != "false" {
+					t.Errorf("Expected sparkline 'false', got %s", query.Get("sparkline"))
+				}
+			},
+		},
+		{
+			name: "With price change percentages",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithPriceChangePercentage([]string{"1h", "24h", "7d", "14d", "30d", "200d", "1y"})
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("price_change_percentage") != "1h,24h,7d,14d,30d,200d,1y" {
+					t.Errorf("Expected price_change_percentage '1h,24h,7d,14d,30d,200d,1y', got %s", query.Get("price_change_percentage"))
+				}
+			},
+		},
+		{
+			name: "With empty price change percentages",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithPriceChangePercentage([]string{})
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				// Empty price change percentages should not add the parameter
+				if query.Has("price_change_percentage") {
+					t.Errorf("Expected no price_change_percentage parameter for empty slice, got %s", query.Get("price_change_percentage"))
+				}
+			},
+		},
+		{
+			name: "With all new parameters",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithCategory("layer-1").
+					WithIDs([]string{"bitcoin", "ethereum"}).
+					WithSparkline(true).
+					WithPriceChangePercentage([]string{"1h", "24h", "7d"})
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("category") != "layer-1" {
+					t.Errorf("Expected category 'layer-1', got %s", query.Get("category"))
+				}
+
+				if query.Get("ids") != "bitcoin,ethereum" {
+					t.Errorf("Expected ids 'bitcoin,ethereum', got %s", query.Get("ids"))
+				}
+
+				if query.Get("sparkline") != "true" {
+					t.Errorf("Expected sparkline 'true', got %s", query.Get("sparkline"))
+				}
+
+				if query.Get("price_change_percentage") != "1h,24h,7d" {
+					t.Errorf("Expected price_change_percentage '1h,24h,7d', got %s", query.Get("price_change_percentage"))
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

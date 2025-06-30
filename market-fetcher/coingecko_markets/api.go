@@ -14,8 +14,8 @@ import (
 
 // APIClient defines interface for API operations
 type APIClient interface {
-	// FetchPage fetches a single page of data
-	FetchPage(page, limit int) ([]CoinData, error)
+	// FetchPage fetches a single page of data with given parameters
+	FetchPage(params cg.MarketsParams) ([]CoinData, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -35,7 +35,7 @@ func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 	retryOpts.LogPrefix = "CoinGecko"
 
 	// Create metrics writer for this service
-	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceLBMarkets)
+	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 
 	return &CoinGeckoClient{
 		config:     cfg,
@@ -50,9 +50,9 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPage fetches a single page of data from CoinGecko with retry capability
-func (c *CoinGeckoClient) FetchPage(page, limit int) ([]CoinData, error) {
+func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinData, error) {
 	// Get raw HTTP response and body using private function
-	resp, body, err := c.executeFetchRequest(page, limit)
+	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (c *CoinGeckoClient) FetchPage(page, limit int) ([]CoinData, error) {
 	result := ConvertCoinGeckoData(data)
 
 	log.Printf("CoinGecko: Successfully processed page %d with %d items",
-		page, len(result))
+		params.Page, len(result))
 
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
@@ -79,7 +79,7 @@ func (c *CoinGeckoClient) FetchPage(page, limit int) ([]CoinData, error) {
 
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
-func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Response, []byte, error) {
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()
 
@@ -94,8 +94,38 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		// Create request builder for markets endpoint
 		requestBuilder := NewMarketRequestBuilder(baseURL)
 
-		// Configure request with pagination parameters
-		requestBuilder.WithPage(page).WithPerPage(limit)
+		// Configure request with pagination parameters only if values are not 0
+		if params.Page > 0 {
+			requestBuilder.WithPage(params.Page)
+		}
+		if params.PerPage > 0 {
+			requestBuilder.WithPerPage(params.PerPage)
+		}
+
+		// Apply parameters from MarketsParams
+		if params.Currency != "" {
+			requestBuilder.WithCurrency(params.Currency)
+		}
+
+		if params.Order != "" {
+			requestBuilder.WithOrder(params.Order)
+		}
+
+		if params.Category != "" {
+			requestBuilder.WithCategory(params.Category)
+		}
+
+		if len(params.IDs) > 0 {
+			requestBuilder.WithIDs(params.IDs)
+		}
+
+		if params.SparklineEnabled {
+			requestBuilder.WithSparkline(params.SparklineEnabled)
+		}
+
+		if len(params.PriceChangePercentage) > 0 {
+			requestBuilder.WithPriceChangePercentage(params.PriceChangePercentage)
+		}
 
 		// Add API key if available
 		if apiKey.Key != "" {
@@ -111,7 +141,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 		}
 
 		// Log the attempt
-		log.Printf("CoinGecko: Attempting request for page %d with key type %v", page, apiKey.Type)
+		log.Printf("CoinGecko: Attempting request for page %d with key type %v", params.Page, apiKey.Type)
 
 		// Execute the request with retries
 		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
@@ -132,7 +162,7 @@ func (c *CoinGeckoClient) executeFetchRequest(page, limit int) (*http.Response, 
 
 		// If we got here, the request succeeded
 		log.Printf("CoinGecko: Raw request successful for page %d with key type %v in %.2fs",
-			page, apiKey.Type, duration.Seconds())
+			params.Page, apiKey.Type, duration.Seconds())
 
 		return resp, body, nil
 	}

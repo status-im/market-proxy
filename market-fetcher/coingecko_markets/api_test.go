@@ -180,7 +180,13 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 	}
 
 	// Call FetchPage
-	result, err := client.FetchPage(1, 10)
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	result, err := client.FetchPage(params)
 
 	// Check for errors
 	if err != nil {
@@ -237,7 +243,13 @@ func TestCoinGeckoClient_FetchPage_ErrorHandling(t *testing.T) {
 	}
 
 	// Call FetchPage
-	result, err := client.FetchPage(1, 10)
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	result, err := client.FetchPage(params)
 
 	// Should get an error since all keys fail
 	if err == nil {
@@ -301,7 +313,13 @@ func TestCoinGeckoClient_FetchPage_KeyFallback(t *testing.T) {
 	}
 
 	// Call FetchPage
-	result, err := client.FetchPage(1, 10)
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	result, err := client.FetchPage(params)
 
 	// Should not get an error since the second key succeeds
 	if err != nil {
@@ -372,7 +390,13 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 	}
 
 	// Call FetchPage
-	result, err := client.FetchPage(1, 10)
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	result, err := client.FetchPage(params)
 
 	// Should get a JSON parsing error
 	if err == nil {
@@ -428,7 +452,13 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage which should update the health status
-	_, err := client.FetchPage(1, 10)
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	_, err := client.FetchPage(params)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -462,7 +492,13 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage with an error, health status should remain false
-	_, err = errorClient.FetchPage(1, 10)
+	params = cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+	}
+	_, err = errorClient.FetchPage(params)
 	if err == nil {
 		t.Fatal("Expected error, got nil")
 	}
@@ -470,5 +506,419 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	// Client should still not be healthy after a failed fetch
 	if errorClient.Healthy() {
 		t.Fatal("Expected client to not be healthy after failed fetch")
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_WithCategory tests the Category parameter
+func TestCoinGeckoClient_FetchPage_WithCategory(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with Category parameter
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+		Category: "layer-1",
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request contains the category parameter
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+	if !contains(reqURL, "category=layer-1") {
+		t.Errorf("Expected request URL to contain category=layer-1, got URL: %s", reqURL)
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_WithIDs tests the IDs parameter
+func TestCoinGeckoClient_FetchPage_WithIDs(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with IDs parameter
+	params := cg.MarketsParams{
+		Page:     1,
+		PerPage:  10,
+		Currency: "usd",
+		Order:    "market_cap_desc",
+		IDs:      []string{"bitcoin", "ethereum", "solana"},
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request contains the ids parameter
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+	if !contains(reqURL, "ids=bitcoin%2Cethereum%2Csolana") {
+		t.Errorf("Expected request URL to contain ids=bitcoin%%2Cethereum%%2Csolana, got URL: %s", reqURL)
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_WithSparkline tests the SparklineEnabled parameter
+func TestCoinGeckoClient_FetchPage_WithSparkline(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with SparklineEnabled parameter
+	params := cg.MarketsParams{
+		Page:             1,
+		PerPage:          10,
+		Currency:         "usd",
+		Order:            "market_cap_desc",
+		SparklineEnabled: true,
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request contains the sparkline parameter
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+	if !contains(reqURL, "sparkline=true") {
+		t.Errorf("Expected request URL to contain sparkline=true, got URL: %s", reqURL)
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_WithPriceChangePercentage tests the PriceChangePercentage parameter
+func TestCoinGeckoClient_FetchPage_WithPriceChangePercentage(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with PriceChangePercentage parameter
+	params := cg.MarketsParams{
+		Page:                  1,
+		PerPage:               10,
+		Currency:              "usd",
+		Order:                 "market_cap_desc",
+		PriceChangePercentage: []string{"1h", "24h", "7d", "14d", "30d", "200d", "1y"},
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request contains the price_change_percentage parameter
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+	if !contains(reqURL, "price_change_percentage=1h%2C24h%2C7d%2C14d%2C30d%2C200d%2C1y") {
+		t.Errorf("Expected request URL to contain price_change_percentage parameter, got URL: %s", reqURL)
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_WithAllNewParameters tests all new parameters together
+func TestCoinGeckoClient_FetchPage_WithAllNewParameters(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with all new parameters
+	params := cg.MarketsParams{
+		Page:                  1,
+		PerPage:               50,
+		Currency:              "usd",
+		Order:                 "market_cap_desc",
+		Category:              "layer-1",
+		IDs:                   []string{"bitcoin", "ethereum"},
+		SparklineEnabled:      true,
+		PriceChangePercentage: []string{"1h", "24h", "7d"},
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request contains all the new parameters
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+
+	// Check individual parameters
+	if !contains(reqURL, "category=layer-1") {
+		t.Errorf("Expected request URL to contain category=layer-1, got URL: %s", reqURL)
+	}
+	if !contains(reqURL, "ids=bitcoin%2Cethereum") {
+		t.Errorf("Expected request URL to contain ids=bitcoin%%2Cethereum, got URL: %s", reqURL)
+	}
+	if !contains(reqURL, "sparkline=true") {
+		t.Errorf("Expected request URL to contain sparkline=true, got URL: %s", reqURL)
+	}
+	if !contains(reqURL, "price_change_percentage=1h%2C24h%2C7d") {
+		t.Errorf("Expected request URL to contain price_change_percentage=1h%%2C24h%%2C7d, got URL: %s", reqURL)
+	}
+}
+
+// TestCoinGeckoClient_FetchPage_EmptyOptionalParameters tests that empty optional parameters are not added to URL
+func TestCoinGeckoClient_FetchPage_EmptyOptionalParameters(t *testing.T) {
+	// Create sample data for response
+	sampleData := createSampleCoinGeckoData()
+	jsonData, _ := json.Marshal(sampleData)
+
+	// Create mock HTTP client
+	mockClient := &MockHTTPClient{
+		mockResponses: []*mockResponse{
+			{
+				response: createMockResponse(http.StatusOK, jsonData),
+				body:     jsonData,
+				duration: 100 * time.Millisecond,
+				err:      nil,
+			},
+		},
+	}
+
+	// Create mock key manager with one Pro key
+	mockKeyManager := &MockAPIKeyManager{
+		mockKeys: []cg.APIKey{
+			{Key: "test-pro-key", Type: cg.ProKey},
+		},
+	}
+
+	// Create CoinGeckoClient with mocks
+	client := &CoinGeckoClient{
+		config:     &config.Config{},
+		keyManager: mockKeyManager,
+		httpClient: createMockHTTPClientWithRetries(mockClient),
+	}
+
+	// Call FetchPage with empty optional parameters
+	params := cg.MarketsParams{
+		Page:                  1,
+		PerPage:               10,
+		Currency:              "usd",
+		Order:                 "market_cap_desc",
+		Category:              "",         // empty
+		IDs:                   []string{}, // empty slice
+		SparklineEnabled:      false,      // false
+		PriceChangePercentage: []string{}, // empty slice
+	}
+	result, err := client.FetchPage(params)
+
+	// Check for errors
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check result
+	if len(result) != len(sampleData) {
+		t.Errorf("Expected %d items, got %d", len(sampleData), len(result))
+	}
+
+	// Check that the request URL does not contain empty optional parameters
+	if len(mockClient.executedRequests) != 1 {
+		t.Fatalf("Expected 1 HTTP request, got %d", len(mockClient.executedRequests))
+	}
+
+	reqURL := mockClient.executedRequests[0].URL.String()
+
+	// Check that empty parameters are not in URL
+	if contains(reqURL, "category=") {
+		t.Errorf("Expected request URL to not contain empty category parameter, got URL: %s", reqURL)
+	}
+	if contains(reqURL, "ids=") {
+		t.Errorf("Expected request URL to not contain empty ids parameter, got URL: %s", reqURL)
+	}
+	if contains(reqURL, "sparkline=false") {
+		t.Errorf("Expected request URL to not contain sparkline=false, got URL: %s", reqURL)
+	}
+	if contains(reqURL, "price_change_percentage=") {
+		t.Errorf("Expected request URL to not contain empty price_change_percentage parameter, got URL: %s", reqURL)
+	}
+
+	// But should contain the basic required parameters
+	if !contains(reqURL, "vs_currency=usd") {
+		t.Errorf("Expected request URL to contain vs_currency=usd, got URL: %s", reqURL)
+	}
+	if !contains(reqURL, "order=market_cap_desc") {
+		t.Errorf("Expected request URL to contain order=market_cap_desc, got URL: %s", reqURL)
 	}
 }
