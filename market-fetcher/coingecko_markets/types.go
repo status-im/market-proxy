@@ -30,41 +30,7 @@ type CoinGeckoData struct {
 	LastUpdated                  string      `json:"last_updated"`
 }
 
-// CoinData represents a cleaned CoinGecko coin with minimal fields
-type CoinData struct {
-	ID                       string  `json:"id"`
-	Symbol                   string  `json:"symbol"`
-	Name                     string  `json:"name"`
-	Image                    string  `json:"image"`
-	CurrentPrice             float64 `json:"current_price"`
-	MarketCap                float64 `json:"market_cap"`
-	TotalVolume              float64 `json:"total_volume"`
-	PriceChangePercentage24h float64 `json:"price_change_percentage_24h"`
-}
-
-// APIResponse represents the filtered response structure
+// APIResponse represents the full response structure with all CoinGecko data
 type APIResponse struct {
-	Data []CoinData `json:"data"`
-}
-
-// ConvertCoinGeckoData converts full CoinGecko data to minimal format
-func ConvertCoinGeckoData(data []CoinGeckoData) []CoinData {
-	result := make([]CoinData, 0, len(data))
-
-	for _, item := range data {
-		coin := CoinData{
-			ID:                       item.ID,
-			Symbol:                   item.Symbol,
-			Name:                     item.Name,
-			Image:                    item.Image,
-			CurrentPrice:             item.CurrentPrice,
-			MarketCap:                item.MarketCap,
-			TotalVolume:              item.TotalVolume,
-			PriceChangePercentage24h: item.PriceChangePercentage24h,
-		}
-
-		result = append(result, coin)
-	}
-
-	return result
+	Data []CoinGeckoData `json:"data"`
 }

@@ -15,7 +15,7 @@ import (
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPage fetches a single page of data with given parameters
-	FetchPage(params cg.MarketsParams) ([]CoinData, error)
+	FetchPage(params cg.MarketsParams) ([]CoinGeckoData, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -50,7 +50,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPage fetches a single page of data from CoinGecko with retry capability
-func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinData, error) {
+func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinGeckoData, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -65,16 +65,13 @@ func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([]CoinData, error)
 		return nil, err
 	}
 
-	// Convert CoinGeckoData to CoinData
-	result := ConvertCoinGeckoData(data)
-
 	log.Printf("CoinGecko: Successfully processed page %d with %d items",
-		params.Page, len(result))
+		params.Page, len(data))
 
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
 
-	return result, nil
+	return data, nil
 }
 
 // executeFetchRequest is a private function that handles the actual request execution

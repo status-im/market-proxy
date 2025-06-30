@@ -174,7 +174,7 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Call markets service
-	data, err := s.marketsService.MarketsTyped(params)
+	data, err := s.marketsService.Markets(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)
 		return
