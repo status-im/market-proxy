@@ -152,13 +152,15 @@ func (s *Service) MarketsByIds(params cg.MarketsParams) (cg.MarketsResponse, err
 		log.Printf("Failed to check cache: %v", err)
 	}
 
-	// If all tokens are in cache, return cached data
+	// If all tokens are in cache, return cached data preserving order from cacheKeys
 	if len(missingKeys) == 0 && len(cachedData) == len(cacheKeys) {
-		marketData := make([]interface{}, 0, len(cachedData))
-		for _, tokenBytes := range cachedData {
-			var tokenData interface{}
-			if err := json.Unmarshal(tokenBytes, &tokenData); err == nil {
-				marketData = append(marketData, tokenData)
+		marketData := make([]interface{}, 0, len(cacheKeys))
+		for _, cacheKey := range cacheKeys {
+			if tokenBytes, exists := cachedData[cacheKey]; exists {
+				var tokenData interface{}
+				if err := json.Unmarshal(tokenBytes, &tokenData); err == nil {
+					marketData = append(marketData, tokenData)
+				}
 			}
 		}
 		log.Printf("Returning cached data for all %d tokens", len(marketData))
