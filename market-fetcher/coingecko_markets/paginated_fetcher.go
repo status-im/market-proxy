@@ -136,7 +136,7 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, cur
 	pageTime := time.Since(pageStartTime)
 
 	// No items in response
-	if pageResponse == nil || len(pageResponse) == 0 {
+	if len(pageResponse) == 0 {
 		log.Printf("MarketsFetcher: Got empty page %d, stopping pagination", page)
 		return [][]byte{}, false, nil
 	}
