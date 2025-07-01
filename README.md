@@ -96,6 +96,7 @@ The proxy provides the following endpoints:
 - `/v1/leaderboard/simpleprices` - Price data (coingecko)
 - `/v1/leaderboard/markets` - Market data from leaderboard  
 - `/v1/coins/list` - Supported coins list with platform information
+- `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination
 
 
 ## Subprojects
