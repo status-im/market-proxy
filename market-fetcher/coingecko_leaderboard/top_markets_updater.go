@@ -10,8 +10,8 @@ import (
 	"github.com/status-im/market-proxy/scheduler"
 )
 
-// MarketsUpdater handles periodic updates of markets leaderboard data
-type MarketsUpdater struct {
+// TopMarketsUpdater handles periodic updates of markets leaderboard data
+type TopMarketsUpdater struct {
 	config         *config.Config
 	scheduler      *scheduler.Scheduler
 	marketsFetcher coingecko_common.MarketsFetcher
@@ -24,9 +24,9 @@ type MarketsUpdater struct {
 	}
 }
 
-// NewMarketsUpdater creates a new markets updater
-func NewMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.MarketsFetcher) *MarketsUpdater {
-	updater := &MarketsUpdater{
+// NewTopMarketsUpdater creates a new top markets updater
+func NewTopMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.MarketsFetcher) *TopMarketsUpdater {
+	updater := &TopMarketsUpdater{
 		config:         cfg,
 		marketsFetcher: marketsFetcher,
 	}
@@ -35,19 +35,19 @@ func NewMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.Marke
 }
 
 // SetOnUpdateCallback sets a callback function that will be called when data is updated
-func (u *MarketsUpdater) SetOnUpdateCallback(onUpdate func()) {
+func (u *TopMarketsUpdater) SetOnUpdateCallback(onUpdate func()) {
 	u.onUpdate = onUpdate
 }
 
 // GetCacheData returns the current cached markets data
-func (u *MarketsUpdater) GetCacheData() *APIResponse {
+func (u *TopMarketsUpdater) GetCacheData() *APIResponse {
 	u.cache.RLock()
 	defer u.cache.RUnlock()
 	return u.cache.data
 }
 
 // GetTopTokenIDs extracts token IDs from cached data for use by other components
-func (u *MarketsUpdater) GetTopTokenIDs() []string {
+func (u *TopMarketsUpdater) GetTopTokenIDs() []string {
 	cacheData := u.GetCacheData()
 	if cacheData == nil || cacheData.Data == nil {
 		return nil
@@ -64,8 +64,8 @@ func (u *MarketsUpdater) GetTopTokenIDs() []string {
 	return tokenIDs
 }
 
-// Start starts the markets updater with periodic updates
-func (u *MarketsUpdater) Start(ctx context.Context) error {
+// Start starts the top markets updater with periodic updates
+func (u *TopMarketsUpdater) Start(ctx context.Context) error {
 	updateInterval := u.config.CoingeckoLeaderboard.TopMarketsUpdateInterval
 
 	// Create scheduler for periodic updates
@@ -80,20 +80,20 @@ func (u *MarketsUpdater) Start(ctx context.Context) error {
 
 	// Start the scheduler with context
 	u.scheduler.Start(ctx, true)
-	log.Printf("Started markets updater with update interval: %v", updateInterval)
+	log.Printf("Started top markets updater with update interval: %v", updateInterval)
 
 	return nil
 }
 
-// Stop stops the markets updater
-func (u *MarketsUpdater) Stop() {
+// Stop stops the top markets updater
+func (u *TopMarketsUpdater) Stop() {
 	if u.scheduler != nil {
 		u.scheduler.Stop()
 	}
 }
 
 // fetchAndUpdate fetches markets data from markets service and updates cache
-func (u *MarketsUpdater) fetchAndUpdate(ctx context.Context) error {
+func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 	// Get top tokens limit from config, use default if not set
 	limit := u.config.CoingeckoLeaderboard.TopPricesLimit
 	if limit <= 0 {
@@ -138,8 +138,8 @@ func (u *MarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 	return nil
 }
 
-// Healthy checks if the markets updater can fetch data
-func (u *MarketsUpdater) Healthy() bool {
+// Healthy checks if the top markets updater can fetch data
+func (u *TopMarketsUpdater) Healthy() bool {
 	// Check if we already have some data in cache
 	if u.GetCacheData() != nil && len(u.GetCacheData().Data) > 0 {
 		return true

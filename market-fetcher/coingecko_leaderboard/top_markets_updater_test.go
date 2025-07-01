@@ -65,12 +65,12 @@ func createSampleMarketsData() cg.MarketsResponse {
 	})
 }
 
-func TestNewMarketsUpdater(t *testing.T) {
-	t.Run("Creates new markets updater with correct dependencies", func(t *testing.T) {
+func TestNewTopMarketsUpdater(t *testing.T) {
+	t.Run("Creates new top markets updater with correct dependencies", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
 
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		assert.NotNil(t, updater)
 		assert.Equal(t, cfg, updater.config)
@@ -83,7 +83,7 @@ func TestNewMarketsUpdater(t *testing.T) {
 	t.Run("Works with nil fetcher", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 
-		updater := NewMarketsUpdater(cfg, nil)
+		updater := NewTopMarketsUpdater(cfg, nil)
 
 		assert.NotNil(t, updater)
 		assert.Equal(t, cfg, updater.config)
@@ -91,10 +91,10 @@ func TestNewMarketsUpdater(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
+func TestTopMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
 	t.Run("Sets callback function", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		callbackCalled := false
 		callback := func() {
@@ -112,7 +112,7 @@ func TestMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
 
 	t.Run("Overwrites existing callback", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		firstCallbackCalled := false
 		secondCallbackCalled := false
@@ -136,7 +136,7 @@ func TestMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
 
 	t.Run("Can set nil callback", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		// Set a callback first
 		updater.SetOnUpdateCallback(func() {})
@@ -148,10 +148,10 @@ func TestMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
+func TestTopMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 	t.Run("Returns nil when no cache data", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		result := updater.GetTopTokenIDs()
 
@@ -160,7 +160,7 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 
 	t.Run("Returns nil when cache data is nil", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		updater.cache.Lock()
 		updater.cache.data = nil
@@ -173,7 +173,7 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 
 	t.Run("Returns nil when cache data.Data is nil", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		updater.cache.Lock()
 		updater.cache.data = &APIResponse{Data: nil}
@@ -186,7 +186,7 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 
 	t.Run("Returns empty slice when no coins have IDs", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		mockData := []CoinData{
 			{ID: "", Symbol: "btc", Name: "Bitcoin"},
@@ -204,7 +204,7 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 
 	t.Run("Returns token IDs from cache data", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		mockData := []CoinData{
 			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
@@ -224,7 +224,7 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 
 	t.Run("Filters out empty IDs", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		mockData := []CoinData{
 			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
@@ -244,11 +244,11 @@ func TestMarketsUpdater_GetTopTokenIDs(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
+func TestTopMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Successful fetch and update", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
 		mockFetcher.On("TopMarkets", 10, "usd").Return(sampleData, nil)
@@ -282,7 +282,7 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
 		mockFetcher.On("TopMarkets", 500, "usd").Return(sampleData, nil)
@@ -302,7 +302,7 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
 		mockFetcher.On("TopMarkets", 500, "usd").Return(sampleData, nil)
@@ -317,7 +317,7 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Handles fetcher error", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		expectedError := errors.New("API error")
 		mockFetcher.On("TopMarkets", 10, "usd").Return(cg.MarketsResponse(nil), expectedError)
@@ -344,7 +344,7 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Handles empty response", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		emptyData := cg.MarketsResponse([]interface{}{})
 		mockFetcher.On("TopMarkets", 10, "usd").Return(emptyData, nil)
@@ -371,7 +371,7 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Doesn't call callback when callback is nil", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
 		mockFetcher.On("TopMarkets", 10, "usd").Return(sampleData, nil)
@@ -388,10 +388,10 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_Healthy(t *testing.T) {
+func TestTopMarketsUpdater_Healthy(t *testing.T) {
 	t.Run("Returns true when cache has data", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		mockData := []CoinData{
 			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
@@ -408,7 +408,7 @@ func TestMarketsUpdater_Healthy(t *testing.T) {
 
 	t.Run("Returns true when fetcher exists but no cache", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		result := updater.Healthy()
 
@@ -417,7 +417,7 @@ func TestMarketsUpdater_Healthy(t *testing.T) {
 
 	t.Run("Returns true when cache data is empty but fetcher exists", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		updater.cache.Lock()
 		updater.cache.data = &APIResponse{Data: []CoinData{}}
@@ -431,7 +431,7 @@ func TestMarketsUpdater_Healthy(t *testing.T) {
 	t.Run("Returns true when fetcher is available but no cache", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		result := updater.Healthy()
 
@@ -440,7 +440,7 @@ func TestMarketsUpdater_Healthy(t *testing.T) {
 
 	t.Run("Returns false when fetcher is nil and no cache", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, nil)
+		updater := NewTopMarketsUpdater(cfg, nil)
 
 		result := updater.Healthy()
 
@@ -448,11 +448,11 @@ func TestMarketsUpdater_Healthy(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_StartStop(t *testing.T) {
+func TestTopMarketsUpdater_StartStop(t *testing.T) {
 	t.Run("Start creates and starts scheduler", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
 		sampleData := createSampleMarketsData()
@@ -473,7 +473,7 @@ func TestMarketsUpdater_StartStop(t *testing.T) {
 	t.Run("Stop stops scheduler when it exists", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
 		sampleData := createSampleMarketsData()
@@ -496,7 +496,7 @@ func TestMarketsUpdater_StartStop(t *testing.T) {
 
 	t.Run("Stop doesn't panic when scheduler is nil", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		// Call stop without starting
 		assert.NotPanics(t, func() {
@@ -512,7 +512,7 @@ func TestMarketsUpdater_StartStop(t *testing.T) {
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}
-		updater := NewMarketsUpdater(cfg, mockFetcher)
+		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
 		sampleData := createSampleMarketsData()
@@ -530,10 +530,10 @@ func TestMarketsUpdater_StartStop(t *testing.T) {
 	})
 }
 
-func TestMarketsUpdater_ConcurrentAccess(t *testing.T) {
+func TestTopMarketsUpdater_ConcurrentAccess(t *testing.T) {
 	t.Run("Concurrent cache access is safe", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
-		updater := NewMarketsUpdater(cfg, &MockMarketsFetcher{})
+		updater := NewTopMarketsUpdater(cfg, &MockMarketsFetcher{})
 
 		var wg sync.WaitGroup
 		numGoroutines := 10
