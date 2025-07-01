@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
 )
 
@@ -15,6 +17,7 @@ type TopMarketsUpdater struct {
 	config         *config.Config
 	scheduler      *scheduler.Scheduler
 	marketsFetcher coingecko_common.MarketsFetcher
+	metricsWriter  *metrics.MetricsWriter
 	onUpdate       func()
 
 	// Cache for markets data
@@ -29,6 +32,7 @@ func NewTopMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.Ma
 	updater := &TopMarketsUpdater{
 		config:         cfg,
 		marketsFetcher: marketsFetcher,
+		metricsWriter:  metrics.NewMetricsWriter(metrics.ServiceLBMarkets),
 	}
 
 	return updater
@@ -100,6 +104,9 @@ func (u *TopMarketsUpdater) Stop() {
 
 // fetchAndUpdate fetches markets data from markets service and updates cache
 func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
+	// Record start time for metrics
+	startTime := time.Now()
+
 	// Get top tokens limit from config, use default if not set
 	limit := u.config.CoingeckoLeaderboard.TopPricesLimit
 	if limit <= 0 {
@@ -116,6 +123,8 @@ func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 	data, err := u.marketsFetcher.TopMarkets(limit, currency)
 	if err != nil {
 		log.Printf("Error fetching top markets data from fetcher: %v", err)
+		// Record metrics even on error
+		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 		return err
 	}
 
@@ -133,6 +142,10 @@ func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 	u.cache.Lock()
 	u.cache.data = localData
 	u.cache.Unlock()
+
+	// Record metrics after successful update
+	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
+	u.metricsWriter.RecordCacheSize(len(localData.Data))
 
 	log.Printf("Updated top markets cache with %d tokens (limit: %d)", len(localData.Data), limit)
 
