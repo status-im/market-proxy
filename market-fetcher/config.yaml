@@ -7,11 +7,11 @@ cache:
     cleanup_interval: 10m     # 10 minutes
 
 coingecko_leaderboard:
-  update_interval: 30m        # 10 minutes
-  limit: 5000
-  request_delay: 1s           # 0 = no delay
-  prices_update_interval: 30s # 30 seconds interval for price updates
-  top_tokens_limit: 500       # maximum number of top tokens to track prices
+  top_markets_update_interval: 30m
+  top_markets_limit: 5000
+  currency: usd                 # currency for market data
+  top_prices_update_interval: 30s # 30 seconds interval for price updates
+  top_prices_limit: 500         # maximum number of top tokens to track prices
 
 coingecko_markets:
   chunk_size: 250             # maximum items per request (CoinGecko API max)

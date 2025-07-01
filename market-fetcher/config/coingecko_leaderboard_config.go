@@ -7,11 +7,11 @@ import (
 )
 
 type CoingeckoLeaderboardFetcher struct {
-	UpdateInterval       time.Duration `yaml:"update_interval"`
-	Limit                int           `yaml:"limit"`
-	RequestDelay         time.Duration `yaml:"request_delay"`          // Delay between requests
-	PricesUpdateInterval time.Duration `yaml:"prices_update_interval"` // Interval for price updates
-	TopTokensLimit       int           `yaml:"top_tokens_limit"`       // Limit for top tokens prices
+	TopMarketsUpdateInterval time.Duration `yaml:"top_markets_update_interval"`
+	TopMarketsLimit          int           `yaml:"top_markets_limit"`
+	Currency                 string        `yaml:"currency"`                   // Currency for market data
+	TopPricesUpdateInterval  time.Duration `yaml:"top_prices_update_interval"` // Interval for price updates
+	TopPricesLimit           int           `yaml:"top_prices_limit"`           // Limit for top tokens prices
 }
 
 type APITokens struct {

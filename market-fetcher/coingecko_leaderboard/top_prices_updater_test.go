@@ -27,8 +27,9 @@ func (m *MockPriceFetcher) SimplePrices(params cg.PriceParams) (cg.SimplePriceRe
 func createTestPricesConfig() *config.Config {
 	return &config.Config{
 		CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-			PricesUpdateInterval: time.Second * 5,
-			TopTokensLimit:       10,
+			TopPricesUpdateInterval: time.Second * 5,
+			TopPricesLimit:          10,
+			Currency:                "usd",
 		},
 	}
 }
@@ -254,7 +255,8 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 	t.Run("Handles token limit configuration", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopTokensLimit: 2, // Limit to 2 tokens
+				TopPricesLimit: 2, // Limit to 2 tokens
+				Currency:       "usd",
 			},
 		}
 		mockFetcher := &MockPriceFetcher{}
@@ -395,7 +397,8 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 	t.Run("Start does not create scheduler when interval is zero", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				PricesUpdateInterval: 0, // Zero interval
+				TopPricesUpdateInterval: 0, // Zero interval
+				Currency:                "usd",
 			},
 		}
 		updater := NewTopPricesUpdater(cfg, &MockPriceFetcher{})
@@ -412,7 +415,8 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 	t.Run("Start does not create scheduler when interval is negative", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				PricesUpdateInterval: -time.Second, // Negative interval
+				TopPricesUpdateInterval: -time.Second, // Negative interval
+				Currency:                "usd",
 			},
 		}
 		updater := NewTopPricesUpdater(cfg, &MockPriceFetcher{})
@@ -462,7 +466,8 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 	t.Run("Start with minimal update interval", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				PricesUpdateInterval: time.Millisecond, // Minimal interval
+				TopPricesUpdateInterval: time.Millisecond, // Minimal interval
+				Currency:                "usd",
 			},
 		}
 		mockFetcher := &MockPriceFetcher{}

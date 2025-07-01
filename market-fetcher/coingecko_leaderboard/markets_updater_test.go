@@ -32,8 +32,9 @@ func (m *MockMarketsFetcher) TopMarkets(limit int, currency string) (cg.MarketsR
 func createTestMarketsConfig() *config.Config {
 	return &config.Config{
 		CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-			TopTokensLimit: 10,
-			UpdateInterval: time.Second * 5,
+			TopPricesLimit:           10,
+			TopMarketsUpdateInterval: time.Second * 5,
+			Currency:                 "usd",
 		},
 	}
 }
@@ -276,7 +277,8 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Uses default limit when config limit is 0", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopTokensLimit: 0, // Should use default 500
+				TopPricesLimit: 0, // Should use default 500
+				Currency:       "usd",
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}
@@ -295,7 +297,8 @@ func TestMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Uses default limit when config limit is negative", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopTokensLimit: -10, // Should use default 500
+				TopPricesLimit: -10, // Should use default 500
+				Currency:       "usd",
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}
@@ -504,7 +507,8 @@ func TestMarketsUpdater_StartStop(t *testing.T) {
 	t.Run("Start with minimal update interval", func(t *testing.T) {
 		cfg := &config.Config{
 			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				UpdateInterval: time.Millisecond, // Minimal interval
+				TopMarketsUpdateInterval: time.Millisecond, // Minimal interval
+				Currency:                 "usd",
 			},
 		}
 		mockFetcher := &MockMarketsFetcher{}

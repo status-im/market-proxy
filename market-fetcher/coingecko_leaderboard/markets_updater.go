@@ -66,7 +66,7 @@ func (u *MarketsUpdater) GetTopTokenIDs() []string {
 
 // Start starts the markets updater with periodic updates
 func (u *MarketsUpdater) Start(ctx context.Context) error {
-	updateInterval := u.config.CoingeckoLeaderboard.UpdateInterval
+	updateInterval := u.config.CoingeckoLeaderboard.TopMarketsUpdateInterval
 
 	// Create scheduler for periodic updates
 	u.scheduler = scheduler.New(
@@ -95,13 +95,19 @@ func (u *MarketsUpdater) Stop() {
 // fetchAndUpdate fetches markets data from markets service and updates cache
 func (u *MarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 	// Get top tokens limit from config, use default if not set
-	limit := u.config.CoingeckoLeaderboard.TopTokensLimit
+	limit := u.config.CoingeckoLeaderboard.TopPricesLimit
 	if limit <= 0 {
 		limit = 500 // Default top tokens limit
 	}
 
 	// Use TopMarkets to get top markets data and cache individual tokens
-	data, err := u.marketsFetcher.TopMarkets(limit, "usd")
+	// Get currency from config, use "usd" as default
+	currency := u.config.CoingeckoLeaderboard.Currency
+	if currency == "" {
+		currency = "usd"
+	}
+
+	data, err := u.marketsFetcher.TopMarkets(limit, currency)
 	if err != nil {
 		log.Printf("Error fetching top markets data from fetcher: %v", err)
 		return err
