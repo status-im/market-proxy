@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGoCache_Basic(t *testing.T) {
@@ -19,7 +20,8 @@ func TestGoCache_Basic(t *testing.T) {
 	}
 
 	// Set data with default expiration (0 = use default)
-	cache.Set(testData, 0)
+	err := cache.Set(testData, 0)
+	require.NoError(t, err)
 
 	// Test Get with all existing keys
 	result := cache.Get([]string{"key1", "key2", "key3"})
@@ -51,7 +53,8 @@ func TestGoCache_Delete(t *testing.T) {
 		"key2": []byte("value2"),
 		"key3": []byte("value3"),
 	}
-	cache.Set(testData, 0)
+	err := cache.Set(testData, 0)
+	require.NoError(t, err)
 
 	// Delete some keys
 	cache.Delete([]string{"key1", "key3"})
@@ -75,7 +78,8 @@ func TestGoCache_Clear(t *testing.T) {
 		"key1": []byte("value1"),
 		"key2": []byte("value2"),
 	}
-	cache.Set(testData, 0)
+	err := cache.Set(testData, 0)
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, cache.ItemCount())
 
@@ -99,9 +103,11 @@ func TestGoCache_Expiration(t *testing.T) {
 	}
 
 	// Set with 100ms expiration
-	cache.Set(map[string][]byte{"short": testData["short"]}, 100*time.Millisecond)
+	err := cache.Set(map[string][]byte{"short": testData["short"]}, 100*time.Millisecond)
+	require.NoError(t, err)
 	// Set with no expiration
-	cache.Set(map[string][]byte{"forever": testData["forever"]}, -1)
+	err = cache.Set(map[string][]byte{"forever": testData["forever"]}, -1)
+	require.NoError(t, err)
 
 	// Both should be available immediately
 	result := cache.Get([]string{"short", "forever"})
@@ -131,7 +137,8 @@ func TestGoCache_EmptyKeys(t *testing.T) {
 	assert.Len(t, result.MissingKeys, 0)
 
 	// Test Set with empty data
-	cache.Set(map[string][]byte{}, 0)
+	err := cache.Set(map[string][]byte{}, 0)
+	require.NoError(t, err)
 	assert.Equal(t, 0, cache.ItemCount())
 
 	// Test Delete with empty keys

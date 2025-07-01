@@ -68,6 +68,12 @@ func (u *TopMarketsUpdater) GetTopTokenIDs() []string {
 func (u *TopMarketsUpdater) Start(ctx context.Context) error {
 	updateInterval := u.config.CoingeckoLeaderboard.TopMarketsUpdateInterval
 
+	// If interval is 0 or negative, skip periodic updates
+	if updateInterval <= 0 {
+		log.Printf("Top markets updater: periodic updates disabled (interval: %v)", updateInterval)
+		return nil
+	}
+
 	// Create scheduler for periodic updates
 	u.scheduler = scheduler.New(
 		updateInterval,

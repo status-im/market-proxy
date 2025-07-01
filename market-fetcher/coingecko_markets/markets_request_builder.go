@@ -3,6 +3,7 @@ package coingecko_markets
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 )
@@ -64,15 +65,7 @@ func (rb *MarketsRequestBuilder) WithCategory(category string) *MarketsRequestBu
 // WithIDs adds ids parameter (comma-separated list of coin IDs)
 func (rb *MarketsRequestBuilder) WithIDs(ids []string) *MarketsRequestBuilder {
 	if len(ids) > 0 {
-		// Join the IDs with commas
-		idsStr := ""
-		for i, id := range ids {
-			if i > 0 {
-				idsStr += ","
-			}
-			idsStr += id
-		}
-		rb.builder.With("ids", idsStr)
+		rb.builder.With("ids", strings.Join(ids, ","))
 	}
 	return rb
 }
@@ -86,15 +79,7 @@ func (rb *MarketsRequestBuilder) WithSparkline(enabled bool) *MarketsRequestBuil
 // WithPriceChangePercentage adds price_change_percentage parameter
 func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string) *MarketsRequestBuilder {
 	if len(percentages) > 0 {
-		// Join the percentages with commas
-		percentagesStr := ""
-		for i, percentage := range percentages {
-			if i > 0 {
-				percentagesStr += ","
-			}
-			percentagesStr += percentage
-		}
-		rb.builder.With("price_change_percentage", percentagesStr)
+		rb.builder.With("price_change_percentage", strings.Join(percentages, ","))
 	}
 	return rb
 }

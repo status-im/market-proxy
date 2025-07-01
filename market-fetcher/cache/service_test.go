@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestService_Basic(t *testing.T) {
@@ -49,7 +50,8 @@ func TestService_PartialCacheHit(t *testing.T) {
 	initialData := map[string][]byte{
 		"cached_key": []byte("cached_value"),
 	}
-	service.goCache.Set(initialData, 0)
+	err := service.goCache.Set(initialData, 0)
+	require.NoError(t, err)
 
 	// Mock loader for missing keys
 	loader := func(missingKeys []string) (map[string][]byte, error) {
@@ -80,7 +82,8 @@ func TestService_LoadOnlyMissingKeys(t *testing.T) {
 	initialData := map[string][]byte{
 		"key1": []byte("cached_value1"),
 	}
-	service.goCache.Set(initialData, 0)
+	err := service.goCache.Set(initialData, 0)
+	require.NoError(t, err)
 
 	// Track which keys are requested from loader
 	var requestedKeys []string
@@ -101,7 +104,8 @@ func TestService_LoadOnlyMissingKeys(t *testing.T) {
 
 	// Create a new service for the second test to ensure cache miss
 	service2 := NewService(config)
-	service2.goCache.Set(map[string][]byte{"key1": []byte("cached_value1")}, 0)
+	err = service2.goCache.Set(map[string][]byte{"key1": []byte("cached_value1")}, 0)
+	require.NoError(t, err)
 
 	// Reset and test loadOnlyMissingKeys = false
 	requestedKeys = nil
@@ -161,7 +165,8 @@ func TestService_ClearAndDelete(t *testing.T) {
 		"key2": []byte("value2"),
 		"key3": []byte("value3"),
 	}
-	service.goCache.Set(testData, 0)
+	err := service.goCache.Set(testData, 0)
+	require.NoError(t, err)
 
 	assert.Equal(t, 3, service.goCache.ItemCount())
 

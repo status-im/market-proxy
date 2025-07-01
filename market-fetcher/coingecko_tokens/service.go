@@ -49,6 +49,12 @@ func NewService(config *config.Config) *Service {
 func (s *Service) Start(ctx context.Context) error {
 	updateInterval := s.config.TokensFetcher.UpdateInterval
 
+	// If interval is 0 or negative, skip periodic updates
+	if updateInterval <= 0 {
+		log.Printf("Tokens service: periodic updates disabled (interval: %v)", updateInterval)
+		return nil
+	}
+
 	// Create and start the scheduler
 	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
 		if err := s.fetchAndUpdate(); err != nil {
