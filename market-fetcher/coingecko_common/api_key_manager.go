@@ -3,6 +3,7 @@ package coingecko_common
 import (
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/status-im/market-proxy/config"
@@ -45,6 +46,7 @@ type APIKeyManager struct {
 	rand        *rand.Rand
 	lastFailed  map[string]time.Time // Stores the time of the last failure for each key
 	backoffTime time.Duration        // Backoff duration before retrying a failed key
+	mu          sync.RWMutex         // Protects lastFailed map
 }
 
 // NewAPIKeyManager creates a new API key manager
@@ -63,6 +65,9 @@ func (m *APIKeyManager) isKeyInBackoff(key string) bool {
 		return false
 	}
 
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if lastFailTime, exists := m.lastFailed[key]; exists {
 		return time.Since(lastFailTime) < m.backoffTime
 	}
@@ -72,6 +77,9 @@ func (m *APIKeyManager) isKeyInBackoff(key string) bool {
 
 // getKeysOfType returns all keys of a specific type (private implementation)
 func (m *APIKeyManager) getKeysOfType(keyType KeyType) []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if m.apiTokens == nil {
 		return []string{}
 	}
@@ -127,6 +135,9 @@ func (m *APIKeyManager) MarkKeyAsFailed(key string) {
 	if key == "" {
 		return
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.lastFailed[key] = time.Now()
 	log.Printf("APIKeyManager: Marked key as failed for %v", m.backoffTime)
