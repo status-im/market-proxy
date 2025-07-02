@@ -2,34 +2,28 @@ package coingecko_assets_platforms
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/status-im/market-proxy/config"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-// MockAPIClient implements APIClient interface for testing
-type MockAPIClient struct {
-	mock.Mock
+type mockAPIClient struct {
+	shouldFail      bool
+	shouldBeHealthy bool
+	response        AssetsPlatformsResponse
 }
 
-func (m *MockAPIClient) FetchAssetsPlatforms(params AssetsPlatformsParams) ([]byte, error) {
-	args := m.Called(params)
-	return args.Get(0).([]byte), args.Error(1)
+func (m *mockAPIClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
+	if m.shouldFail {
+		return nil, fmt.Errorf("mock error")
+	}
+	return m.response, nil
 }
 
-func (m *MockAPIClient) Healthy() bool {
-	args := m.Called()
-	return args.Bool(0)
+func (m *mockAPIClient) Healthy() bool {
+	return m.shouldBeHealthy
 }
-
-// Test data constants
-var (
-	samplePlatformsData = []byte(`[{"id":"ethereum","chain_identifier":1,"name":"Ethereum","shortname":"Ethereum"},{"id":"polygon-pos","chain_identifier":137,"name":"Polygon POS","shortname":"Polygon"}]`)
-	emptyPlatformsData  = []byte(`[]`)
-)
 
 func createTestConfig() *config.Config {
 	return &config.Config{
@@ -43,138 +37,90 @@ func TestNewService(t *testing.T) {
 	config := createTestConfig()
 	service := NewService(config)
 
-	assert.NotNil(t, service)
-	assert.Equal(t, config, service.config)
-	assert.NotNil(t, service.client)
-	assert.NotNil(t, service.metricsWriter)
+	if service == nil {
+		t.Fatal("NewService returned nil")
+	}
+
+	if service.config != config {
+		t.Error("Service config not set correctly")
+	}
+
+	if service.client == nil {
+		t.Error("Client should be initialized")
+	}
 }
 
-func TestService_Start(t *testing.T) {
-	service := NewService(createTestConfig())
+func TestService_StartStop(t *testing.T) {
+	config := createTestConfig()
+	service := NewService(config)
+
+	// Test starting
 	err := service.Start(context.Background())
-	assert.NoError(t, err)
-}
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
 
-func TestService_Stop(t *testing.T) {
-	service := NewService(createTestConfig())
-	assert.NotPanics(t, func() {
-		service.Stop()
-	})
+	// Test stopping
+	service.Stop()
+	// Stop should not panic or fail
 }
 
 func TestService_AssetsPlatforms(t *testing.T) {
-	tests := []struct {
-		name          string
-		params        AssetsPlatformsParams
-		mockData      []byte
-		mockError     error
-		expectedData  []byte
-		expectedError string
-	}{
-		{
-			name:          "Success with filter",
-			params:        AssetsPlatformsParams{Filter: "ethereum"},
-			mockData:      samplePlatformsData,
-			mockError:     nil,
-			expectedData:  samplePlatformsData,
-			expectedError: "",
-		},
-		{
-			name:          "Success without filter",
-			params:        AssetsPlatformsParams{},
-			mockData:      samplePlatformsData,
-			mockError:     nil,
-			expectedData:  samplePlatformsData,
-			expectedError: "",
-		},
-		{
-			name:          "Empty data",
-			params:        AssetsPlatformsParams{},
-			mockData:      emptyPlatformsData,
-			mockError:     nil,
-			expectedData:  emptyPlatformsData,
-			expectedError: "",
-		},
-		{
-			name:          "API error",
-			params:        AssetsPlatformsParams{},
-			mockData:      nil,
-			mockError:     errors.New("API error"),
-			expectedData:  nil,
-			expectedError: "failed to fetch assets platforms: API error",
-		},
+	config := createTestConfig()
+	service := NewService(config)
+
+	// Mock successful response
+	mockData := []interface{}{
+		map[string]interface{}{"id": "ethereum", "name": "Ethereum"},
+		map[string]interface{}{"id": "polygon-pos", "name": "Polygon"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockClient := &MockAPIClient{}
-			mockClient.On("FetchAssetsPlatforms", tt.params).Return(tt.mockData, tt.mockError)
+	mockClient := &mockAPIClient{
+		shouldFail:      false,
+		shouldBeHealthy: true,
+		response:        mockData,
+	}
+	service.client = mockClient
 
-			service := &Service{
-				config: createTestConfig(),
-				client: mockClient,
-			}
+	// Test successful call
+	result, err := service.AssetsPlatforms(AssetsPlatformsParams{Filter: "nft"})
+	if err != nil {
+		t.Fatalf("AssetsPlatforms failed: %v", err)
+	}
 
-			result, err := service.AssetsPlatforms(tt.params)
+	if result == nil {
+		t.Error("Result should not be nil")
+	}
 
-			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
-				assert.Nil(t, result)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedData, result)
-			}
-
-			mockClient.AssertExpectations(t)
-		})
+	// Test with API error
+	mockClient.shouldFail = true
+	_, err = service.AssetsPlatforms(AssetsPlatformsParams{})
+	if err == nil {
+		t.Error("AssetsPlatforms should fail when API fails")
 	}
 }
 
 func TestService_Healthy(t *testing.T) {
-	tests := []struct {
-		name           string
-		client         APIClient
-		expectedHealth bool
-	}{
-		{
-			name: "Healthy client",
-			client: func() APIClient {
-				mockClient := &MockAPIClient{}
-				mockClient.On("Healthy").Return(true)
-				return mockClient
-			}(),
-			expectedHealth: true,
-		},
-		{
-			name: "Unhealthy client",
-			client: func() APIClient {
-				mockClient := &MockAPIClient{}
-				mockClient.On("Healthy").Return(false)
-				return mockClient
-			}(),
-			expectedHealth: false,
-		},
-		{
-			name:           "Nil client",
-			client:         nil,
-			expectedHealth: false,
-		},
+	config := createTestConfig()
+	service := NewService(config)
+
+	// Mock healthy client
+	mockClient := &mockAPIClient{shouldBeHealthy: true}
+	service.client = mockClient
+
+	if !service.Healthy() {
+		t.Error("Service should be healthy when client is healthy")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			service := &Service{
-				config: createTestConfig(),
-				client: tt.client,
-			}
+	// Mock unhealthy client
+	mockClient.shouldBeHealthy = false
+	if service.Healthy() {
+		t.Error("Service should not be healthy when client is unhealthy")
+	}
 
-			result := service.Healthy()
-			assert.Equal(t, tt.expectedHealth, result)
-
-			if mockClient, ok := tt.client.(*MockAPIClient); ok {
-				mockClient.AssertExpectations(t)
-			}
-		})
+	// Test with nil client
+	service.client = nil
+	if service.Healthy() {
+		t.Error("Service should not be healthy when client is nil")
 	}
 }

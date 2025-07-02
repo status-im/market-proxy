@@ -1,9 +1,9 @@
 package coingecko_assets_platforms
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"sync/atomic"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
@@ -35,24 +35,14 @@ func (c *CoinGeckoClient) Healthy() bool {
 	return c.successfulFetch.Load()
 }
 
-func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) ([]byte, error) {
-	resp, body, err := c.executeFetchRequest(params)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	c.successfulFetch.Store(true)
-
-	return body, nil
-}
-
-func (c *CoinGeckoClient) executeFetchRequest(params AssetsPlatformsParams) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
 	availableKeys := c.keyManager.GetAvailableKeys()
+
 	var lastError error
 
 	for _, apiKey := range availableKeys {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
+
 		requestBuilder := NewAssetsPlatformsRequestBuilder(baseURL)
 
 		if params.Filter != "" {
@@ -84,8 +74,18 @@ func (c *CoinGeckoClient) executeFetchRequest(params AssetsPlatformsParams) (*ht
 			continue
 		}
 
-		return resp, body, nil
+		resp.Body.Close()
+
+		c.successfulFetch.Store(true)
+
+		var result interface{}
+		if err := json.Unmarshal(body, &result); err != nil {
+			log.Printf("CoinGecko-AssetsPlatforms: Error parsing JSON response: %v", err)
+			return nil, err
+		}
+
+		return result, nil
 	}
 
-	return nil, nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
+	return nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
 }

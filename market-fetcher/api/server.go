@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/status-im/market-proxy/coingecko_assets_platforms"
 	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/coingecko_markets"
 
@@ -23,23 +24,25 @@ import (
 )
 
 type Server struct {
-	port           string
-	binanceService *binance.Service
-	cgService      *coingecko.Service
-	tokensService  *coingecko_tokens.Service
-	pricesService  *coingecko_prices.Service
-	marketsService *coingecko_markets.Service
-	server         *http.Server
+	port                   string
+	binanceService         *binance.Service
+	cgService              *coingecko.Service
+	tokensService          *coingecko_tokens.Service
+	pricesService          *coingecko_prices.Service
+	marketsService         *coingecko_markets.Service
+	assetsPlatformsService *coingecko_assets_platforms.Service
+	server                 *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, assetsPlatformsService *coingecko_assets_platforms.Service) *Server {
 	return &Server{
-		port:           port,
-		binanceService: binanceService,
-		cgService:      cgService,
-		tokensService:  tokensService,
-		pricesService:  pricesService,
-		marketsService: marketsService,
+		port:                   port,
+		binanceService:         binanceService,
+		cgService:              cgService,
+		tokensService:          tokensService,
+		pricesService:          pricesService,
+		marketsService:         marketsService,
+		assetsPlatformsService: assetsPlatformsService,
 	}
 }
 
@@ -50,6 +53,7 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
 	mux.HandleFunc("/api/v1/coins/markets", s.handleCoinsMarkets)
+	mux.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
 	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
@@ -193,11 +197,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
 		"status": "ok",
 		"services": map[string]string{
-			"binance":           "unknown",
-			"coingecko":         "unknown",
-			"tokens":            "unknown",
-			"coingecko_prices":  "unknown",
-			"coingecko_markets": "unknown",
+			"binance":             "unknown",
+			"coingecko":           "unknown",
+			"tokens":              "unknown",
+			"coingecko_prices":    "unknown",
+			"coingecko_markets":   "unknown",
+			"coingecko_platforms": "unknown",
 		},
 	}
 
@@ -224,6 +229,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if CoinGecko Markets service is healthy
 	if s.marketsService.Healthy() {
 		status["services"].(map[string]string)["coingecko_markets"] = "up"
+	}
+
+	// Check if CoinGecko Assets Platforms service is healthy
+	if s.assetsPlatformsService.Healthy() {
+		status["services"].(map[string]string)["coingecko_platforms"] = "up"
 	}
 
 	s.sendJSONResponse(w, status)
@@ -284,6 +294,25 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 
 	// Send raw JSON response from cache (CoinGecko format)
 	s.sendJSONResponse(w, response)
+}
+
+// handleAssetsPlatforms implements CoinGecko-compatible /api/v3/asset_platforms endpoint
+func (s *Server) handleAssetsPlatforms(w http.ResponseWriter, r *http.Request) {
+	params := coingecko_assets_platforms.AssetsPlatformsParams{}
+
+	// Parse filter parameter (optional)
+	if filterParam := r.URL.Query().Get("filter"); filterParam != "" {
+		params.Filter = filterParam
+	}
+
+	// Call assets platforms service
+	data, err := s.assetsPlatformsService.AssetsPlatforms(params)
+	if err != nil {
+		http.Error(w, "Failed to fetch assets platforms: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.sendJSONResponse(w, data)
 }
 
 // sendJSONResponse is a common wrapper for JSON responses that sets Content-Type,

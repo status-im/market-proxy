@@ -2,31 +2,25 @@ package coingecko_assets_platforms
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/status-im/market-proxy/config"
-	"github.com/status-im/market-proxy/metrics"
 )
 
-type Service struct {
-	config        *config.Config
-	client        APIClient
-	metricsWriter *metrics.MetricsWriter
-}
-
 type APIClient interface {
-	FetchAssetsPlatforms(params AssetsPlatformsParams) ([]byte, error)
+	FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error)
 	Healthy() bool
 }
 
-func NewService(config *config.Config) *Service {
-	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePlatforms)
-	client := NewCoinGeckoClient(config)
+type Service struct {
+	config *config.Config
+	client APIClient
+}
 
+func NewService(config *config.Config) *Service {
+	client := NewCoinGeckoClient(config)
 	return &Service{
-		config:        config,
-		client:        client,
-		metricsWriter: metricsWriter,
+		config: config,
+		client: client,
 	}
 }
 
@@ -37,13 +31,8 @@ func (s *Service) Start(ctx context.Context) error {
 func (s *Service) Stop() {
 }
 
-func (s *Service) AssetsPlatforms(params AssetsPlatformsParams) ([]byte, error) {
-	data, err := s.client.FetchAssetsPlatforms(params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch assets platforms: %w", err)
-	}
-
-	return data, nil
+func (s *Service) AssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
+	return s.client.FetchAssetsPlatforms(params)
 }
 
 func (s *Service) Healthy() bool {
