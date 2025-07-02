@@ -22,4 +22,25 @@ type Cache interface {
 	// - map[string][]byte: key->data map
 	// - error: execution error
 	GetOrLoad(keys []string, loader LoaderFunc, loadOnlyMissingKeys bool, ttl time.Duration) (map[string][]byte, error)
+
+	// Get retrieves data by keys from cache
+	//
+	// Parameters:
+	// - keys: list of keys to retrieve data for
+	//
+	// Returns:
+	// - map[string][]byte: key->data map for found keys
+	// - []string: list of missing keys
+	// - error: execution error
+	Get(keys []string) (map[string][]byte, []string, error)
+
+	// Set stores data in cache with the specified TTL
+	//
+	// Parameters:
+	// - data: key->data map to store in cache
+	// - ttl: time to live for cached data; if 0, uses cache's default expiration
+	//
+	// Returns:
+	// - error: execution error
+	Set(data map[string][]byte, ttl time.Duration) error
 }

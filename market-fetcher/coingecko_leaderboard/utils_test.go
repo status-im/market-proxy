@@ -229,3 +229,206 @@ func TestTopPricesUpdater_SetGetTopTokenIDs(t *testing.T) {
 		assert.NotEqual(t, "modified", originalResult[0])
 	})
 }
+
+func TestConvertMarketsResponseToCoinData(t *testing.T) {
+	t.Run("Valid conversion with all fields", func(t *testing.T) {
+		marketsData := []interface{}{
+			map[string]interface{}{
+				"id":                          "bitcoin",
+				"symbol":                      "btc",
+				"name":                        "Bitcoin",
+				"image":                       "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+				"current_price":               50000.0,
+				"market_cap":                  950000000000.0,
+				"total_volume":                25000000000.0,
+				"price_change_percentage_24h": 2.5,
+			},
+			map[string]interface{}{
+				"id":                          "ethereum",
+				"symbol":                      "eth",
+				"name":                        "Ethereum",
+				"image":                       "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png",
+				"current_price":               3000.0,
+				"market_cap":                  360000000000.0,
+				"total_volume":                15000000000.0,
+				"price_change_percentage_24h": -1.2,
+			},
+		}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		assert.Len(t, result, 2)
+
+		// Check bitcoin
+		bitcoin := result[0]
+		assert.Equal(t, "bitcoin", bitcoin.ID)
+		assert.Equal(t, "btc", bitcoin.Symbol)
+		assert.Equal(t, "Bitcoin", bitcoin.Name)
+		assert.Equal(t, "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png", bitcoin.Image)
+		assert.Equal(t, 50000.0, bitcoin.CurrentPrice)
+		assert.Equal(t, 950000000000.0, bitcoin.MarketCap)
+		assert.Equal(t, 25000000000.0, bitcoin.TotalVolume)
+		assert.Equal(t, 2.5, bitcoin.PriceChangePercentage24h)
+
+		// Check ethereum
+		ethereum := result[1]
+		assert.Equal(t, "ethereum", ethereum.ID)
+		assert.Equal(t, "eth", ethereum.Symbol)
+		assert.Equal(t, "Ethereum", ethereum.Name)
+		assert.Equal(t, "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png", ethereum.Image)
+		assert.Equal(t, 3000.0, ethereum.CurrentPrice)
+		assert.Equal(t, 360000000000.0, ethereum.MarketCap)
+		assert.Equal(t, 15000000000.0, ethereum.TotalVolume)
+		assert.Equal(t, -1.2, ethereum.PriceChangePercentage24h)
+	})
+
+	t.Run("Conversion with missing fields", func(t *testing.T) {
+		marketsData := []interface{}{
+			map[string]interface{}{
+				"id":     "bitcoin",
+				"symbol": "btc",
+				"name":   "Bitcoin",
+				// Missing image, current_price, market_cap, total_volume, price_change_percentage_24h
+			},
+			map[string]interface{}{
+				"id":            "ethereum",
+				"symbol":        "eth",
+				"name":          "Ethereum",
+				"current_price": 3000.0,
+				"market_cap":    360000000000.0,
+				// Missing image, total_volume, price_change_percentage_24h
+			},
+		}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		assert.Len(t, result, 2)
+
+		// Check bitcoin - only basic fields should be set
+		bitcoin := result[0]
+		assert.Equal(t, "bitcoin", bitcoin.ID)
+		assert.Equal(t, "btc", bitcoin.Symbol)
+		assert.Equal(t, "Bitcoin", bitcoin.Name)
+		assert.Equal(t, "", bitcoin.Image)
+		assert.Equal(t, 0.0, bitcoin.CurrentPrice)
+		assert.Equal(t, 0.0, bitcoin.MarketCap)
+		assert.Equal(t, 0.0, bitcoin.TotalVolume)
+		assert.Equal(t, 0.0, bitcoin.PriceChangePercentage24h)
+
+		// Check ethereum - partial fields should be set
+		ethereum := result[1]
+		assert.Equal(t, "ethereum", ethereum.ID)
+		assert.Equal(t, "eth", ethereum.Symbol)
+		assert.Equal(t, "Ethereum", ethereum.Name)
+		assert.Equal(t, "", ethereum.Image)
+		assert.Equal(t, 3000.0, ethereum.CurrentPrice)
+		assert.Equal(t, 360000000000.0, ethereum.MarketCap)
+		assert.Equal(t, 0.0, ethereum.TotalVolume)
+		assert.Equal(t, 0.0, ethereum.PriceChangePercentage24h)
+	})
+
+	t.Run("Skip invalid items", func(t *testing.T) {
+		marketsData := []interface{}{
+			map[string]interface{}{
+				"id":     "bitcoin",
+				"symbol": "btc",
+				"name":   "Bitcoin",
+			},
+			"invalid_string",             // Should be skipped
+			[]string{"invalid", "array"}, // Should be skipped
+			42,                           // Should be skipped
+			map[string]interface{}{
+				"id":     "ethereum",
+				"symbol": "eth",
+				"name":   "Ethereum",
+			},
+			nil, // Should be skipped
+		}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		// Only bitcoin and ethereum should be included
+		assert.Len(t, result, 2)
+		assert.Equal(t, "bitcoin", result[0].ID)
+		assert.Equal(t, "ethereum", result[1].ID)
+	})
+
+	t.Run("Empty input", func(t *testing.T) {
+		marketsData := []interface{}{}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		assert.Len(t, result, 0)
+		assert.NotNil(t, result) // Should return empty slice, not nil
+	})
+
+	t.Run("Nil input", func(t *testing.T) {
+		result := ConvertMarketsResponseToCoinData(nil)
+
+		assert.Len(t, result, 0)
+		assert.NotNil(t, result) // Should return empty slice, not nil
+	})
+
+	t.Run("Invalid field types", func(t *testing.T) {
+		marketsData := []interface{}{
+			map[string]interface{}{
+				"id":                          []string{"invalid", "id"},    // Wrong type
+				"symbol":                      123,                          // Wrong type
+				"name":                        true,                         // Wrong type
+				"image":                       map[string]string{"url": ""}, // Wrong type
+				"current_price":               "not_a_number",               // Wrong type
+				"market_cap":                  []float64{123.45},            // Wrong type
+				"total_volume":                map[string]interface{}{},     // Wrong type
+				"price_change_percentage_24h": "not_a_percentage",           // Wrong type
+			},
+		}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		assert.Len(t, result, 1)
+
+		// All fields should have default values due to type mismatches
+		coin := result[0]
+		assert.Equal(t, "", coin.ID)
+		assert.Equal(t, "", coin.Symbol)
+		assert.Equal(t, "", coin.Name)
+		assert.Equal(t, "", coin.Image)
+		assert.Equal(t, 0.0, coin.CurrentPrice)
+		assert.Equal(t, 0.0, coin.MarketCap)
+		assert.Equal(t, 0.0, coin.TotalVolume)
+		assert.Equal(t, 0.0, coin.PriceChangePercentage24h)
+	})
+
+	t.Run("Mixed valid and invalid data", func(t *testing.T) {
+		marketsData := []interface{}{
+			map[string]interface{}{
+				"id":            "bitcoin",
+				"symbol":        "btc",
+				"name":          "Bitcoin",
+				"current_price": 50000.0,
+			},
+			"invalid_item",
+			map[string]interface{}{
+				"id":            "ethereum",
+				"symbol":        "eth",
+				"name":          "Ethereum",
+				"current_price": 3000.0,
+			},
+			123,
+			map[string]interface{}{
+				"id":            "cardano",
+				"symbol":        "ada",
+				"name":          "Cardano",
+				"current_price": 1.5,
+			},
+		}
+
+		result := ConvertMarketsResponseToCoinData(marketsData)
+
+		// Only the 3 valid maps should be processed
+		assert.Len(t, result, 3)
+		assert.Equal(t, "bitcoin", result[0].ID)
+		assert.Equal(t, "ethereum", result[1].ID)
+		assert.Equal(t, "cardano", result[2].ID)
+	})
+}

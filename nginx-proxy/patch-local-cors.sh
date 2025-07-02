@@ -64,5 +64,6 @@ add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/prices"
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/simpleprices"
 add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/markets"
 add_cors_config "$NGINX_CONF" "\/v1\/coins\/list"
+add_cors_config "$NGINX_CONF" "\/v1\/coins\/markets"
 
 echo "Added CORS configuration to $NGINX_CONF for local development environment with origin $CORS_ORIGIN" 

@@ -16,48 +16,78 @@ func ConvertPriceResponseToPriceQuotes(priceResponse cg.SimplePriceResponse, cur
 		}
 
 		quote := Quote{}
-		hasValidPrice := false
 
 		// Extract price for the currency - this is required
-		if priceValue, exists := tokenData[currency]; exists {
-			if price, ok := priceValue.(float64); ok && price > 0 {
-				quote.Price = price
-				hasValidPrice = true
-			}
+		price := getFloatFromMap(tokenData, currency)
+		if price <= 0 {
+			continue // Only continue processing if we have a valid price
 		}
-
-		// Only continue processing if we have a valid price
-		if !hasValidPrice {
-			continue
-		}
+		quote.Price = price
 
 		// Extract market cap for the currency
 		marketCapKey := currency + "_market_cap"
-		if marketCapValue, exists := tokenData[marketCapKey]; exists {
-			if marketCap, ok := marketCapValue.(float64); ok {
-				quote.MarketCap = marketCap
-			}
-		}
+		quote.MarketCap = getFloatFromMap(tokenData, marketCapKey)
 
 		// Extract 24h volume for the currency
 		volume24hKey := currency + "_24h_vol"
-		if volume24hValue, exists := tokenData[volume24hKey]; exists {
-			if volume24h, ok := volume24hValue.(float64); ok {
-				quote.Volume24h = volume24h
-			}
-		}
+		quote.Volume24h = getFloatFromMap(tokenData, volume24hKey)
 
 		// Extract 24h change for the currency
 		change24hKey := currency + "_24h_change"
-		if change24hValue, exists := tokenData[change24hKey]; exists {
-			if change24h, ok := change24hValue.(float64); ok {
-				quote.PercentChange24h = change24h
-			}
-		}
+		quote.PercentChange24h = getFloatFromMap(tokenData, change24hKey)
 
 		// Add the quote since it has a valid price
 		currencyQuotes[tokenID] = quote
 	}
 
 	return currencyQuotes
+}
+
+// ConvertMarketsResponseToCoinData converts raw markets response data to CoinData slice
+// This function directly processes the interface{} slice from coins/markets API
+func ConvertMarketsResponseToCoinData(marketsData []interface{}) []CoinData {
+	result := make([]CoinData, 0, len(marketsData))
+
+	for _, item := range marketsData {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Convert map[string]interface{} to CoinData directly
+		coinData := CoinData{
+			ID:                       getStringFromMap(itemMap, "id"),
+			Symbol:                   getStringFromMap(itemMap, "symbol"),
+			Name:                     getStringFromMap(itemMap, "name"),
+			Image:                    getStringFromMap(itemMap, "image"),
+			CurrentPrice:             getFloatFromMap(itemMap, "current_price"),
+			MarketCap:                getFloatFromMap(itemMap, "market_cap"),
+			TotalVolume:              getFloatFromMap(itemMap, "total_volume"),
+			PriceChangePercentage24h: getFloatFromMap(itemMap, "price_change_percentage_24h"),
+		}
+
+		result = append(result, coinData)
+	}
+
+	return result
+}
+
+// Helper function to safely extract string from map
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if value, exists := m[key]; exists {
+		if str, ok := value.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
+// Helper function to safely extract float64 from map
+func getFloatFromMap(m map[string]interface{}, key string) float64 {
+	if value, exists := m[key]; exists {
+		if f, ok := value.(float64); ok {
+			return f
+		}
+	}
+	return 0.0
 }

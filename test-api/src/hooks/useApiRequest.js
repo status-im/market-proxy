@@ -22,19 +22,29 @@ export default function useApiRequest({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const etagRef = useRef(null);
-  const [stats, setStats] = useState({
+  
+  const initialStats = {
     total_requests: 0,
     cache_hits: 0,
     cache_misses: 0,
     total_response_size: 0,
     not_modified_count: 0
-  });
+  };
+  
+  const [stats, setStats] = useState(initialStats);
 
   // Helper function for conditional logging
   const log = (message, data) => {
     if (!silent) {
       console.log(message, data);
     }
+  };
+
+  // Function to reset statistics
+  const resetStats = () => {
+    setStats(initialStats);
+    etagRef.current = null; // Also reset ETag cache
+    log('Stats reset', null);
   };
 
   // Add this function to output headers in raw format
@@ -82,28 +92,37 @@ export default function useApiRequest({
       }
       
       // Debug logging for headers
-      log('All response headers:', response.headers);
-      log('X-Proxy-Cache header:', response.headers['x-proxy-cache']);
-      log('Content-Length header:', response.headers['content-length']);
-      log('Content-Encoding header:', response.headers['content-encoding']);
-      log('ETag header:', response.headers.etag);
-      log('Status:', response.status);
+      // log('All response headers:', response.headers);
+      // log('X-Proxy-Cache header:', response.headers['x-proxy-cache']);
+      // log('Content-Length header:', response.headers['content-length']);
+      // log('Content-Encoding header:', response.headers['content-encoding']);
+      // log('ETag header:', response.headers.etag);
+      // log('Status:', response.status);
       
       // Update stats based on response headers
       setStats(prevStats => {
         const isCacheHit = response.headers['x-proxy-cache'] === 'HIT';
-        const responseSize = parseInt(response.headers['content-length'] || '0');
+        // Calculate actual response size from the data instead of headers
+        let responseSize = 0;
+        if (response.status !== 304 && response.data) {
+          try {
+            responseSize = new Blob([JSON.stringify(response.data)]).size;
+          } catch (e) {
+            // Fallback to string length if Blob is not available
+            responseSize = JSON.stringify(response.data).length;
+          }
+        }
         const isNotModified = response.status === 304;
         const isCompressed = response.headers['content-encoding'] === 'gzip';
         const originalSize = parseInt(response.headers['x-response-size'] || '0');
         const bytesSaved = isCompressed ? originalSize - responseSize : 0;
         
-        log('Cache hit status:', isCacheHit);
-        log('Response size:', responseSize);
-        log('Not Modified status:', isNotModified);
-        log('Compressed status:', isCompressed);
-        log('Original size:', originalSize);
-        log('Bytes saved:', bytesSaved);
+        // log('Cache hit status:', isCacheHit);
+        // log('Response size:', responseSize);
+        // log('Not Modified status:', isNotModified);
+        // log('Compressed status:', isCompressed);
+        // log('Original size:', originalSize);
+        // log('Bytes saved:', bytesSaved);
         
         return {
           total_requests: prevStats.total_requests + 1,
@@ -138,5 +157,5 @@ export default function useApiRequest({
     }
   };
 
-  return { data, isLoading, error, stats, fetchData };
+  return { data, isLoading, error, stats, fetchData, resetStats };
 } 

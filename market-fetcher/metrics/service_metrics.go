@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,9 +18,18 @@ const (
 	ServiceLBPrices  = "lb-prices"
 	ServiceCoins     = "coins"
 	ServicePrices    = "prices"
+	ServiceMarkets   = "markets"
 )
 
 var (
+	// tokensByPlatformMutex protects the RecordTokensByPlatform function
+	// to ensure Reset() and Set() operations are atomic
+	tokensByPlatformMutex sync.Mutex
+
+	// cycleMetricsMutex protects cycle metrics operations for future-proofing
+	// against potential race conditions when increment operations are added
+	cycleMetricsMutex sync.Mutex
+
 	// TokensByPlatformGauge tracks the number of tokens per platform
 	// Cardinality: ~15 (number of supported blockchain platforms)
 	TokensByPlatformGauge = promauto.NewGaugeVec(
@@ -123,6 +133,10 @@ var (
 
 // RecordTokensByPlatform records the number of tokens for each platform
 func RecordTokensByPlatform(tokensByPlatform map[string]int) {
+	// Use mutex to ensure Reset() and Set() operations are atomic
+	tokensByPlatformMutex.Lock()
+	defer tokensByPlatformMutex.Unlock()
+
 	// Reset all previous values first to handle platforms that no longer have tokens
 	TokensByPlatformGauge.Reset()
 
@@ -177,6 +191,10 @@ func (mw *MetricsWriter) RecordRetryAttempt() {
 
 // ResetCycleMetrics resets all cycle-related metrics
 func (mw *MetricsWriter) ResetCycleMetrics() {
+	// Use mutex to protect against future race conditions if increment operations are added
+	cycleMetricsMutex.Lock()
+	defer cycleMetricsMutex.Unlock()
+
 	RequestsPerCycleGauge.WithLabelValues(mw.serviceName).Set(0)
 
 	// Reset common status counters

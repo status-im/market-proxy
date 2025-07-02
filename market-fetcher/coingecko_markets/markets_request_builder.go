@@ -1,8 +1,9 @@
-package coingecko_leaderboard
+package coingecko_markets
 
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 )
@@ -52,6 +53,34 @@ func (rb *MarketsRequestBuilder) WithCurrency(currency string) *MarketsRequestBu
 // WithOrder adds ordering parameter
 func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder {
 	rb.builder.With("order", order)
+	return rb
+}
+
+// WithCategory adds category parameter
+func (rb *MarketsRequestBuilder) WithCategory(category string) *MarketsRequestBuilder {
+	rb.builder.With("category", category)
+	return rb
+}
+
+// WithIDs adds ids parameter (comma-separated list of coin IDs)
+func (rb *MarketsRequestBuilder) WithIDs(ids []string) *MarketsRequestBuilder {
+	if len(ids) > 0 {
+		rb.builder.With("ids", strings.Join(ids, ","))
+	}
+	return rb
+}
+
+// WithSparkline adds sparkline parameter
+func (rb *MarketsRequestBuilder) WithSparkline(enabled bool) *MarketsRequestBuilder {
+	rb.builder.With("sparkline", strconv.FormatBool(enabled))
+	return rb
+}
+
+// WithPriceChangePercentage adds price_change_percentage parameter
+func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string) *MarketsRequestBuilder {
+	if len(percentages) > 0 {
+		rb.builder.With("price_change_percentage", strings.Join(percentages, ","))
+	}
 	return rb
 }
 

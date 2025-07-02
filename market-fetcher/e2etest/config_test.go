@@ -19,12 +19,24 @@ func createTestConfig(mockURL, mockWSURL string) (string, error) {
 	// Create configuration file content
 	configContent := `
 coingecko_leaderboard:
-  update_interval: 1s       # shorter interval for tests
-  limit: 20                 # fewer tokens for tests
-  request_delay: 100ms      # short delay for tests
+  update_interval: 1s                 # shorter interval for tests
+  top_markets_update_interval: 1s     # enable markets updates for tests
+  limit: 20                           # fewer tokens for tests
+  request_delay: 100ms                # short delay for tests
+
+coingecko_markets:
+  request_delay: 100ms     # short delay for tests
+  ttl: 5m                  # cache TTL for tests
+  market_params_normalize: # normalize parameters for consistent caching
+    vs_currency: "usd"     # always use USD for tests
+    order: "market_cap_desc" # always order by market cap
+    per_page: 50           # smaller page size for tests
+    sparkline: false       # no sparkline for tests
+    price_change_percentage: "1h,24h" # test price changes
+    category: ""           # no category filtering
 
 coingecko_prices:
-  chunk_size: 100           # smaller chunks for tests
+  
   request_delay: 100ms      # short delay for tests
   currencies:               # test currencies
     - usd

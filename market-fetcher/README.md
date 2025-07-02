@@ -1,15 +1,18 @@
 # Market-Fetcher
 
-Go application that provides cached cryptocurrency data with real-time price updates via REST API. The service fetches token lists and market data from CoinGecko, price updates from Binance WebSocket, and offers CoinGecko-compatible endpoints with intelligent caching.
+Go application that provides cached cryptocurrency data via REST API. The service fetches token lists, market data, and price updates from CoinGecko, and offers CoinGecko-compatible endpoints with intelligent caching.
 
 ## Features
 
 - Periodic updates of the complete token list from CoinGecko
-- Real-time price updates from Binance WebSocket
-- Configurable update intervals and token limits
-- REST API endpoints for accessing token and price data
+- Periodic updates of top market data from CoinGecko (leaderboard)
+- Periodic updates of top token prices from CoinGecko (leaderboard)
+- CoinGecko-compatible `/api/v3/coins/markets` endpoint with pagination
+- CoinGecko-compatible `/api/v3/simple/price` endpoint with caching
+- Configurable update intervals, token limits, and cache TTLs
+- REST API endpoints for accessing token, market, and price data
 - Rate limit handling for CoinGecko API
-- Monitoring 
+- Monitoring and health checks 
 
 ## Local Development
 
@@ -36,11 +39,11 @@ coingecko_coinslist:
 
 # Market data fetcher  
 coingecko_leaderboard:
-  update_interval: 5m
-  limit: 100                   # Number of top tokens
-  request_delay: 1s            # Delay between requests
-  prices_update_interval: 2m   # Price refresh interval
-  top_tokens_limit: 50         # Tokens for price tracking
+  top_markets_update_interval: 5m  # Market data refresh interval
+  top_markets_limit: 100           # Number of top tokens to fetch
+  currency: usd                    # Currency for market data
+  top_prices_update_interval: 2m   # Price refresh interval
+  top_prices_limit: 50             # Tokens for price tracking
 
 # Price service with caching
 coingecko_prices:
@@ -52,6 +55,12 @@ coingecko_prices:
     - eur
     - btc
     - eth
+
+# Markets service with caching
+coingecko_markets:
+  chunk_size: 250              # Tokens per API request (max 250)
+  request_delay: 200ms         # Delay between requests
+  ttl: 5m                      # Market data cache TTL
 
 # API tokens file
 tokens_file: "coingecko_api_tokens.json"
@@ -135,11 +144,11 @@ coingecko_coinslist:
 
 ```yaml
 coingecko_leaderboard:
-  update_interval: 5m          # Market data refresh interval
-  limit: 100                   # Number of top tokens to fetch
-  request_delay: 1s            # Delay between API requests
-  prices_update_interval: 2m   # How often to update price data
-  top_tokens_limit: 50         # Tokens to track for prices
+  top_markets_update_interval: 5m  # How often to refresh top markets data
+  top_markets_limit: 100           # Number of top tokens to fetch
+  currency: usd                    # Currency for market data (usd, eur, etc.)
+  top_prices_update_interval: 2m   # How often to update price data
+  top_prices_limit: 50             # Number of tokens to track for prices
 ```
 
 #### CoinGecko Prices Service
@@ -155,30 +164,63 @@ coingecko_prices:
     - btc
     - eth
 ```
+
+#### CoinGecko Markets Service
+
+```yaml
+coingecko_markets:
+  request_delay: 200ms         # Delay between requests
+  ttl: 5m                      # Cache TTL for market data
+  market_params_normalize:     # Normalize parameters for consistent caching
+    vs_currency: "usd"         # Override currency to USD
+    order: "market_cap_desc"   # Override order to market cap descending
+    per_page: 250              # Override per_page to maximum
+    sparkline: false           # Override sparkline to false
+    price_change_percentage: "1h,24h"  # Override price changes to 1h,24h
+    category: ""               # Override category to empty (no filtering)
+```
+
+The `market_params_normalize` section allows you to normalize incoming parameters to ensure consistent cache behavior. When configured, these values will override user-provided parameters, ensuring that different requests with varying parameters will be cached using the same normalized keys. This prevents cache fragmentation and improves cache hit rates.
 ## Request Flow
 
-### Token List Updates
-1. The scheduler task runs at configured intervals
-2. Fetches token list from CoinGecko API
-3. Updates the token cache
-4. Triggers Binance watchlist update with new tokens
+### Top Markets Updates
+1. The top markets updater runs at configured intervals (`top_markets_update_interval`)
+2. Fetches top market data from CoinGecko API
+3. Updates the markets cache with top tokens
+4. Triggers top prices update with token IDs from markets data
 
-### Price Updates
-1. Binance WebSocket connection maintained for real-time updates
-2. Price updates received for watched symbols
-3. Price cache updated with latest data
-4. Price cache reset when token list is updated
+### Top Prices Updates
+1. The top prices updater runs at configured intervals (`top_prices_update_interval`)
+2. Fetches price data for top tokens from CoinGecko API
+3. Updates the prices cache with latest data
+4. Token list comes from top markets data
+
+### Markets Service
+1. Provides CoinGecko-compatible `/api/v3/coins/markets` endpoint
+2. Supports pagination, filtering, and sorting parameters
+3. Uses intelligent caching with configurable TTL
+4. Handles chunked requests for large datasets
+
+### Prices Service
+1. Provides CoinGecko-compatible `/api/v3/simple/price` endpoint  
+2. Supports multiple currencies and optional fields
+3. Uses intelligent caching with configurable TTL
+4. Handles chunked requests for large token lists
 
 ### REST API Access
-1. Token data available via `/api/v1/leaderboard/markets`
-2. Price data available via `/api/v1/leaderboard/prices`
-3. Token platform data available via `/api/v1/coins/list`
-4. Health check available via `/health`
+1. Top markets data available via `/api/v1/leaderboard/markets`
+2. Top prices data available via `/api/v1/leaderboard/prices`
+3. Top simple prices available via `/api/v1/leaderboard/simpleprices`
+4. CoinGecko-compatible markets via `/api/v1/coins/markets`
+5. CoinGecko-compatible simple prices via `/api/v1/simple/price`
+6. Token platform data available via `/api/v1/coins/list`
+7. Health check available via `/health`
+8. Prometheus metrics available via `/metrics`
 
 ## API Endpoints
 
 ### GET /api/v1/leaderboard/prices
-Returns latest price data for all watched tokens:
+Returns latest price data for top tokens:
 ```json
 {
   "BTC": {
@@ -192,8 +234,24 @@ Returns latest price data for all watched tokens:
 }
 ```
 
+### GET /api/v1/leaderboard/simpleprices
+Returns simple price data for top tokens in specified currency:
+```bash
+# Query parameters: ?currency=usd
+```
+```json
+{
+  "bitcoin": {
+    "usd": 50000.00
+  },
+  "ethereum": {
+    "usd": 3000.00
+  }
+}
+```
+
 ### GET /api/v1/leaderboard/markets
-Returns token market data from CoinGecko:
+Returns top market data from CoinGecko:
 ```json
 {
   "data": [
@@ -208,6 +266,46 @@ Returns token market data from CoinGecko:
       "price_change_percentage_24h": 1.5
     }
   ]
+}
+```
+
+### GET /api/v1/coins/markets
+CoinGecko-compatible markets endpoint with pagination and filtering:
+```bash
+# Query parameters: ?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false
+```
+```json
+[
+  {
+    "id": "bitcoin",
+    "symbol": "btc",
+    "name": "Bitcoin",
+    "image": "https://...",
+    "current_price": 50000.00,
+    "market_cap": 1000000000000,
+    "total_volume": 50000000000,
+    "price_change_percentage_24h": 1.5
+  }
+]
+```
+
+### GET /api/v1/simple/price
+CoinGecko-compatible simple price endpoint:
+```bash
+# Query parameters: ?ids=bitcoin,ethereum&vs_currencies=usd,eur&include_market_cap=true
+```
+```json
+{
+  "bitcoin": {
+    "usd": 50000.00,
+    "eur": 42000.00,
+    "usd_market_cap": 1000000000000
+  },
+  "ethereum": {
+    "usd": 3000.00,
+    "eur": 2500.00,
+    "usd_market_cap": 360000000000
+  }
 }
 ```
 
@@ -242,7 +340,10 @@ Returns service health status:
   "status": "ok",
   "services": {
     "binance": "up",
-    "coingecko": "up"
+    "coingecko": "up",
+    "tokens": "up",
+    "coingecko_prices": "up",
+    "coingecko_markets": "up"
 }
 }
 ```

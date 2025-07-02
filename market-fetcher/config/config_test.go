@@ -40,9 +40,9 @@ func TestLoadConfig(t *testing.T) {
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval: 1m
-  limit: 100
-  request_delay: 1s
+  top_markets_update_interval: 1m
+  top_markets_limit: 100
+  currency: usd
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -54,14 +54,14 @@ coingecko_coinslist:
 				if cfg.TokensFile != "test_tokens.json" {
 					t.Errorf("TokensFile = %v, want test_tokens.json", cfg.TokensFile)
 				}
-				if cfg.CoingeckoLeaderboard.UpdateInterval != time.Minute {
-					t.Errorf("UpdateInterval = %v, want 1m", cfg.CoingeckoLeaderboard.UpdateInterval)
+				if cfg.CoingeckoLeaderboard.TopMarketsUpdateInterval != time.Minute {
+					t.Errorf("TopMarketsUpdateInterval = %v, want 1m", cfg.CoingeckoLeaderboard.TopMarketsUpdateInterval)
 				}
-				if cfg.CoingeckoLeaderboard.RequestDelay != time.Second {
-					t.Errorf("RequestDelay = %v, want 1s", cfg.CoingeckoLeaderboard.RequestDelay)
+				if cfg.CoingeckoLeaderboard.Currency != "usd" {
+					t.Errorf("Currency = %v, want usd", cfg.CoingeckoLeaderboard.Currency)
 				}
-				if cfg.CoingeckoLeaderboard.Limit != 100 {
-					t.Errorf("Limit = %v, want 100", cfg.CoingeckoLeaderboard.Limit)
+				if cfg.CoingeckoLeaderboard.TopMarketsLimit != 100 {
+					t.Errorf("TopMarketsLimit = %v, want 100", cfg.CoingeckoLeaderboard.TopMarketsLimit)
 				}
 				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
 					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
@@ -86,8 +86,8 @@ coingecko_coinslist:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval: invalid
-  limit: 100
+  top_markets_update_interval: invalid
+  top_markets_limit: 100
 `,
 			wantErr: true,
 		},
@@ -96,12 +96,12 @@ coingecko_leaderboard:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval: 1m
+  top_markets_update_interval: 1m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoingeckoLeaderboard.Limit != 0 {
-					t.Errorf("Limit should be empty, got %v", cfg.CoingeckoLeaderboard.Limit)
+				if cfg.CoingeckoLeaderboard.TopMarketsLimit != 0 {
+					t.Errorf("TopMarketsLimit should be empty, got %v", cfg.CoingeckoLeaderboard.TopMarketsLimit)
 				}
 			},
 		},
@@ -116,8 +116,8 @@ coingecko_leaderboard:
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
-				if cfg.CoingeckoLeaderboard.RequestDelay != 0 {
-					t.Errorf("RequestDelay = %v, want 0s", cfg.CoingeckoLeaderboard.RequestDelay)
+				if cfg.CoingeckoLeaderboard.Currency != "" {
+					t.Errorf("Currency = %v, want empty string", cfg.CoingeckoLeaderboard.Currency)
 				}
 			},
 		},
@@ -126,8 +126,8 @@ coingecko_leaderboard:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval: 1m
-  limit: 100
+  top_markets_update_interval: 1m
+  top_markets_limit: 100
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -159,8 +159,8 @@ coingecko_coinslist:
 			configYAML: `
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
-  update_interval: 1m
-  limit: 100
+  top_markets_update_interval: 1m
+  top_markets_limit: 100
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms: []
@@ -287,9 +287,9 @@ func TestLoadConfigWithRealFiles(t *testing.T) {
 	content := `
 tokens_file: "` + tokensFile + `"
 coingecko_leaderboard:
-  update_interval: 1m
-  limit: 100
-  request_delay: 1s
+  top_markets_update_interval: 1m
+  top_markets_limit: 100
+  currency: usd
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:

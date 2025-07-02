@@ -84,7 +84,7 @@ func (u *TopPricesUpdater) getTopTokenIDs() []string {
 // Start starts the price updater with periodic updates
 func (u *TopPricesUpdater) Start(ctx context.Context) error {
 	// Start price scheduler if configured
-	pricesUpdateInterval := u.config.CoingeckoLeaderboard.PricesUpdateInterval
+	pricesUpdateInterval := u.config.CoingeckoLeaderboard.TopPricesUpdateInterval
 	if pricesUpdateInterval > 0 {
 		u.priceScheduler = scheduler.New(
 			pricesUpdateInterval,
@@ -111,8 +111,12 @@ func (u *TopPricesUpdater) Stop() {
 
 // fetchAndUpdateTopPrices fetches prices for top tokens and updates cache
 func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
-	// Default currencies to fetch
-	currencies := []string{"usd"}
+	// Get currency from config, use "usd" as default
+	currency := u.config.CoingeckoLeaderboard.Currency
+	if currency == "" {
+		currency = "usd"
+	}
+	currencies := []string{currency}
 
 	// Record start time for metrics
 	startTime := time.Now()
@@ -133,9 +137,9 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 			newPricesData = make(map[string]PriceQuotes)
 		} else {
 			// Limit the number of tokens according to config
-			if u.config.CoingeckoLeaderboard.TopTokensLimit > 0 && len(topTokenIDs) > u.config.CoingeckoLeaderboard.TopTokensLimit {
-				topTokenIDs = topTokenIDs[:u.config.CoingeckoLeaderboard.TopTokensLimit]
-				log.Printf("Limited top tokens to %d tokens as per config", u.config.CoingeckoLeaderboard.TopTokensLimit)
+			if u.config.CoingeckoLeaderboard.TopPricesLimit > 0 && len(topTokenIDs) > u.config.CoingeckoLeaderboard.TopPricesLimit {
+				topTokenIDs = topTokenIDs[:u.config.CoingeckoLeaderboard.TopPricesLimit]
+				log.Printf("Limited top tokens to %d tokens as per config", u.config.CoingeckoLeaderboard.TopPricesLimit)
 			}
 			// Make single request with all currencies
 			params := cg.PriceParams{

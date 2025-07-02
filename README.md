@@ -8,7 +8,7 @@ A Go-based market data fetcher agent with caching and an Nginx proxy for efficie
 
 This project consists of two main components:
 
-1. **Market Fetcher**: A Go service that fetches and caches market data from CoinGecko, price updates from Binance, and provides blockchain platform-specific token lists.
+1. **Market Fetcher**: A Go service that fetches and caches market data, token lists, and price updates from CoinGecko, providing CoinGecko-compatible REST APIs with intelligent caching and blockchain platform-specific token filtering.
 2. **Nginx Proxy**: A reverse proxy that provides caching, ETag optimization, and compression for efficient delivery of market data.
 
 ## Local Development
@@ -22,14 +22,15 @@ This project consists of two main components:
 
 1. Create a `config.yaml` file in the `market-fetcher` directory:
 ```yaml
-coingecko_fetcher:
-  update_interval_ms: 600000  # milliseconds (10 minutes)
-  tokens_file: "coingecko_api_tokens.json"
-  limit: 5000  # number of tokens to fetch
-  request_delay_ms: 0  # delay between requests
+# Cache configuration
+cache:
+  go_cache:
+    default_expiration: 10m    # Default cache TTL
+    cleanup_interval: 5m       # Cache cleanup frequency
 
+# Token list fetcher
 coingecko_coinslist:
-  update_interval_ms: 1800000  # milliseconds (30 minutes)
+  update_interval: 30m
   supported_platforms:
     - ethereum
     - optimistic-ethereum  # Optimism
@@ -44,6 +45,40 @@ coingecko_coinslist:
     - unichain
     - binance-smart-chain  # BSC
     - polygon-pos          # Polygon
+
+# Leaderboard service (top markets and prices)
+coingecko_leaderboard:
+  top_markets_update_interval: 5m  # Market data refresh interval
+  top_markets_limit: 100           # Number of top tokens to fetch
+  currency: usd                    # Currency for market data
+  top_prices_update_interval: 2m   # Price refresh interval
+  top_prices_limit: 50             # Tokens for price tracking
+
+# Price service with caching
+coingecko_prices:
+  chunk_size: 250              # Tokens per API request
+  request_delay: 200ms         # Delay between chunks
+  ttl: 2m                      # Price cache TTL
+  currencies:                  # Default currencies to cache
+    - usd
+    - eur
+    - btc
+    - eth
+
+# Markets service with caching
+coingecko_markets:
+  request_delay: 200ms         # Delay between requests
+  ttl: 5m                      # Market data cache TTL
+  market_params_normalize:     # Normalize parameters for consistent caching
+    vs_currency: "usd"         # Override currency to USD
+    order: "market_cap_desc"   # Override order to market cap descending
+    per_page: 250              # Override per_page to maximum
+    sparkline: false           # Override sparkline to false
+    price_change_percentage: "1h,24h"  # Override price changes to 1h,24h
+    category: ""               # Override category to empty (no filtering)
+
+# API tokens file
+tokens_file: "coingecko_api_tokens.json"
 ```
 
 2. (Optional) Create `coingecko_api_tokens.json` in the `secrets` directory for Pro API access:
@@ -82,27 +117,33 @@ This will:
 ## Key Features
 
 - Market data fetching from CoinGecko with rate limit handling
-- Real-time price updates via Binance WebSocket
+- Top markets and prices leaderboard with periodic updates
+- CoinGecko-compatible `/api/v3/coins/markets` endpoint with pagination
+- CoinGecko-compatible `/api/v3/simple/price` endpoint with caching
 - Blockchain platform-specific token filtering
-- REST API for accessing token lists
-- CoinGecko-compatible Simple Price API endpoint
+- REST API for accessing token lists, market data, and prices
+- Intelligent caching with configurable TTLs
+- Health checks and monitoring
 
 ## API Endpoints
 
 The proxy provides the following endpoints:
 
 - `/v1/simple/price` - CoinGecko-compatible simple price endpoint
-- `/v1/leaderboard/prices` - Price data (binance)
-- `/v1/leaderboard/simpleprices` - Price data (coingecko)
-- `/v1/leaderboard/markets` - Market data from leaderboard  
+- `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination
 - `/v1/coins/list` - Supported coins list with platform information
+- `/v1/leaderboard/markets` - Top market data from leaderboard service
+- `/v1/leaderboard/prices` - Top price data from leaderboard service  
+- `/v1/leaderboard/simpleprices` - Simple prices for top tokens
+- `/health` - Health check endpoint
+- `/metrics` - Prometheus metrics
 
 
 ## Subprojects
 
 ### [Market Fetcher](./market-fetcher/README.md)
 
-Go application that caches token lists from CoinGecko and price updates from Binance, providing a REST API for accessing token and price data. Also provides filtered token lists based on blockchain platforms.
+Go application that provides cached cryptocurrency data via REST API. The service fetches token lists, market data, and price updates from CoinGecko, and offers CoinGecko-compatible endpoints with intelligent caching. Also provides filtered token lists based on blockchain platforms.
 
 ### [Nginx Proxy](./nginx-proxy/README.md)
 

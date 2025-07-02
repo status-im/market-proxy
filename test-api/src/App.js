@@ -18,13 +18,16 @@ function App() {
   // Endpoint state for prices
   const [priceEndpoint, setPriceEndpoint] = useState('prices');
 
-  // CoinGecko data
+  // Endpoint state for token data
+  const [tokenEndpoint, setTokenEndpoint] = useState('leaderboard');
+
+  // CoinGecko data with token endpoint parameter
   const {
     coinGeckoData,
     isLoading: isLoadingCoinGecko,
     error: coinGeckoError,
     stats: coinGeckoStats
-  } = useCoinGeckoData();
+  } = useCoinGeckoData(tokenEndpoint);
 
   const {
     coinGeckoPriceData,
@@ -76,6 +79,53 @@ function App() {
 
   return (
     <Layout title="Crypto Dashboard">
+      {/* Token data source switcher */}
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '15px', 
+        background: '#f5f5f5', 
+        borderRadius: '8px',
+        border: '1px solid #ddd'
+      }}>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#333' }}>Token Data Source:</h3>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setTokenEndpoint('leaderboard')}
+            style={{
+              padding: '8px 16px',
+              border: '1px solid #28a745',
+              borderRadius: '4px',
+              backgroundColor: tokenEndpoint === 'leaderboard' ? '#28a745' : '#fff',
+              color: tokenEndpoint === 'leaderboard' ? '#fff' : '#28a745',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Optimized Leaderboard
+          </button>
+          <button
+            onClick={() => setTokenEndpoint('coins')}
+            style={{
+              padding: '8px 16px',
+              border: '1px solid #28a745',
+              borderRadius: '4px',
+              backgroundColor: tokenEndpoint === 'coins' ? '#28a745' : '#fff',
+              color: tokenEndpoint === 'coins' ? '#fff' : '#28a745',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Coins/Markets (250)
+          </button>
+        </div>
+        <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
+          {tokenEndpoint === 'leaderboard' 
+            ? 'Using /v1/leaderboard/markets - optimized endpoint with curated token data'
+            : 'Using /v1/coins/markets?per_page=250 - first 250 tokens from standard coins endpoint'
+          }
+        </p>
+      </div>
+
       {/* Price endpoint switcher */}
       <div style={{ 
         marginBottom: '20px', 
@@ -126,7 +176,7 @@ function App() {
       {/* Show appropriate stats based on active main tab */}
       {(
         <>
-          <Stats stats={coinGeckoStats} title="CoinGecko Data Stats" />
+          <Stats stats={coinGeckoStats} title={`CoinGecko Data Stats (${tokenEndpoint})`} />
           <Stats stats={coinGeckoPriceStats} title={`CoinGecko Price Data Stats (${priceEndpoint})`} />
         </>
       )}

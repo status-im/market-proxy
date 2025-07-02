@@ -12,7 +12,8 @@ export default function useCoinGeckoPriceData(endpoint = 'prices') {
     isLoading,
     error,
     stats,
-    fetchData
+    fetchData,
+    resetStats
   } = useApiRequest({
     url: `${process.env.REACT_APP_API_URL}${endpointUrls[endpoint]}`,
     processData: (data) => data || {},
@@ -27,6 +28,8 @@ export default function useCoinGeckoPriceData(endpoint = 'prices') {
   });
 
   useEffect(() => {
+    // Reset stats when endpoint changes
+    resetStats();
     fetchData();
     const interval = setInterval(fetchData, 1000); // Fetch every second
     

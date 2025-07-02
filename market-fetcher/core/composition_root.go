@@ -9,6 +9,7 @@ import (
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
+	"github.com/status-im/market-proxy/coingecko_markets"
 	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"
 	"github.com/status-im/market-proxy/config"
@@ -26,12 +27,16 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	pricesService := coingecko_prices.NewService(cacheService, cfg)
 	registry.Register(pricesService)
 
+	// Create CoinGecko Markets service with cache dependency
+	marketsService := coingecko_markets.NewService(cacheService, cfg)
+	registry.Register(marketsService)
+
 	// Create Binance core
 	binanceService := binance.NewService(cfg)
 	registry.Register(binanceService)
 
 	// Create CoinGecko core with callback and price fetcher
-	cgService := coingecko_leaderboard.NewService(cfg, pricesService)
+	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
 	registry.Register(cgService)
 
 	// Create Tokens core
@@ -45,7 +50,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	}
 
 	// Create HTTP server and register it as a core
-	server := api.New(port, binanceService, cgService, tokensService, pricesService)
+	server := api.New(port, binanceService, cgService, tokensService, pricesService, marketsService)
 	registry.Register(server)
 
 	// Set update callback directly to our watchlist update function
