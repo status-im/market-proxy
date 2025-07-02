@@ -4,8 +4,18 @@ import (
 	"time"
 )
 
+// MarketParamsNormalize defines configuration for normalizing market parameters
+type MarketParamsNormalize struct {
+	VsCurrency            *string `yaml:"vs_currency,omitempty"`
+	Order                 *string `yaml:"order,omitempty"`
+	PerPage               *int    `yaml:"per_page,omitempty"`
+	Sparkline             *bool   `yaml:"sparkline,omitempty"`
+	PriceChangePercentage *string `yaml:"price_change_percentage,omitempty"`
+	Category              *string `yaml:"category,omitempty"`
+}
+
 type CoingeckoMarketsFetcher struct {
-	ChunkSize    int           `yaml:"chunk_size"`    // Maximum items per request (250 for CoinGecko)
-	RequestDelay time.Duration `yaml:"request_delay"` // Delay between requests
-	TTL          time.Duration `yaml:"ttl"`           // Time to live for cached market data
+	RequestDelay          time.Duration          `yaml:"request_delay"`           // Delay between requests
+	TTL                   time.Duration          `yaml:"ttl"`                     // Time to live for cached market data
+	MarketParamsNormalize *MarketParamsNormalize `yaml:"market_params_normalize"` // Parameters normalization config
 }

@@ -14,9 +14,15 @@ coingecko_leaderboard:
   top_prices_limit: 500         # maximum number of top tokens to track prices
 
 coingecko_markets:
-  chunk_size: 250             # maximum items per request (CoinGecko API max)
   request_delay: 1s           # delay between requests
   ttl: 30m                    # time to live for cached market data
+  market_params_normalize:    # override user parameters to normalize cache keys
+    vs_currency: "usd"        # always use USD regardless of user request
+    order: "market_cap_desc"  # always order by market cap
+    per_page: 250             # always use max per page
+    sparkline: false          # never include sparkline data
+    price_change_percentage: "1h,24h"  # always include 1h and 24h price changes
+    category: ""              # never filter by category
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request

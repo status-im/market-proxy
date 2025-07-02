@@ -59,7 +59,6 @@ var (
 func createTestConfig() *config.Config {
 	return &config.Config{
 		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
-			ChunkSize:    250,
 			RequestDelay: 1000 * time.Millisecond,
 			TTL:          300 * time.Second,
 		},

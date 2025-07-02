@@ -169,10 +169,18 @@ coingecko_prices:
 
 ```yaml
 coingecko_markets:
-  chunk_size: 250              # Tokens per API request (max 250)
   request_delay: 200ms         # Delay between requests
   ttl: 5m                      # Cache TTL for market data
+  market_params_normalize:     # Normalize parameters for consistent caching
+    vs_currency: "usd"         # Override currency to USD
+    order: "market_cap_desc"   # Override order to market cap descending
+    per_page: 250              # Override per_page to maximum
+    sparkline: false           # Override sparkline to false
+    price_change_percentage: "1h,24h"  # Override price changes to 1h,24h
+    category: ""               # Override category to empty (no filtering)
 ```
+
+The `market_params_normalize` section allows you to normalize incoming parameters to ensure consistent cache behavior. When configured, these values will override user-provided parameters, ensuring that different requests with varying parameters will be cached using the same normalized keys. This prevents cache fragmentation and improves cache hit rates.
 ## Request Flow
 
 ### Top Markets Updates

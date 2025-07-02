@@ -129,6 +129,9 @@ func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, error) {
 func (s *Service) MarketsByIds(params cg.MarketsParams) (cg.MarketsResponse, error) {
 	log.Printf("Loading markets data for %d specific IDs with currency=%s", len(params.IDs), params.Currency)
 
+	// Apply parameters normalization from config
+	params = s.getParamsOverride(params)
+
 	// Set default values if not provided
 	if params.Currency == "" {
 		params.Currency = "usd"
@@ -199,20 +202,9 @@ func (s *Service) Healthy() bool {
 func (s *Service) TopMarkets(limit int, currency string) (cg.MarketsResponse, error) {
 	log.Printf("Loading top %d markets data from CoinGecko API with currency=%s", limit, currency)
 
-	// Set default currency if not provided
-	if currency == "" {
-		currency = "usd"
-	}
-
 	// Set default limit if not provided
 	if limit <= 0 {
 		limit = 100
-	}
-
-	// Get configuration values
-	chunkSize := s.config.CoingeckoMarkets.ChunkSize
-	if chunkSize <= 0 {
-		chunkSize = MARKETS_DEFAULT_CHUNK_SIZE
 	}
 
 	requestDelay := s.config.CoingeckoMarkets.RequestDelay
@@ -225,8 +217,11 @@ func (s *Service) TopMarkets(limit int, currency string) (cg.MarketsResponse, er
 	params := cg.MarketsParams{
 		Currency: currency,
 		Order:    "market_cap_desc", // Order by market cap to get top tokens
-		PerPage:  chunkSize,
+		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
 	}
+
+	// Apply parameters normalization from config
+	params = s.getParamsOverride(params)
 
 	// Create PaginatedFetcher with parameters
 	fetcher := NewPaginatedFetcher(s.apiClient, limit, requestDelayMs, params)

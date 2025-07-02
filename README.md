@@ -67,9 +67,15 @@ coingecko_prices:
 
 # Markets service with caching
 coingecko_markets:
-  chunk_size: 250              # Tokens per API request (max 250)
   request_delay: 200ms         # Delay between requests
   ttl: 5m                      # Market data cache TTL
+  market_params_normalize:     # Normalize parameters for consistent caching
+    vs_currency: "usd"         # Override currency to USD
+    order: "market_cap_desc"   # Override order to market cap descending
+    per_page: 250              # Override per_page to maximum
+    sparkline: false           # Override sparkline to false
+    price_change_percentage: "1h,24h"  # Override price changes to 1h,24h
+    category: ""               # Override category to empty (no filtering)
 
 # API tokens file
 tokens_file: "coingecko_api_tokens.json"
