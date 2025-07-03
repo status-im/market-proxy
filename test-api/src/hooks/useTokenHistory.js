@@ -34,11 +34,11 @@ const useTokenHistory = (tokenId, timeRange) => {
     try {
       // Parameters for different time ranges
       const timeRanges = {
-        week: { days: 7, interval: 'hourly' },
-        month: { days: 30, interval: 'hourly' },
-        halfyear: { days: 180, interval: 'daily' },
-        year: { days: 365, interval: 'daily' },
-        all: { days: 'max', interval: 'daily' }
+        week: { days: 7 },
+        month: { days: 30 },
+        halfyear: { days: 180 },
+        year: { days: 365 },
+        all: { days: 'max' }
       };
 
       const range = timeRanges[timeRange];
@@ -49,9 +49,11 @@ const useTokenHistory = (tokenId, timeRange) => {
       // Increment counter before making the request
       incrementApiCounter();
 
-      // Use CoinGecko API to get historical data
+      // Use CoinGecko API (or proxy if available) to get historical data
+      const proxyUrl = process.env.REACT_APP_COINGECKO_PROXY_URL;
+      const baseUrl = proxyUrl ? proxyUrl : 'https://api.coingecko.com';
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${tokenId}/market_chart?vs_currency=usd&days=${range.days}&interval=${range.interval}`
+        `${baseUrl}/api/v3/coins/${tokenId}/market_chart?vs_currency=usd&days=${range.days}`
       );
 
       if (!response.ok) {
