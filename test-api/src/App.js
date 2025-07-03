@@ -4,6 +4,7 @@ import CryptoDataTable from './components/CryptoDataTable';
 import Layout from './components/Layout';
 import Tabs from './components/Tabs';
 import Stats from './components/Stats';
+import TokenDetails from './components/TokenDetails';
 import { Loading, Error } from './components/LoadingAndErrors';
 import useCoinGeckoData from './hooks/useCoinGeckoData';
 import useCoinGeckoPriceData from './hooks/useCoinGeckoPriceData';
@@ -20,6 +21,9 @@ function App() {
 
   // Endpoint state for token data
   const [tokenEndpoint, setTokenEndpoint] = useState('leaderboard');
+
+  // Selected token state
+  const [selectedToken, setSelectedToken] = useState(null);
 
   // CoinGecko data with token endpoint parameter
   const {
@@ -45,6 +49,15 @@ function App() {
   const isLoading = (activeMainTab === 'CoinGecko' && isLoadingCoinGecko && coinGeckoData.length === 0);
 
   const error = (activeMainTab === 'CoinGecko' && (coinGeckoError || coinGeckoPriceError));
+
+  // Handle token selection
+  const handleTokenClick = (token) => {
+    setSelectedToken(token);
+  };
+
+  const handleCloseTokenDetails = () => {
+    setSelectedToken(null);
+  };
 
   // Get the current active data and price data based on active tab
   const getCurrentData = () => {
@@ -198,8 +211,17 @@ function App() {
           priceData={activePrice}
           source={source}
           priceEndpoint={priceEndpoint}
+          onTokenClick={handleTokenClick}
         />
       </ErrorBoundary>
+
+      {/* Token details modal */}
+      {selectedToken && (
+        <TokenDetails
+          token={selectedToken}
+          onClose={handleCloseTokenDetails}
+        />
+      )}
     </Layout>
   );
 }
