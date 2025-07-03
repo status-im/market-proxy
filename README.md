@@ -132,6 +132,7 @@ The proxy provides the following endpoints:
 - `/v1/simple/price` - CoinGecko-compatible simple price endpoint
 - `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination
 - `/v1/coins/list` - Supported coins list with platform information
+- `/v1/asset_platforms` - CoinGecko-compatible asset platforms endpoint with 30-minute caching
 - `/v1/leaderboard/markets` - Top market data from leaderboard service
 - `/v1/leaderboard/prices` - Top price data from leaderboard service  
 - `/v1/leaderboard/simpleprices` - Simple prices for top tokens

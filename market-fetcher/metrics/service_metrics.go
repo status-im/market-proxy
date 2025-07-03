@@ -19,6 +19,7 @@ const (
 	ServiceCoins     = "coins"
 	ServicePrices    = "prices"
 	ServiceMarkets   = "markets"
+	ServicePlatforms = "platforms"
 )
 
 var (
