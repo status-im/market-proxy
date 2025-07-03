@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import useTokenHistory, { getApiRequestCounter, subscribeToApiCounter } from '../hooks/useTokenHistory';
+import useCryptoCompareHistory, { getCryptoCompareRequestCounter, subscribeToCryptoCompareCounter } from '../hooks/useCryptoCompareHistory';
 
 const Container = styled.div`
   position: fixed;
@@ -107,8 +108,25 @@ const PriceValue = styled.div`
   color: ${props => props.$isPositive ? '#16C784' : props.$isNegative ? '#EA3943' : '#333'};
 `;
 
-const ChartContainer = styled.div`
+const ChartsContainer = styled.div`
   margin-bottom: 24px;
+`;
+
+const ChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartContainer = styled.div`
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
 `;
 
 const ChartTitle = styled.h3`
@@ -173,15 +191,21 @@ const timeRanges = [
 function TokenDetails({ token, onClose }) {
   const [selectedTimeRange, setSelectedTimeRange] = useState('week');
   const [apiRequestCount, setApiRequestCount] = useState(getApiRequestCounter());
+  const [cryptoCompareRequestCount, setCryptoCompareRequestCount] = useState(getCryptoCompareRequestCounter());
   
   // Subscribe to API request counter changes
   useEffect(() => {
-    const unsubscribe = subscribeToApiCounter(setApiRequestCount);
-    return unsubscribe;
+    const unsubscribeCoinGecko = subscribeToApiCounter(setApiRequestCount);
+    const unsubscribeCryptoCompare = subscribeToCryptoCompareCounter(setCryptoCompareRequestCount);
+    return () => {
+      unsubscribeCoinGecko();
+      unsubscribeCryptoCompare();
+    };
   }, []);
   
-  // Use hook to get historical data
-  const { data: chartData, isLoading: isLoadingChart, error: chartError } = useTokenHistory(token.id, selectedTimeRange);
+  // Use hooks to get historical data from both APIs
+  const { data: coinGeckoData, isLoading: isLoadingCoinGecko, error: coinGeckoError } = useTokenHistory(token.id, selectedTimeRange);
+  const { data: cryptoCompareData, isLoading: isLoadingCryptoCompare, error: cryptoCompareError } = useCryptoCompareHistory(token.symbol, selectedTimeRange);
 
   const formatNumber = (num) => {
     if (!num && num !== 0) return '—';
@@ -235,9 +259,14 @@ function TokenDetails({ token, onClose }) {
             <TokenName>{name}</TokenName>
             <TokenSymbol>{symbol}</TokenSymbol>
           </TokenInfo>
-          <ApiCounter>
-            API Requests: {apiRequestCount}
-          </ApiCounter>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: 'auto' }}>
+            <ApiCounter>
+              CoinGecko: {apiRequestCount}
+            </ApiCounter>
+            <ApiCounter>
+              CryptoCompare: {cryptoCompareRequestCount}
+            </ApiCounter>
+          </div>
         </TokenHeader>
 
         <PriceInfo>
@@ -277,55 +306,100 @@ function TokenDetails({ token, onClose }) {
           </PriceCard>
         </PriceInfo>
 
-        <ChartContainer>
-          <ChartTitle>Price History</ChartTitle>
-          
-          <TimeRangeSelector>
-            {timeRanges.map(range => (
-              <TimeRangeButton
-                key={range.key}
-                $active={selectedTimeRange === range.key}
-                onClick={() => handleTimeRangeChange(range.key)}
-              >
-                {range.label}
-              </TimeRangeButton>
-            ))}
-          </TimeRangeSelector>
+        <ChartsContainer>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <ChartTitle>Price History Comparison</ChartTitle>
+            <TimeRangeSelector>
+              {timeRanges.map(range => (
+                <TimeRangeButton
+                  key={range.key}
+                  $active={selectedTimeRange === range.key}
+                  onClick={() => handleTimeRangeChange(range.key)}
+                >
+                  {range.label}
+                </TimeRangeButton>
+              ))}
+            </TimeRangeSelector>
+          </div>
 
-          <ChartWrapper>
-            {isLoadingChart ? (
-              <LoadingChart>Loading chart data...</LoadingChart>
-            ) : chartError ? (
-              <ErrorChart>{chartError}</ErrorChart>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    domain={['dataMin', 'dataMax']}
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `$${value.toFixed(2)}`}
-                  />
-                  <Tooltip 
-                    formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
-                    labelFormatter={(label) => `Date: ${label}`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke="#3861FB" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </ChartWrapper>
-        </ChartContainer>
+          <ChartsGrid>
+            {/* CoinGecko Chart */}
+            <ChartContainer>
+              <ChartTitle style={{ fontSize: '16px', color: '#3861FB' }}>CoinGecko Data</ChartTitle>
+              <ChartWrapper>
+                {isLoadingCoinGecko ? (
+                  <LoadingChart>Loading CoinGecko data...</LoadingChart>
+                ) : coinGeckoError ? (
+                  <ErrorChart>{coinGeckoError}</ErrorChart>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={coinGeckoData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis 
+                        domain={['dataMin', 'dataMax']}
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => `$${value.toFixed(2)}`}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="#3861FB" 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartWrapper>
+            </ChartContainer>
+
+            {/* CryptoCompare Chart */}
+            <ChartContainer>
+              <ChartTitle style={{ fontSize: '16px', color: '#FF6B35' }}>CryptoCompare Data</ChartTitle>
+              <ChartWrapper>
+                {isLoadingCryptoCompare ? (
+                  <LoadingChart>Loading CryptoCompare data...</LoadingChart>
+                ) : cryptoCompareError ? (
+                  <ErrorChart>{cryptoCompareError}</ErrorChart>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={cryptoCompareData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis 
+                        domain={['dataMin', 'dataMax']}
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => `$${value.toFixed(2)}`}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [`$${value.toFixed(2)}`, 'Price']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="#FF6B35" 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </ChartWrapper>
+            </ChartContainer>
+          </ChartsGrid>
+        </ChartsContainer>
       </Modal>
     </Container>
   );
