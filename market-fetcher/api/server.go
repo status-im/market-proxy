@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
+	"github.com/status-im/market-proxy/coingecko_market_chart"
 	"github.com/status-im/market-proxy/coingecko_markets"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,11 +23,12 @@ type Server struct {
 	tokensService          *coingecko_tokens.Service
 	pricesService          *coingecko_prices.Service
 	marketsService         *coingecko_markets.Service
+	marketChartService     *coingecko_market_chart.Service
 	assetsPlatformsService *coingecko_assets_platforms.Service
 	server                 *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, assetsPlatformsService *coingecko_assets_platforms.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service) *Server {
 	return &Server{
 		port:                   port,
 		binanceService:         binanceService,
@@ -34,6 +36,7 @@ func New(port string, binanceService *binance.Service, cgService *coingecko.Serv
 		tokensService:          tokensService,
 		pricesService:          pricesService,
 		marketsService:         marketsService,
+		marketChartService:     marketChartService,
 		assetsPlatformsService: assetsPlatformsService,
 	}
 }
@@ -43,8 +46,8 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
-	mux.HandleFunc("/api/v1/coins/list", s.handleCoinsList)
-	mux.HandleFunc("/api/v1/coins/markets", s.handleCoinsMarkets)
+	// All coins endpoints are handled by the coins router
+	mux.HandleFunc("/api/v1/coins/", s.handleCoinsRoutes)
 	mux.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
 	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 	mux.HandleFunc("/health", s.handleHealth)

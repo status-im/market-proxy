@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/coingecko_market_chart"
 )
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -151,4 +152,91 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 
 	// Send raw JSON response from cache (CoinGecko format)
 	s.sendJSONResponse(w, response)
+}
+
+// handleMarketChart implements CoinGecko-compatible /api/v3/coins/{id}/market_chart endpoint
+func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
+	// Extract coin ID from URL path
+	// Path format: /api/v1/coins/{id}/market_chart
+	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathSegments) < 4 || pathSegments[3] == "" {
+		http.Error(w, "Missing coin ID in path", http.StatusBadRequest)
+		return
+	}
+
+	coinID := pathSegments[3]
+
+	// Parse query parameters
+	params := coingecko_market_chart.MarketChartParams{
+		ID: coinID,
+	}
+
+	// Parse vs_currency (optional, defaults to USD)
+	if currency := r.URL.Query().Get("vs_currency"); currency != "" {
+		params.Currency = currency
+	}
+
+	// Parse days parameter (optional, defaults to 30)
+	if days := r.URL.Query().Get("days"); days != "" {
+		params.Days = days
+	}
+
+	// Parse interval parameter (optional, Enterprise only)
+	if interval := r.URL.Query().Get("interval"); interval != "" {
+		params.Interval = interval
+	}
+
+	// Parse from and to parameters for range requests (optional)
+	if fromParam := r.URL.Query().Get("from"); fromParam != "" {
+		if from, err := strconv.ParseInt(fromParam, 10, 64); err == nil {
+			params.From = from
+		}
+	}
+
+	if toParam := r.URL.Query().Get("to"); toParam != "" {
+		if to, err := strconv.ParseInt(toParam, 10, 64); err == nil {
+			params.To = to
+		}
+	}
+
+	// Call market chart service
+	chartData, err := s.marketChartService.MarketChart(params)
+	if err != nil {
+		http.Error(w, "Failed to fetch market chart data: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if chartData == nil {
+		http.Error(w, "No market chart data available", http.StatusServiceUnavailable)
+		return
+	}
+
+	s.sendJSONResponse(w, chartData)
+}
+
+// handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers
+func (s *Server) handleCoinsRoutes(w http.ResponseWriter, r *http.Request) {
+	// Parse the path to determine the endpoint
+	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+
+	// Handle different coins endpoints
+	if len(pathSegments) >= 4 {
+		switch pathSegments[3] {
+		case "list":
+			s.handleCoinsList(w, r)
+			return
+		case "markets":
+			s.handleCoinsMarkets(w, r)
+			return
+		default:
+			// Check if this is a market_chart request: /api/v1/coins/{id}/market_chart
+			if len(pathSegments) >= 5 && pathSegments[4] == "market_chart" {
+				s.handleMarketChart(w, r)
+				return
+			}
+		}
+	}
+
+	// If no matching endpoint found
+	http.Error(w, "Endpoint not found", http.StatusNotFound)
 }
