@@ -72,7 +72,7 @@ func (s *Service) MarketChart(params MarketChartParams) (map[string][]byte, erro
 	}
 
 	// Enrich parameters to maximize cache utilization
-	enrichedParams := EnrichMarketChartParams(params)
+	enrichedParams := EnrichMarketChartParams(params, s.config.CoingeckoMarketChart.DailyDataThreshold)
 
 	// Create cache key based on enriched parameters
 	cacheKey := s.createCacheKey(enrichedParams)
@@ -187,27 +187,28 @@ func (s *Service) cacheData(cacheKey string, chartData map[string][]byte, params
 	return s.cache.Set(cacheData, ttl)
 }
 
-// selectTTL chooses appropriate TTL based on request parameters
+// selectTTL chooses appropriate TTL based on request parameters using config
 func (s *Service) selectTTL(params MarketChartParams) time.Duration {
 	// Parse days parameter to determine data granularity
 	if params.Days == "max" {
-		// For max days, use longer TTL (12 hours)
-		return 12 * time.Hour
+		// For max days, use daily TTL
+		return s.config.CoingeckoMarketChart.DailyTTL
 	}
 
 	// Try to parse days as integer
 	if daysStr := params.Days; daysStr != "" {
 		if days, err := strconv.Atoi(daysStr); err == nil {
-			// For days <= 90: hourly data, use shorter TTL (30 minutes)
-			// For days > 90: daily data, use longer TTL (12 hours)
-			if days <= 90 {
-				return 30 * time.Minute
+			// Use config to determine threshold and TTL values
+			if days <= s.config.CoingeckoMarketChart.DailyDataThreshold {
+				// For days <= threshold: hourly data, use hourly TTL
+				return s.config.CoingeckoMarketChart.HourlyTTL
 			} else {
-				return 12 * time.Hour
+				// For days > threshold: daily data, use daily TTL
+				return s.config.CoingeckoMarketChart.DailyTTL
 			}
 		}
 	}
 
-	// Default fallback TTL
-	return time.Duration(MARKET_CHART_DEFAULT_TTL) * time.Second
+	// Default fallback TTL from config
+	return s.config.CoingeckoMarketChart.DefaultTTL
 }

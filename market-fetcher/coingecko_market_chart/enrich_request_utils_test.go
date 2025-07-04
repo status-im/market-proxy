@@ -172,7 +172,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := EnrichMarketChartParams(tt.inputParams)
+			result := EnrichMarketChartParams(tt.inputParams, 90) // Use default threshold of 90 days
 
 			// Check each field
 			if result.ID != tt.expectedParams.ID {
@@ -199,7 +199,7 @@ func TestEnrichMarketChartParamsInPlace(t *testing.T) {
 		Days:     "30",
 	}
 
-	EnrichMarketChartParamsInPlace(&params)
+	EnrichMarketChartParamsInPlace(&params, 90) // Use default threshold of 90 days
 
 	if params.Days != "90" {
 		t.Errorf("Expected Days to be enriched to 90, got %s", params.Days)
@@ -220,7 +220,7 @@ func TestEnrichMarketChartParams_OriginalUnchanged(t *testing.T) {
 		Days:     "30",
 	}
 
-	result := EnrichMarketChartParams(original)
+	result := EnrichMarketChartParams(original, 90) // Use default threshold of 90 days
 
 	// Original should remain unchanged
 	if original.Days != "30" {

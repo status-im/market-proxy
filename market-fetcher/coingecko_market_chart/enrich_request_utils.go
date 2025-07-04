@@ -6,11 +6,11 @@ import (
 )
 
 // EnrichMarketChartParams enriches the request parameters to get maximum data
-// by rounding up the days parameter according to CoinGecko's data availability:
-// - If days <= 90, round up to 90 days
-// - If days > 90, round up to 365 days
+// by rounding up the days parameter according to CoinGecko's data availability and provided config:
+// - If days <= dailyDataThreshold, round up to dailyDataThreshold
+// - If days > dailyDataThreshold, round up to 365 days
 // - If days == "max", keep "max"
-func EnrichMarketChartParams(params MarketChartParams) MarketChartParams {
+func EnrichMarketChartParams(params MarketChartParams, dailyDataThreshold int) MarketChartParams {
 	// Create a copy of the params to avoid modifying the original
 	enrichedParams := params
 
@@ -26,11 +26,11 @@ func EnrichMarketChartParams(params MarketChartParams) MarketChartParams {
 		return enrichedParams
 	}
 
-	// Apply enrichment logic
+	// Apply enrichment logic using config
 	originalDays := params.Days
-	if daysInt <= 90 {
-		enrichedParams.Days = "90"
-	} else if daysInt > 90 {
+	if daysInt <= dailyDataThreshold {
+		enrichedParams.Days = strconv.Itoa(dailyDataThreshold)
+	} else if daysInt > dailyDataThreshold {
 		enrichedParams.Days = "365"
 	}
 
@@ -45,7 +45,7 @@ func EnrichMarketChartParams(params MarketChartParams) MarketChartParams {
 
 // EnrichMarketChartParamsInPlace enriches the request parameters in place
 // This is a convenience function that modifies the original params struct
-func EnrichMarketChartParamsInPlace(params *MarketChartParams) {
-	enriched := EnrichMarketChartParams(*params)
+func EnrichMarketChartParamsInPlace(params *MarketChartParams, dailyDataThreshold int) {
+	enriched := EnrichMarketChartParams(*params, dailyDataThreshold)
 	*params = enriched
 }

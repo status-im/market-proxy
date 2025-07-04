@@ -28,6 +28,18 @@ func (m *MockAPIClient) Healthy() bool {
 	return args.Bool(0)
 }
 
+// createTestConfig creates a test configuration with market chart settings
+func createTestConfig() *config.Config {
+	return &config.Config{
+		CoingeckoMarketChart: config.CoingeckoMarketChartFetcher{
+			HourlyTTL:          30 * time.Minute,
+			DailyTTL:           12 * time.Hour,
+			DailyDataThreshold: 90,
+			DefaultTTL:         5 * time.Minute,
+		},
+	}
+}
+
 // Test data
 var sampleMarketChartData = createTestResponseMap(90)
 
@@ -79,7 +91,7 @@ func TestService_Healthy(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -99,8 +111,8 @@ func TestService_SelectTTL(t *testing.T) {
 	cacheConfig := cache.DefaultCacheConfig()
 	cacheService := cache.NewService(cacheConfig)
 
-	// Create test config
-	cfg := &config.Config{}
+	// Create test config with market chart settings
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -150,14 +162,14 @@ func TestService_SelectTTL(t *testing.T) {
 			params: MarketChartParams{
 				Days: "invalid",
 			},
-			expected: time.Duration(MARKET_CHART_DEFAULT_TTL) * time.Second,
+			expected: 5 * time.Minute, // From config DefaultTTL
 		},
 		{
 			name: "Empty days should use default TTL",
 			params: MarketChartParams{
 				Days: "",
 			},
-			expected: time.Duration(MARKET_CHART_DEFAULT_TTL) * time.Second,
+			expected: 5 * time.Minute, // From config DefaultTTL
 		},
 	}
 
@@ -175,7 +187,7 @@ func TestService_CreateCacheKey(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -228,8 +240,8 @@ func TestService_MarketChart_CacheMiss(t *testing.T) {
 	cacheConfig := cache.DefaultCacheConfig()
 	cacheService := cache.NewService(cacheConfig)
 
-	// Create test config
-	cfg := &config.Config{}
+	// Create test config with market chart settings
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -271,7 +283,7 @@ func TestService_MarketChart_CacheHit(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -320,7 +332,7 @@ func TestService_MarketChart_APIError(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -360,7 +372,7 @@ func TestService_MarketChart_DefaultValues(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -444,7 +456,7 @@ func TestService_MarketChart_EnrichmentLogic(t *testing.T) {
 			cacheService := cache.NewService(cacheConfig)
 
 			// Create test config
-			cfg := &config.Config{}
+			cfg := createTestConfig()
 
 			// Create service
 			service := NewService(cacheService, cfg)
@@ -489,7 +501,7 @@ func TestService_MarketChart_DataFilter(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -534,7 +546,7 @@ func TestService_GetCachedData_NotFound(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)
@@ -554,7 +566,7 @@ func TestService_CacheData_Success(t *testing.T) {
 	cacheService := cache.NewService(cacheConfig)
 
 	// Create test config
-	cfg := &config.Config{}
+	cfg := createTestConfig()
 
 	// Create service
 	service := NewService(cacheService, cfg)

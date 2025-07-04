@@ -34,6 +34,12 @@ coingecko_prices:
     - btc
     - eth
 
+coingecko_market_chart:
+  hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)
+  daily_ttl: 12h              # TTL for daily data (requests with days > daily_data_threshold)  
+  daily_data_threshold: 90    # threshold in days: <= 90 days = hourly data, > 90 days = daily data
+  default_ttl: 5m             # fallback TTL when parameters cannot be parsed
+
 coingecko_coinslist:
   update_interval: 30m        # 30 minutes
   supported_platforms:
