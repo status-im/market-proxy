@@ -53,9 +53,9 @@ add_cors_config() {
     # Create a temporary file with the CORS configuration
     local temp_file=$(mktemp)
 
-    # Extract the location block - support both exact (=) and prefix locations
+    # Extract the location block - support all location types (=, ~, ~*, prefix)
     awk -v loc="$location" '
-        $0 ~ "location = " loc " {" || $0 ~ "location " loc " {" { p=1; print; next }
+        index($0, "location " loc " {") > 0 { p=1; print; next }
         p==1 && $0 ~ "}" { p=0; print; next }
         p==1 { print; next }
         { print }
@@ -64,7 +64,7 @@ add_cors_config() {
     # Create a new file with the CORS headers inserted
     local new_file=$(mktemp)
     awk -v loc="$location" -v origin="$CORS_ORIGIN" '
-        $0 ~ "location = " loc " {" || $0 ~ "location " loc " {" {
+        index($0, "location " loc " {") > 0 {
             print
             print "            # CORS headers for regular requests"
             print "            add_header '\''Access-Control-Allow-Origin'\'' '\''" origin "'\'' always;"
@@ -96,14 +96,15 @@ add_cors_config() {
 add_coingecko_local_proxy "$NGINX_CONF"
 
 # Add CORS configuration for all endpoints
-add_cors_config "$NGINX_CONF" "\/v1\/simple\/price"
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/prices"
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/simpleprices"
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/markets"
-add_cors_config "$NGINX_CONF" "\/v1\/coins\/list"
-add_cors_config "$NGINX_CONF" "\/v1\/coins\/markets"
-add_cors_config "$NGINX_CONF" "\/v1\/asset_platforms"
-add_cors_config "$NGINX_CONF" "\/coingecko-local-proxy\/"
+add_cors_config "$NGINX_CONF" "= /v1/simple/price"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/prices"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/simpleprices"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/markets"
+add_cors_config "$NGINX_CONF" "/v1/coins/list"
+add_cors_config "$NGINX_CONF" "/v1/coins/markets"
+add_cors_config "$NGINX_CONF" "= /v1/asset_platforms"
+add_cors_config "$NGINX_CONF" "/coingecko-local-proxy/"
+add_cors_config "$NGINX_CONF" "~ ^/v1/coins/([^/]+)/market_chart$"
 
 echo "Added CORS configuration to $NGINX_CONF for local development environment with origin $CORS_ORIGIN"
 echo "Added CoinGecko local proxy endpoint at /coingecko-local-proxy/" 
