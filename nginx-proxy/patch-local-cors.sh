@@ -12,6 +12,39 @@ CORS_ORIGIN="$2"
 # Create a backup of the original file
 cp "$NGINX_CONF" "${NGINX_CONF}.bak"
 
+# Function to add CoinGecko local proxy endpoint
+add_coingecko_local_proxy() {
+    local file="$1"
+    local temp_file=$(mktemp)
+    
+    # Find the last location block and add the new proxy location before the error page location
+    awk -v origin="$CORS_ORIGIN" '
+        /location = \/50x\.html/ {
+            print "        # CoinGecko Local Proxy endpoint"
+            print "        location /coingecko-local-proxy/ {"
+            print "            proxy_hide_header Access-Control-Allow-Origin;"
+            print "            proxy_hide_header Access-Control-Allow-Methods;"
+            print "            proxy_hide_header Access-Control-Allow-Headers;"
+            print "            proxy_hide_header Access-Control-Expose-Headers;"
+            print "            proxy_hide_header Access-Control-Max-Age;"
+            print "            "
+            print "            rewrite ^/coingecko-local-proxy/(.*) /$1 break;"
+            print "            proxy_pass https://api.coingecko.com;"
+            print "            proxy_set_header Host api.coingecko.com;"
+            print "            proxy_set_header X-Real-IP $remote_addr;"
+            print "            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+            print "            proxy_set_header X-Forwarded-Proto $scheme;"
+            print "            proxy_ssl_server_name on;"
+            print "            proxy_ssl_verify off;"
+            print "        }"
+            print ""
+        }
+        { print }
+    ' "$file" > "$temp_file"
+    
+    mv "$temp_file" "$file"
+}
+
 # Function to add CORS configuration to a location block
 add_cors_config() {
     local file="$1"
@@ -20,9 +53,9 @@ add_cors_config() {
     # Create a temporary file with the CORS configuration
     local temp_file=$(mktemp)
 
-    # Extract the location block
+    # Extract the location block - support all location types (=, ~, ~*, prefix)
     awk -v loc="$location" '
-        $0 ~ "location = " loc " {" { p=1; print; next }
+        index($0, "location " loc " {") > 0 { p=1; print; next }
         p==1 && $0 ~ "}" { p=0; print; next }
         p==1 { print; next }
         { print }
@@ -31,7 +64,7 @@ add_cors_config() {
     # Create a new file with the CORS headers inserted
     local new_file=$(mktemp)
     awk -v loc="$location" -v origin="$CORS_ORIGIN" '
-        $0 ~ "location = " loc " {" {
+        index($0, "location " loc " {") > 0 {
             print
             print "            # CORS headers for regular requests"
             print "            add_header '\''Access-Control-Allow-Origin'\'' '\''" origin "'\'' always;"
@@ -59,11 +92,19 @@ add_cors_config() {
     rm "$temp_file"
 }
 
-# Add CORS configuration for all endpoints
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/prices"
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/simpleprices"
-add_cors_config "$NGINX_CONF" "\/v1\/leaderboard\/markets"
-add_cors_config "$NGINX_CONF" "\/v1\/coins\/list"
-add_cors_config "$NGINX_CONF" "\/v1\/coins\/markets"
+# Add CoinGecko local proxy endpoint
+add_coingecko_local_proxy "$NGINX_CONF"
 
-echo "Added CORS configuration to $NGINX_CONF for local development environment with origin $CORS_ORIGIN" 
+# Add CORS configuration for all endpoints
+add_cors_config "$NGINX_CONF" "= /v1/simple/price"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/prices"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/simpleprices"
+add_cors_config "$NGINX_CONF" "= /v1/leaderboard/markets"
+add_cors_config "$NGINX_CONF" "/v1/coins/list"
+add_cors_config "$NGINX_CONF" "/v1/coins/markets"
+add_cors_config "$NGINX_CONF" "= /v1/asset_platforms"
+add_cors_config "$NGINX_CONF" "/coingecko-local-proxy/"
+add_cors_config "$NGINX_CONF" "~ ^/v1/coins/([^/]+)/market_chart$"
+
+echo "Added CORS configuration to $NGINX_CONF for local development environment with origin $CORS_ORIGIN"
+echo "Added CoinGecko local proxy endpoint at /coingecko-local-proxy/" 

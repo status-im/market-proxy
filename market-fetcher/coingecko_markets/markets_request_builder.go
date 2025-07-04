@@ -1,7 +1,6 @@
 package coingecko_markets
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -26,7 +25,7 @@ func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
 	}
 
 	// Add default market parameters
-	rb.WithCurrency("usd")
+	rb.builder.WithCurrency("usd")
 	rb.WithOrder("market_cap_desc")
 
 	return rb
@@ -41,12 +40,6 @@ func (rb *MarketsRequestBuilder) WithPage(page int) *MarketsRequestBuilder {
 // WithPerPage adds per_page parameter
 func (rb *MarketsRequestBuilder) WithPerPage(perPage int) *MarketsRequestBuilder {
 	rb.builder.With("per_page", strconv.Itoa(perPage))
-	return rb
-}
-
-// WithCurrency adds currency parameter
-func (rb *MarketsRequestBuilder) WithCurrency(currency string) *MarketsRequestBuilder {
-	rb.builder.With("vs_currency", currency)
 	return rb
 }
 
@@ -82,37 +75,4 @@ func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string)
 		rb.builder.With("price_change_percentage", strings.Join(percentages, ","))
 	}
 	return rb
-}
-
-// WithApiKey sets the API key and its type (delegated to base builder)
-func (rb *MarketsRequestBuilder) WithApiKey(apiKey string, keyType cg.KeyType) *MarketsRequestBuilder {
-	rb.builder.WithApiKey(apiKey, keyType)
-	return rb
-}
-
-// WithHeader adds a custom HTTP header (delegated to base builder)
-func (rb *MarketsRequestBuilder) WithHeader(name, value string) *MarketsRequestBuilder {
-	rb.builder.WithHeader(name, value)
-	return rb
-}
-
-// WithUserAgent sets the User-Agent header (delegated to base builder)
-func (rb *MarketsRequestBuilder) WithUserAgent(userAgent string) *MarketsRequestBuilder {
-	rb.builder.WithUserAgent(userAgent)
-	return rb
-}
-
-// GetApiKey returns the API key and its type (delegated to base builder)
-func (rb *MarketsRequestBuilder) GetApiKey() (string, cg.KeyType) {
-	return rb.builder.GetApiKey()
-}
-
-// BuildURL builds the complete URL for the request (delegated to base builder)
-func (rb *MarketsRequestBuilder) BuildURL() string {
-	return rb.builder.BuildURL()
-}
-
-// Build creates an http.Request object (delegated to base builder)
-func (rb *MarketsRequestBuilder) Build() (*http.Request, error) {
-	return rb.builder.Build()
 }

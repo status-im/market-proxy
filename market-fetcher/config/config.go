@@ -13,6 +13,7 @@ type Config struct {
 	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
 	CoingeckoMarkets     CoingeckoMarketsFetcher     `yaml:"coingecko_markets"`
 	CoingeckoPrices      CoingeckoPricesFetcher      `yaml:"coingecko_prices"`
+	CoingeckoMarketChart CoingeckoMarketChartFetcher `yaml:"coingecko_market_chart"`
 	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
 	TokensFile           string                      `yaml:"tokens_file"`
 	APITokens            *APITokens
@@ -38,6 +39,11 @@ func LoadConfig(filename string) (*Config, error) {
 	// Set default cache config if not provided
 	if config.Cache.GoCache.DefaultExpiration == 0 && config.Cache.GoCache.CleanupInterval == 0 {
 		config.Cache = cache.DefaultCacheConfig()
+	}
+
+	// Set default market chart config if not provided
+	if config.CoingeckoMarketChart.HourlyTTL == 0 && config.CoingeckoMarketChart.DailyTTL == 0 {
+		config.CoingeckoMarketChart = GetDefaultMarketChartConfig()
 	}
 
 	apiTokens, err := LoadAPITokens(config.TokensFile)

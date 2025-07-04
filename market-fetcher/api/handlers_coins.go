@@ -1,11 +1,14 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/coingecko_market_chart"
 )
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -151,4 +154,89 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 
 	// Send raw JSON response from cache (CoinGecko format)
 	s.sendJSONResponse(w, response)
+}
+
+// handleMarketChart implements CoinGecko-compatible /api/v3/coins/{id}/market_chart endpoint
+func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
+	// Extract coin ID from URL path
+	// Path format: /api/v1/coins/{id}/market_chart
+	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathSegments) < 4 || pathSegments[3] == "" {
+		http.Error(w, "Missing coin ID in path", http.StatusBadRequest)
+		return
+	}
+
+	coinID := pathSegments[3]
+
+	// Parse query parameters
+	currency := r.URL.Query().Get("vs_currency")
+	if currency == "" {
+		currency = "usd"
+	}
+
+	days := r.URL.Query().Get("days")
+	if days == "" {
+		days = "30"
+	}
+
+	interval := r.URL.Query().Get("interval")
+	dataFilter := r.URL.Query().Get("data_filter")
+
+	// Create market chart params
+	params := coingecko_market_chart.MarketChartParams{
+		ID:         coinID,
+		Currency:   currency,
+		Days:       days,
+		Interval:   interval,
+		DataFilter: dataFilter,
+	}
+
+	// Fetch market chart data
+	data, err := s.marketChartService.MarketChart(params)
+	if err != nil {
+		// Check if this is a validation error
+		if strings.Contains(err.Error(), "invalid parameters") {
+			http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+
+	// Write JSON response - data is already MarketChartResponseData (map[string]interface{})
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers
+func (s *Server) handleCoinsRoutes(w http.ResponseWriter, r *http.Request) {
+	// Parse the path to determine the endpoint
+	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+
+	// Handle different coins endpoints
+	if len(pathSegments) >= 4 {
+		switch pathSegments[3] {
+		case "list":
+			s.handleCoinsList(w, r)
+			return
+		case "markets":
+			s.handleCoinsMarkets(w, r)
+			return
+		default:
+			// Check if this is a market_chart request: /api/v1/coins/{id}/market_chart
+			if len(pathSegments) >= 5 && pathSegments[4] == "market_chart" {
+				s.handleMarketChart(w, r)
+				return
+			}
+		}
+	}
+
+	// If no matching endpoint found
+	http.Error(w, "Endpoint not found", http.StatusNotFound)
 }

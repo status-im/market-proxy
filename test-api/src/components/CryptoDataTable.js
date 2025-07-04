@@ -62,6 +62,15 @@ const SwapButton = styled.button`
   }
 `;
 
+const TableRow = styled.tr`
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #f8f9fa;
+  }
+`;
+
 const PriceContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -138,7 +147,7 @@ const PageInfo = styled.div`
   color: #616E85;
 `;
 
-function CryptoDataTable({ data, priceData, source, priceEndpoint }) {
+function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
@@ -257,7 +266,7 @@ function CryptoDataTable({ data, priceData, source, priceEndpoint }) {
                     const tokenPriceData = priceData[symbol] || priceData[id];
 
                     return (
-                        <tr key={id}>
+                        <TableRow key={id} onClick={() => onTokenClick && onTokenClick(item)}>
                             <Td>{startIndex + index + 1}</Td>
                             <Td>
                                 <TokenCell>
@@ -316,9 +325,9 @@ function CryptoDataTable({ data, priceData, source, priceEndpoint }) {
                                 </PriceContainer>
                             </Td>
                             <Td>
-                                <SwapButton>Swap</SwapButton>
+                                <SwapButton onClick={(e) => e.stopPropagation()}>Swap</SwapButton>
                             </Td>
-                        </tr>
+                        </TableRow>
                     );
                 })}
                 </tbody>
