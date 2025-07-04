@@ -160,16 +160,12 @@ func TestEnrichMarketChartParams(t *testing.T) {
 				Currency: "usd",
 				Days:     "30",
 				Interval: "hourly",
-				From:     1234567890,
-				To:       1234567999,
 			},
 			expectedParams: MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
 				Days:     "90",
 				Interval: "hourly",
-				From:     1234567890,
-				To:       1234567999,
 			},
 		},
 	}
@@ -190,12 +186,6 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			}
 			if result.Interval != tt.expectedParams.Interval {
 				t.Errorf("Expected Interval %s, got %s", tt.expectedParams.Interval, result.Interval)
-			}
-			if result.From != tt.expectedParams.From {
-				t.Errorf("Expected From %d, got %d", tt.expectedParams.From, result.From)
-			}
-			if result.To != tt.expectedParams.To {
-				t.Errorf("Expected To %d, got %d", tt.expectedParams.To, result.To)
 			}
 		})
 	}

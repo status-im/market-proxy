@@ -18,12 +18,6 @@ type MarketChartParams struct {
 	// 2-90 days = hourly data
 	// above 90 days = daily data
 	Interval string `json:"interval,omitempty"`
-
-	// From timestamp in UNIX (optional, for time range queries)
-	From int64 `json:"from,omitempty"`
-
-	// To timestamp in UNIX (optional, for time range queries)
-	To int64 `json:"to,omitempty"`
 }
 
 // MarketChartData represents a single data point [timestamp, value]
