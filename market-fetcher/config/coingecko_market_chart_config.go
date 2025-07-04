@@ -21,6 +21,9 @@ type CoingeckoMarketChartFetcher struct {
 
 	// DefaultTTL is the fallback TTL when parameters cannot be parsed
 	DefaultTTL time.Duration `yaml:"default_ttl"`
+
+	// TryFreeApiFirst determines whether to try free API (no key) first when no interval is specified
+	TryFreeApiFirst bool `yaml:"try_free_api_first"`
 }
 
 // GetDefaultMarketChartConfig returns default configuration for market chart service
@@ -30,5 +33,6 @@ func GetDefaultMarketChartConfig() CoingeckoMarketChartFetcher {
 		DailyTTL:           12 * time.Hour,   // 12 hours for daily data
 		DailyDataThreshold: 90,               // 90 days is the threshold for daily data
 		DefaultTTL:         5 * time.Minute,  // 5 minutes default fallback
+		TryFreeApiFirst:    false,            // Default to false
 	}
 }

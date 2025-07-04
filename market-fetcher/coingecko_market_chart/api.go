@@ -92,6 +92,18 @@ func (c *CoinGeckoClient) executeFetchRequest(params MarketChartParams) (*http.R
 	// Get available API keys from the key manager
 	availableKeys := c.keyManager.GetAvailableKeys()
 
+	// If TryFreeApiFirst is enabled and no interval is specified, move NoKey to the beginning
+	if c.config.CoingeckoMarketChart.TryFreeApiFirst && params.Interval == "" {
+		// Find NoKey in the list and move it to the beginning
+		for i, key := range availableKeys {
+			if key.Type == cg.NoKey {
+				// Move NoKey to the beginning of the slice
+				availableKeys = append([]cg.APIKey{key}, append(availableKeys[:i], availableKeys[i+1:]...)...)
+				break
+			}
+		}
+	}
+
 	// Track errors to return if all keys fail
 	var lastError error
 
