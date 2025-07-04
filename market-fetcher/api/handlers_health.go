@@ -10,12 +10,13 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
 		"status": "ok",
 		"services": map[string]string{
-			"binance":             "unknown",
-			"coingecko":           "unknown",
-			"tokens":              "unknown",
-			"coingecko_prices":    "unknown",
-			"coingecko_markets":   "unknown",
-			"coingecko_platforms": "unknown",
+			"binance":                "unknown",
+			"coingecko":              "unknown",
+			"tokens":                 "unknown",
+			"coingecko_prices":       "unknown",
+			"coingecko_markets":      "unknown",
+			"coingecko_market_chart": "unknown",
+			"coingecko_platforms":    "unknown",
 		},
 	}
 
@@ -42,6 +43,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Check if CoinGecko Markets service is healthy
 	if s.marketsService.Healthy() {
 		status["services"].(map[string]string)["coingecko_markets"] = "up"
+	}
+
+	// Check if CoinGecko Market Chart service is healthy
+	if s.marketChartService.Healthy() {
+		status["services"].(map[string]string)["coingecko_market_chart"] = "up"
 	}
 
 	// Check if CoinGecko Assets Platforms service is healthy

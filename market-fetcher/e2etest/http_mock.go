@@ -153,6 +153,15 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Market chart endpoints - match pattern /api/v3/coins/{id}/market_chart
+	if strings.Contains(path, "/market_chart") {
+		w.Header().Set("Content-Type", "application/json")
+		// Generate fresh data on each request to ensure timestamps are current
+		freshData := generateMarketChartData()
+		fmt.Fprint(w, freshData)
+		return
+	}
+
 	// Processing tokens list request with platform information
 	if strings.Contains(path, "/api/v3/coins/list") && query.Get("include_platform") == "true" {
 		w.Header().Set("Content-Type", "application/json")
@@ -417,6 +426,31 @@ func defaultBinancePriceData() string {
 			"n": 100
 		}
 	]`
+}
+
+// generateMarketChartData generates market chart data with current timestamps
+// This ensures the data won't be filtered out by the strip function
+func generateMarketChartData() string {
+	now := time.Now()
+
+	var prices, marketCaps, totalVolumes []string
+
+	for i := 29; i >= 0; i-- {
+		timestamp := now.AddDate(0, 0, -i).Unix() * 1000 // Convert to milliseconds
+		price := 47777.23 + float64(i)*100               // Sample price progression
+		marketCap := 905000000000 + int64(i)*3000000000  // Sample market cap progression
+		volume := 28000000000 + int64(i)*500000000       // Sample volume progression
+
+		prices = append(prices, fmt.Sprintf("[%d, %.2f]", timestamp, price))
+		marketCaps = append(marketCaps, fmt.Sprintf("[%d, %d]", timestamp, marketCap))
+		totalVolumes = append(totalVolumes, fmt.Sprintf("[%d, %d]", timestamp, volume))
+	}
+
+	return fmt.Sprintf(`{
+		"prices": [%s],
+		"market_caps": [%s],
+		"total_volumes": [%s]
+	}`, strings.Join(prices, ","), strings.Join(marketCaps, ","), strings.Join(totalVolumes, ","))
 }
 
 // NewCoinGeckoMockData creates a new instance with test data

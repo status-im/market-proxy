@@ -56,9 +56,14 @@ func (s *Service) Stop() {
 }
 
 // MarketChart fetches market chart data for a specific coin with caching
-func (s *Service) MarketChart(params MarketChartParams) (map[string][]byte, error) {
+func (s *Service) MarketChart(params MarketChartParams) (MarketChartResponseData, error) {
 	log.Printf("Loading market chart data for coin %s, currency=%s, days=%s",
 		params.ID, params.Currency, params.Days)
+
+	// Validate parameters
+	if err := params.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
 
 	// Store original parameters for later strip operation
 	originalParams := params
@@ -77,48 +82,40 @@ func (s *Service) MarketChart(params MarketChartParams) (map[string][]byte, erro
 	// Create cache key based on enriched parameters
 	cacheKey := s.createCacheKey(enrichedParams)
 
+	// Try to get data from cache first
+	var chartData map[string]interface{}
+
 	// Check cache first
 	cachedData, err := s.getCachedData(cacheKey)
 	if err == nil && cachedData != nil {
 		log.Printf("Returning cached market chart data for coin %s", params.ID)
-
-		// Strip the cached data to match original request
-		strippedData, err := StripMarketChartResponse(originalParams, cachedData)
+		chartData = cachedData
+	} else {
+		// Cache miss - fetch from API using enriched parameters
+		log.Printf("Cache miss for market chart %s, fetching from API with enriched params", params.ID)
+		fetchedData, err := s.apiClient.FetchMarketChart(enrichedParams)
 		if err != nil {
-			log.Printf("Failed to strip cached data: %v", err)
-			// If stripping fails, return original cached data
-			return cachedData, nil
+			log.Printf("apiClient.FetchMarketChart failed: %v", err)
+			return nil, fmt.Errorf("failed to fetch market chart data: %w", err)
 		}
 
-		return strippedData, nil
+		// Cache the raw result using enriched parameters for TTL calculation
+		if err := s.cacheData(cacheKey, fetchedData, enrichedParams); err != nil {
+			log.Printf("Failed to cache market chart data: %v", err)
+		}
+
+		// Convert fetched data (map[string][]byte) to map[string]interface{}
+		chartData = s.convertBytesToInterface(fetchedData)
 	}
 
-	// Cache miss - fetch from API using enriched parameters
-	log.Printf("Cache miss for market chart %s, fetching from API with enriched params", params.ID)
-	chartData, err := s.apiClient.FetchMarketChart(enrichedParams)
-	if err != nil {
-		log.Printf("apiClient.FetchMarketChart failed: %v", err)
-		return nil, fmt.Errorf("failed to fetch market chart data: %w", err)
-	}
-
-	// Cache the result using enriched parameters for TTL calculation
-	if err := s.cacheData(cacheKey, chartData, enrichedParams); err != nil {
-		log.Printf("Failed to cache market chart data: %v", err)
-		// Don't fail the request if caching fails
-	}
-
-	// Strip the fetched data to match original request
+	// Strip the data to match original request
 	strippedData, err := StripMarketChartResponse(originalParams, chartData)
 	if err != nil {
-		log.Printf("Failed to strip fetched data: %v", err)
-		// If stripping fails, return original data
-		return chartData, nil
+		log.Printf("Failed to strip data: %v", err)
+		return MarketChartResponseData(chartData), nil
 	}
 
-	log.Printf("Successfully fetched, cached, and stripped market chart data for coin %s",
-		params.ID)
-
-	return strippedData, nil
+	return MarketChartResponseData(strippedData), nil
 }
 
 // Healthy checks if the service is operational
@@ -145,7 +142,7 @@ func (s *Service) createCacheKey(params MarketChartParams) string {
 }
 
 // getCachedData retrieves market chart data from cache
-func (s *Service) getCachedData(cacheKey string) (map[string][]byte, error) {
+func (s *Service) getCachedData(cacheKey string) (map[string]interface{}, error) {
 	cacheKeys := []string{cacheKey}
 	cachedData, _, err := s.cache.Get(cacheKeys)
 	if err != nil {
@@ -158,10 +155,15 @@ func (s *Service) getCachedData(cacheKey string) (map[string][]byte, error) {
 			return nil, err
 		}
 
-		// Convert RawMessage to bytes
-		result := make(map[string][]byte)
+		// Convert RawMessage to interface{}
+		result := make(map[string]interface{})
 		for key, value := range rawData {
-			result[key] = []byte(value)
+			var jsonValue interface{}
+			if err := json.Unmarshal(value, &jsonValue); err != nil {
+				log.Printf("Failed to unmarshal cached data for key %s: %v", key, err)
+			} else {
+				result[key] = jsonValue
+			}
 		}
 
 		return result, nil
@@ -172,19 +174,25 @@ func (s *Service) getCachedData(cacheKey string) (map[string][]byte, error) {
 
 // cacheData stores market chart data in cache with smart TTL selection
 func (s *Service) cacheData(cacheKey string, chartData map[string][]byte, params MarketChartParams) error {
-	dataBytes, err := json.Marshal(chartData)
+	// Convert []byte values to json.RawMessage to preserve JSON structure
+	rawData := make(map[string]json.RawMessage)
+	for key, value := range chartData {
+		rawData[key] = json.RawMessage(value)
+	}
+
+	dataBytes, err := json.Marshal(rawData)
 	if err != nil {
 		return err
 	}
 
-	cacheData := map[string][]byte{
+	cacheDataMap := map[string][]byte{
 		cacheKey: dataBytes,
 	}
 
 	// Select TTL based on days parameter for smart caching
 	ttl := s.selectTTL(params)
 
-	return s.cache.Set(cacheData, ttl)
+	return s.cache.Set(cacheDataMap, ttl)
 }
 
 // selectTTL chooses appropriate TTL based on request parameters using config
@@ -211,4 +219,22 @@ func (s *Service) selectTTL(params MarketChartParams) time.Duration {
 
 	// Default fallback TTL from config
 	return s.config.CoingeckoMarketChart.DefaultTTL
+}
+
+// convertBytesToInterface converts map[string][]byte to map[string]interface{}
+func (s *Service) convertBytesToInterface(data map[string][]byte) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	for key, value := range data {
+		var jsonValue interface{}
+		if err := json.Unmarshal(value, &jsonValue); err != nil {
+			log.Printf("Failed to unmarshal data for key %s: %v", key, err)
+			// If unmarshaling fails, include the raw data as string
+			result[key] = string(value)
+		} else {
+			result[key] = jsonValue
+		}
+	}
+
+	return result
 }

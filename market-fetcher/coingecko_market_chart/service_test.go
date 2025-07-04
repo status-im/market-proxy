@@ -40,8 +40,39 @@ func createTestConfig() *config.Config {
 	}
 }
 
+// createTestResponseMapForService creates test data for service tests (returns map[string][]byte)
+func createTestResponseMapForService(days int) map[string][]byte {
+	now := time.Now()
+	var prices []MarketChartData
+	var marketCaps []MarketChartData
+	var totalVolumes []MarketChartData
+
+	// Create data for the specified number of days
+	for i := 0; i < days; i++ {
+		timestamp := now.AddDate(0, 0, -days+i).Unix() * 1000 // milliseconds
+		price := float64(50000 + i*100)                       // Mock price data
+		marketCap := float64(1000000000 + i*1000000)          // Mock market cap data
+		volume := float64(10000000 + i*100000)                // Mock volume data
+
+		prices = append(prices, MarketChartData{float64(timestamp), price})
+		marketCaps = append(marketCaps, MarketChartData{float64(timestamp), marketCap})
+		totalVolumes = append(totalVolumes, MarketChartData{float64(timestamp), volume})
+	}
+
+	// Marshal to JSON bytes as expected by the API client
+	pricesBytes, _ := json.Marshal(prices)
+	marketCapsBytes, _ := json.Marshal(marketCaps)
+	totalVolumesBytes, _ := json.Marshal(totalVolumes)
+
+	return map[string][]byte{
+		"prices":        pricesBytes,
+		"market_caps":   marketCapsBytes,
+		"total_volumes": totalVolumesBytes,
+	}
+}
+
 // Test data
-var sampleMarketChartData = createTestResponseMap(90)
+var sampleMarketChartData = createTestResponseMapForService(90)
 
 func TestService_Basic(t *testing.T) {
 	// Create cache service
@@ -579,6 +610,7 @@ func TestService_CacheData_Success(t *testing.T) {
 		Days:     "30",
 	}
 
+	// Use sampleMarketChartData directly (it's already map[string][]byte)
 	err := service.cacheData(cacheKey, sampleMarketChartData, params)
 
 	// Verify

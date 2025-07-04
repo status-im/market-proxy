@@ -194,7 +194,12 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 	// Fetch market chart data
 	data, err := s.marketChartService.MarketChart(params)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
+		// Check if this is a validation error
+		if strings.Contains(err.Error(), "invalid parameters") {
+			http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -202,7 +207,7 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=60")
 
-	// Write JSON response
+	// Write JSON response - data is already MarketChartResponseData (map[string]interface{})
 	json.NewEncoder(w).Encode(data)
 }
 

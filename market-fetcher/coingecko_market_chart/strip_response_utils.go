@@ -12,7 +12,7 @@ import (
 // to match the original request parameters. This is used after fetching
 // enriched data (e.g., 90 days instead of 30) to return only the data
 // that was originally requested.
-func StripMarketChartResponse(originalParams MarketChartParams, enrichedResponse map[string][]byte) (map[string][]byte, error) {
+func StripMarketChartResponse(originalParams MarketChartParams, enrichedResponse map[string]interface{}) (map[string]interface{}, error) {
 	// Step 1: Filter by data keys if DataFilter is specified
 	result := enrichedResponse
 	if originalParams.DataFilter != "" {
@@ -39,7 +39,7 @@ func StripMarketChartResponse(originalParams MarketChartParams, enrichedResponse
 }
 
 // filterByDataKeys filters the response data to include only specified keys
-func filterByDataKeys(responseData map[string][]byte, dataFilter string) (map[string][]byte, error) {
+func filterByDataKeys(responseData map[string]interface{}, dataFilter string) (map[string]interface{}, error) {
 	if dataFilter == "" {
 		return responseData, nil
 	}
@@ -55,7 +55,7 @@ func filterByDataKeys(responseData map[string][]byte, dataFilter string) (map[st
 	}
 
 	// Filter the response data
-	result := make(map[string][]byte)
+	result := make(map[string]interface{})
 	for key, data := range responseData {
 		if allowedKeys[key] {
 			result[key] = data
@@ -69,7 +69,7 @@ func filterByDataKeys(responseData map[string][]byte, dataFilter string) (map[st
 }
 
 // filterByDays filters the response data to include only the last N days
-func filterByDays(responseData map[string][]byte, daysStr string) (map[string][]byte, error) {
+func filterByDays(responseData map[string]interface{}, daysStr string) (map[string]interface{}, error) {
 	days, err := strconv.Atoi(daysStr)
 	if err != nil {
 		log.Printf("StripMarketChartResponse: Unable to parse days '%s' as integer, returning all data", daysStr)
@@ -79,7 +79,7 @@ func filterByDays(responseData map[string][]byte, daysStr string) (map[string][]
 	// Calculate the timestamp for N days ago
 	cutoffTime := time.Now().AddDate(0, 0, -days).Unix() * 1000 // Convert to milliseconds
 
-	result := make(map[string][]byte)
+	result := make(map[string]interface{})
 	for key, data := range responseData {
 		filteredData, err := filterChartDataByTimestamp(data, cutoffTime)
 		if err != nil {
@@ -95,19 +95,25 @@ func filterByDays(responseData map[string][]byte, daysStr string) (map[string][]
 }
 
 // filterChartDataByTimestamp filters chart data to include only entries after the cutoff timestamp
-func filterChartDataByTimestamp(data []byte, cutoffTimestamp int64) ([]byte, error) {
-	var chartResponse MarketChartResponse
-	if err := json.Unmarshal(data, &chartResponse); err != nil {
+func filterChartDataByTimestamp(data interface{}, cutoffTimestamp int64) (interface{}, error) {
+	// Convert interface{} to []MarketChartData
+	var dataPoints []MarketChartData
+
+	// First, convert to JSON bytes, then unmarshal
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
 		return nil, err
 	}
 
-	// Filter each data array
-	chartResponse.Prices = filterDataPoints(chartResponse.Prices, cutoffTimestamp, 0)
-	chartResponse.MarketCaps = filterDataPoints(chartResponse.MarketCaps, cutoffTimestamp, 0)
-	chartResponse.TotalVolumes = filterDataPoints(chartResponse.TotalVolumes, cutoffTimestamp, 0)
+	if err := json.Unmarshal(dataBytes, &dataPoints); err != nil {
+		return nil, err
+	}
 
-	// Marshal back to JSON
-	return json.Marshal(chartResponse)
+	// Filter the data points
+	filteredPoints := filterDataPoints(dataPoints, cutoffTimestamp, 0)
+
+	// Return as interface{} (will be []MarketChartData)
+	return filteredPoints, nil
 }
 
 // filterDataPoints filters data points to include only those after the cutoff timestamp
@@ -137,7 +143,7 @@ func filterDataPoints(dataPoints []MarketChartData, cutoffTimestamp int64, minPo
 }
 
 // getKeys returns a slice of keys from a map for logging purposes
-func getKeys(m map[string][]byte) []string {
+func getKeys(m map[string]interface{}) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -147,7 +153,7 @@ func getKeys(m map[string][]byte) []string {
 
 // StripMarketChartResponseInPlace strips the enriched response data in place
 // This is a convenience function that modifies the original response map
-func StripMarketChartResponseInPlace(originalParams MarketChartParams, enrichedResponse map[string][]byte) error {
+func StripMarketChartResponseInPlace(originalParams MarketChartParams, enrichedResponse map[string]interface{}) error {
 	stripped, err := StripMarketChartResponse(originalParams, enrichedResponse)
 	if err != nil {
 		return err
