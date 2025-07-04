@@ -18,6 +18,12 @@ type MarketChartParams struct {
 	// 2-90 days = hourly data
 	// above 90 days = daily data
 	Interval string `json:"interval,omitempty"`
+
+	// DataFilter specifies which data fields to include in response
+	// Comma-separated list (e.g., "prices,market_caps")
+	// Available fields: "prices", "market_caps", "total_volumes"
+	// If empty, all fields are included
+	DataFilter string `json:"data_filter,omitempty"`
 }
 
 // MarketChartData represents a single data point [timestamp, value]

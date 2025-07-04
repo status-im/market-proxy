@@ -244,3 +244,210 @@ func TestFilterDataPoints(t *testing.T) {
 		}
 	}
 }
+
+func TestStripMarketChartResponse_FilterByDataKeys(t *testing.T) {
+	// Test filtering by data keys
+	originalParams := MarketChartParams{
+		ID:         "bitcoin",
+		Currency:   "usd",
+		Days:       "max",
+		DataFilter: "prices,market_caps",
+	}
+
+	enrichedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	// Should have only 2 keys: prices and market_caps
+	if len(result) != 2 {
+		t.Errorf("Expected result length 2, got %d", len(result))
+	}
+
+	// Check that prices and market_caps are present
+	if _, exists := result["prices"]; !exists {
+		t.Error("Expected 'prices' key to exist in result")
+	}
+	if _, exists := result["market_caps"]; !exists {
+		t.Error("Expected 'market_caps' key to exist in result")
+	}
+
+	// Check that total_volumes is not present
+	if _, exists := result["total_volumes"]; exists {
+		t.Error("Expected 'total_volumes' key to be filtered out")
+	}
+}
+
+func TestStripMarketChartResponse_FilterByDataKeysAndDays(t *testing.T) {
+	// Test filtering by both data keys and days
+	originalParams := MarketChartParams{
+		ID:         "bitcoin",
+		Currency:   "usd",
+		Days:       "7",
+		DataFilter: "prices",
+	}
+
+	enrichedResponse := createTestResponseMap(90)
+	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	// Should have only 1 key: prices
+	if len(result) != 1 {
+		t.Errorf("Expected result length 1, got %d", len(result))
+	}
+
+	// Check that only prices is present
+	if _, exists := result["prices"]; !exists {
+		t.Error("Expected 'prices' key to exist in result")
+	}
+
+	// Verify that data was also filtered by days
+	var chartResponse MarketChartResponse
+	if err := json.Unmarshal(result["prices"], &chartResponse); err != nil {
+		t.Errorf("Failed to unmarshal prices data: %v", err)
+	} else {
+		// Check that we have fewer data points than the original 90 days
+		if len(chartResponse.Prices) >= 90 {
+			t.Errorf("Expected filtered data to have fewer than 90 points, got %d", len(chartResponse.Prices))
+		}
+	}
+}
+
+func TestStripMarketChartResponse_EmptyDataFilter(t *testing.T) {
+	// Test with empty data filter - should include all keys
+	originalParams := MarketChartParams{
+		ID:         "bitcoin",
+		Currency:   "usd",
+		Days:       "max",
+		DataFilter: "",
+	}
+
+	enrichedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	// Should have all 3 keys
+	if len(result) != 3 {
+		t.Errorf("Expected result length 3, got %d", len(result))
+	}
+
+	// Check that all keys are present
+	expectedKeys := []string{"prices", "market_caps", "total_volumes"}
+	for _, key := range expectedKeys {
+		if _, exists := result[key]; !exists {
+			t.Errorf("Expected '%s' key to exist in result", key)
+		}
+	}
+}
+
+func TestStripMarketChartResponse_DataFilterWithSpaces(t *testing.T) {
+	// Test data filter with spaces around commas
+	originalParams := MarketChartParams{
+		ID:         "bitcoin",
+		Currency:   "usd",
+		Days:       "max",
+		DataFilter: " prices , total_volumes ",
+	}
+
+	enrichedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	// Should have only 2 keys: prices and total_volumes
+	if len(result) != 2 {
+		t.Errorf("Expected result length 2, got %d", len(result))
+	}
+
+	// Check that prices and total_volumes are present
+	if _, exists := result["prices"]; !exists {
+		t.Error("Expected 'prices' key to exist in result")
+	}
+	if _, exists := result["total_volumes"]; !exists {
+		t.Error("Expected 'total_volumes' key to exist in result")
+	}
+
+	// Check that market_caps is not present
+	if _, exists := result["market_caps"]; exists {
+		t.Error("Expected 'market_caps' key to be filtered out")
+	}
+}
+
+func TestFilterByDataKeys(t *testing.T) {
+	// Test the filterByDataKeys function directly
+	responseData := map[string][]byte{
+		"prices":        []byte(`{"test": "prices"}`),
+		"market_caps":   []byte(`{"test": "market_caps"}`),
+		"total_volumes": []byte(`{"test": "total_volumes"}`),
+	}
+
+	tests := []struct {
+		name           string
+		dataFilter     string
+		expectedKeys   []string
+		unexpectedKeys []string
+	}{
+		{
+			name:           "Filter prices only",
+			dataFilter:     "prices",
+			expectedKeys:   []string{"prices"},
+			unexpectedKeys: []string{"market_caps", "total_volumes"},
+		},
+		{
+			name:           "Filter prices and market_caps",
+			dataFilter:     "prices,market_caps",
+			expectedKeys:   []string{"prices", "market_caps"},
+			unexpectedKeys: []string{"total_volumes"},
+		},
+		{
+			name:           "Empty filter",
+			dataFilter:     "",
+			expectedKeys:   []string{"prices", "market_caps", "total_volumes"},
+			unexpectedKeys: []string{},
+		},
+		{
+			name:           "Filter with spaces",
+			dataFilter:     " prices , total_volumes ",
+			expectedKeys:   []string{"prices", "total_volumes"},
+			unexpectedKeys: []string{"market_caps"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := filterByDataKeys(responseData, tt.dataFilter)
+			if err != nil {
+				t.Errorf("Expected no error, got: %v", err)
+			}
+
+			// Check expected keys
+			for _, key := range tt.expectedKeys {
+				if _, exists := result[key]; !exists {
+					t.Errorf("Expected key '%s' to exist in result", key)
+				}
+			}
+
+			// Check unexpected keys
+			for _, key := range tt.unexpectedKeys {
+				if _, exists := result[key]; exists {
+					t.Errorf("Expected key '%s' to be filtered out", key)
+				}
+			}
+
+			// Check total count
+			if len(result) != len(tt.expectedKeys) {
+				t.Errorf("Expected result length %d, got %d", len(tt.expectedKeys), len(result))
+			}
+		})
+	}
+}

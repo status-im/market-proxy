@@ -107,7 +107,7 @@ func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Re
 
 		// Apply parameters from MarketsParams
 		if params.Currency != "" {
-			requestBuilder.WithCurrency(params.Currency)
+			requestBuilder.builder.WithCurrency(params.Currency)
 		}
 
 		if params.Order != "" {
@@ -132,11 +132,11 @@ func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Re
 
 		// Add API key if available
 		if apiKey.Key != "" {
-			requestBuilder.WithApiKey(apiKey.Key, apiKey.Type)
+			requestBuilder.builder.WithApiKey(apiKey.Key, apiKey.Type)
 		}
 
 		// Build the HTTP request
-		request, err := requestBuilder.Build()
+		request, err := requestBuilder.builder.Build()
 		if err != nil {
 			log.Printf("CoinGecko: Error building request with key type %v: %v", apiKey.Type, err)
 			lastError = err

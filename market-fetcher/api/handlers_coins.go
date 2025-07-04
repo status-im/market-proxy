@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -167,51 +169,41 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 	coinID := pathSegments[3]
 
 	// Parse query parameters
+	currency := r.URL.Query().Get("vs_currency")
+	if currency == "" {
+		currency = "usd"
+	}
+
+	days := r.URL.Query().Get("days")
+	if days == "" {
+		days = "30"
+	}
+
+	interval := r.URL.Query().Get("interval")
+	dataFilter := r.URL.Query().Get("data_filter")
+
+	// Create market chart params
 	params := coingecko_market_chart.MarketChartParams{
-		ID: coinID,
+		ID:         coinID,
+		Currency:   currency,
+		Days:       days,
+		Interval:   interval,
+		DataFilter: dataFilter,
 	}
 
-	// Parse vs_currency (optional, defaults to USD)
-	if currency := r.URL.Query().Get("vs_currency"); currency != "" {
-		params.Currency = currency
-	}
-
-	// Parse days parameter (optional, defaults to 30)
-	if days := r.URL.Query().Get("days"); days != "" {
-		params.Days = days
-	}
-
-	// Parse interval parameter (optional, Enterprise only)
-	if interval := r.URL.Query().Get("interval"); interval != "" {
-		params.Interval = interval
-	}
-
-	// Parse from and to parameters for range requests (optional)
-	if fromParam := r.URL.Query().Get("from"); fromParam != "" {
-		if from, err := strconv.ParseInt(fromParam, 10, 64); err == nil {
-			params.From = from
-		}
-	}
-
-	if toParam := r.URL.Query().Get("to"); toParam != "" {
-		if to, err := strconv.ParseInt(toParam, 10, 64); err == nil {
-			params.To = to
-		}
-	}
-
-	// Call market chart service
-	chartData, err := s.marketChartService.MarketChart(params)
+	// Fetch market chart data
+	data, err := s.marketChartService.MarketChart(params)
 	if err != nil {
-		http.Error(w, "Failed to fetch market chart data: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	if chartData == nil {
-		http.Error(w, "No market chart data available", http.StatusServiceUnavailable)
-		return
-	}
+	// Set response headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
 
-	s.sendJSONResponse(w, chartData)
+	// Write JSON response
+	json.NewEncoder(w).Encode(data)
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers

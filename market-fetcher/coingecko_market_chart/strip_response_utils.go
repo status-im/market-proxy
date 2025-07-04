@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -12,18 +13,59 @@ import (
 // enriched data (e.g., 90 days instead of 30) to return only the data
 // that was originally requested.
 func StripMarketChartResponse(originalParams MarketChartParams, enrichedResponse map[string][]byte) (map[string][]byte, error) {
-	// If the original request was for "max" days, return all data
+	// Step 1: Filter by data keys if DataFilter is specified
+	result := enrichedResponse
+	if originalParams.DataFilter != "" {
+		var err error
+		result, err = filterByDataKeys(enrichedResponse, originalParams.DataFilter)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Step 2: Filter by days
+	// If the original request was for "max" days, return data as is
 	if originalParams.Days == "max" {
-		return enrichedResponse, nil
+		return result, nil
 	}
 
 	// If the original request was for specific days, filter by days
 	if originalParams.Days != "" {
-		return filterByDays(enrichedResponse, originalParams.Days)
+		return filterByDays(result, originalParams.Days)
 	}
 
 	// If no filtering criteria, return all data
-	return enrichedResponse, nil
+	return result, nil
+}
+
+// filterByDataKeys filters the response data to include only specified keys
+func filterByDataKeys(responseData map[string][]byte, dataFilter string) (map[string][]byte, error) {
+	if dataFilter == "" {
+		return responseData, nil
+	}
+
+	// Parse the comma-separated list of keys
+	allowedKeys := make(map[string]bool)
+	keys := strings.Split(dataFilter, ",")
+	for _, key := range keys {
+		trimmedKey := strings.TrimSpace(key)
+		if trimmedKey != "" {
+			allowedKeys[trimmedKey] = true
+		}
+	}
+
+	// Filter the response data
+	result := make(map[string][]byte)
+	for key, data := range responseData {
+		if allowedKeys[key] {
+			result[key] = data
+		}
+	}
+
+	log.Printf("StripMarketChartResponse: Filtered data keys from %v to %v based on filter '%s'",
+		getKeys(responseData), getKeys(result), dataFilter)
+
+	return result, nil
 }
 
 // filterByDays filters the response data to include only the last N days
@@ -94,6 +136,15 @@ func filterDataPoints(dataPoints []MarketChartData, cutoffTimestamp int64, minPo
 	return filtered
 }
 
+// getKeys returns a slice of keys from a map for logging purposes
+func getKeys(m map[string][]byte) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // StripMarketChartResponseInPlace strips the enriched response data in place
 // This is a convenience function that modifies the original response map
 func StripMarketChartResponseInPlace(originalParams MarketChartParams, enrichedResponse map[string][]byte) error {
@@ -102,7 +153,10 @@ func StripMarketChartResponseInPlace(originalParams MarketChartParams, enrichedR
 		return err
 	}
 
-	// Replace the original data with stripped data
+	// Clear the original map and replace with stripped data
+	for key := range enrichedResponse {
+		delete(enrichedResponse, key)
+	}
 	for key, data := range stripped {
 		enrichedResponse[key] = data
 	}
