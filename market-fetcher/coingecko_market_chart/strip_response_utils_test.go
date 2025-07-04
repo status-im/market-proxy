@@ -1,39 +1,9 @@
 package coingecko_market_chart
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 )
-
-// Helper function to create test market chart data
-func createTestMarketChartData(days int) []byte {
-	now := time.Now()
-	var prices []MarketChartData
-	var marketCaps []MarketChartData
-	var totalVolumes []MarketChartData
-
-	// Create data for the specified number of days
-	for i := 0; i < days; i++ {
-		timestamp := now.AddDate(0, 0, -days+i).Unix() * 1000 // milliseconds
-		price := float64(50000 + i*100)                       // Mock price data
-		marketCap := float64(1000000000 + i*1000000)          // Mock market cap data
-		volume := float64(10000000 + i*100000)                // Mock volume data
-
-		prices = append(prices, MarketChartData{float64(timestamp), price})
-		marketCaps = append(marketCaps, MarketChartData{float64(timestamp), marketCap})
-		totalVolumes = append(totalVolumes, MarketChartData{float64(timestamp), volume})
-	}
-
-	response := MarketChartResponse{
-		Prices:       prices,
-		MarketCaps:   marketCaps,
-		TotalVolumes: totalVolumes,
-	}
-
-	data, _ := json.Marshal(response)
-	return data
-}
 
 // Helper function to create test response map
 func createTestResponseMap(days int) map[string]interface{} {

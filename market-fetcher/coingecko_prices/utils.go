@@ -2,8 +2,9 @@ package coingecko_prices
 
 import (
 	"fmt"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"strings"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 // createCacheKeys creates cache keys for each token ID

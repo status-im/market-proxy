@@ -1,8 +1,9 @@
 package coingecko_prices
 
 import (
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"testing"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
 
 	"github.com/stretchr/testify/assert"
 )

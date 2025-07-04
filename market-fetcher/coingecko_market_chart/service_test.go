@@ -336,7 +336,9 @@ func TestService_MarketChart_CacheHit(t *testing.T) {
 	cachemap := map[string][]byte{
 		cacheKey: cacheData,
 	}
-	cacheService.Set(cachemap, 30*time.Minute)
+	if err := cacheService.Set(cachemap, 30*time.Minute); err != nil {
+		t.Fatalf("Failed to set cache: %v", err)
+	}
 
 	// Test parameters (original request that should hit cache)
 	params := MarketChartParams{

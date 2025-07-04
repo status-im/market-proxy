@@ -50,7 +50,9 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 					},
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(mockData)
+				if err := json.NewEncoder(w).Encode(mockData); err != nil {
+					http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				}
 				return
 			}
 		}
@@ -72,7 +74,9 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockData)
+		if err := json.NewEncoder(w).Encode(mockData); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -196,7 +200,9 @@ func TestCoinGeckoClient_TryFreeApiFirst_NoKeyNotFound(t *testing.T) {
 			"total_volumes": [][]float64{{1643723400000, 25000000000.0}},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockData)
+		if err := json.NewEncoder(w).Encode(mockData); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 

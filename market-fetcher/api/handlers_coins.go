@@ -208,7 +208,10 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=60")
 
 	// Write JSON response - data is already MarketChartResponseData (map[string]interface{})
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers
