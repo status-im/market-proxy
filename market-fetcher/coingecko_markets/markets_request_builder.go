@@ -26,7 +26,7 @@ func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
 	}
 
 	// Add default market parameters
-	rb.WithCurrency("usd")
+	rb.builder.WithCurrency("usd")
 	rb.WithOrder("market_cap_desc")
 
 	return rb
@@ -41,12 +41,6 @@ func (rb *MarketsRequestBuilder) WithPage(page int) *MarketsRequestBuilder {
 // WithPerPage adds per_page parameter
 func (rb *MarketsRequestBuilder) WithPerPage(perPage int) *MarketsRequestBuilder {
 	rb.builder.With("per_page", strconv.Itoa(perPage))
-	return rb
-}
-
-// WithCurrency adds currency parameter
-func (rb *MarketsRequestBuilder) WithCurrency(currency string) *MarketsRequestBuilder {
-	rb.builder.With("vs_currency", currency)
 	return rb
 }
 

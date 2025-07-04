@@ -64,6 +64,12 @@ func (rb *CoingeckoRequestBuilder) With(key, value string) *CoingeckoRequestBuil
 	return rb
 }
 
+// WithCurrency adds vs_currency parameter
+func (rb *CoingeckoRequestBuilder) WithCurrency(currency string) *CoingeckoRequestBuilder {
+	rb.params["vs_currency"] = currency
+	return rb
+}
+
 // WithApiKey sets the API key and its type
 func (rb *CoingeckoRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *CoingeckoRequestBuilder {
 	rb.apiKey = apiKey
