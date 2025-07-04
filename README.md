@@ -77,6 +77,14 @@ coingecko_markets:
     price_change_percentage: "1h,24h"  # Override price changes to 1h,24h
     category: ""               # Override category to empty (no filtering)
 
+# Market chart service with intelligent caching
+coingecko_market_chart:
+  hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)
+  daily_ttl: 12h              # TTL for daily data (requests with days > daily_data_threshold)  
+  daily_data_threshold: 90    # threshold in days: <= 90 days = hourly data, > 90 days = daily data
+  default_ttl: 5m             # fallback TTL when parameters cannot be parsed
+  try_free_api_first: true    # try free API (no key) first when no interval is specified
+
 # API tokens file
 tokens_file: "coingecko_api_tokens.json"
 ```
@@ -120,6 +128,7 @@ This will:
 - Top markets and prices leaderboard with periodic updates
 - CoinGecko-compatible `/api/v3/coins/markets` endpoint with pagination
 - CoinGecko-compatible `/api/v3/simple/price` endpoint with caching
+- Market chart service with intelligent caching and request enrichment
 - Blockchain platform-specific token filtering
 - REST API for accessing token lists, market data, and prices
 - Intelligent caching with configurable TTLs
@@ -133,6 +142,7 @@ The proxy provides the following endpoints:
 - `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination
 - `/v1/coins/list` - Supported coins list with platform information
 - `/v1/asset_platforms` - CoinGecko-compatible asset platforms endpoint with 30-minute caching
+- `/v1/coins/{coin_id}/market_chart` - Historical price data with intelligent caching
 - `/v1/leaderboard/markets` - Top market data from leaderboard service
 - `/v1/leaderboard/prices` - Top price data from leaderboard service  
 - `/v1/leaderboard/simpleprices` - Simple prices for top tokens
