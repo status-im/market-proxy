@@ -2,7 +2,6 @@ package coingecko_prices
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -80,51 +79,26 @@ func (c *CoinGeckoClient) FetchPrices(params cg.PriceParams) (map[string][]byte,
 }
 
 func (c *CoinGeckoClient) executeFetchRequest(params cg.PriceParams) (*http.Response, []byte, error) {
-	// Get available API keys from the key manager
-	availableKeys := c.keyManager.GetAvailableKeys()
-
-	// Track errors to return if all keys fail
-	var lastError error
-
-	// Try each key until one succeeds
-	for _, apiKey := range availableKeys {
+	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
 		// Get the appropriate base URL for this key type
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
-		// Create request builder for prices endpoint
-		requestBuilder := NewPricesRequestBuilder(baseURL)
-
-		// Configure request with token IDs and currencies
-		requestBuilder.WithIds(params.IDs).WithCurrencies(params.Currencies)
-
-		// Add optional parameters
-		if params.IncludeMarketCap {
-			requestBuilder.WithIncludeMarketCap(true)
-		}
-		if params.Include24hrVol {
-			requestBuilder.WithInclude24hVolume(true)
-		}
-		if params.Include24hrChange {
-			requestBuilder.WithInclude24hChange(true)
-		}
-		if params.IncludeLastUpdatedAt {
-			requestBuilder.WithIncludeLastUpdatedAt(true)
-		}
-		if params.Precision != "" {
-			requestBuilder.WithPrecision(params.Precision)
-		}
-
-		// Add API key if available
-		if apiKey.Key != "" {
-			requestBuilder.WithApiKey(apiKey.Key, apiKey.Type)
-		}
+		// Create request builder for prices endpoint and configure with chaining
+		requestBuilder := NewPricesRequestBuilder(baseURL).
+			WithIds(params.IDs).
+			WithCurrencies(params.Currencies).
+			WithIncludeMarketCap(params.IncludeMarketCap).
+			WithInclude24hVolume(params.Include24hrVol).
+			WithInclude24hChange(params.Include24hrChange).
+			WithIncludeLastUpdatedAt(params.IncludeLastUpdatedAt).
+			WithPrecision(params.Precision).
+			WithApiKey(apiKey.Key, apiKey.Type)
 
 		// Build the HTTP request
 		request, err := requestBuilder.Build()
 		if err != nil {
 			log.Printf("CoinGecko: Error building request with key type %v: %v", apiKey.Type, err)
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		// Log the attempt
@@ -133,27 +107,36 @@ func (c *CoinGeckoClient) executeFetchRequest(params cg.PriceParams) (*http.Resp
 		// Execute the request with retries
 		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
 
-		// If the request failed
 		if err != nil {
-			log.Printf("CoinGecko: Request failed with key type %v: %v", apiKey.Type, err)
-
-			// Mark the key as failed if it's not the NoKey
-			if apiKey.Key != "" {
-				log.Printf("CoinGecko: Marking key as failed and adding to backoff")
-				c.keyManager.MarkKeyAsFailed(apiKey.Key)
-			}
-
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		// If we got here, the request succeeded
 		log.Printf("CoinGecko: Raw request successful for %d tokens with key type %v in %.2fs",
 			len(params.IDs), apiKey.Type, duration.Seconds())
 
-		return resp, body, nil
+		// Return both response and body as a struct
+		result := struct {
+			Response *http.Response
+			Body     []byte
+		}{resp, body}
+
+		return result, true, nil
 	}
 
-	// If we got here, all keys failed
-	return nil, nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
+	// Use TryWithKeys iterator
+	onFailed := cg.CreateFailCallback(c.keyManager)
+	availableKeys := c.keyManager.GetAvailableKeys()
+
+	result, err := cg.TryWithKeys(availableKeys, "CoinGecko", executor, onFailed)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	responseData := result.(struct {
+		Response *http.Response
+		Body     []byte
+	})
+
+	return responseData.Response, responseData.Body, nil
 }

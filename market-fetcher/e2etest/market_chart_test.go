@@ -253,7 +253,7 @@ func TestCoinsMarketChartEndpointValidation(t *testing.T) {
 	})
 }
 
-// TestCoinsMarketChartCaching tests caching behavior and enrichment/strip functionality
+// TestCoinsMarketChartCaching tests caching behavior and roundUp/strip functionality
 func TestCoinsMarketChartCaching(t *testing.T) {
 	env := SetupTest(t)
 	defer env.TearDown()
@@ -261,9 +261,9 @@ func TestCoinsMarketChartCaching(t *testing.T) {
 	// Give time for data initialization
 	waitForDataInitialization(t, env)
 
-	// Test cache functionality with enrichment/strip logic
-	t.Run("Enrichment and Strip Logic", func(t *testing.T) {
-		// Make a request for 30 days (should be enriched to 90 internally)
+	// Test cache functionality with roundUp/strip logic
+	t.Run("RoundUp and Strip Logic", func(t *testing.T) {
+		// Make a request for 30 days (should be rounded up to 90 internally)
 		url1 := env.ServerBaseURL + "/api/v1/coins/bitcoin/market_chart?days=30"
 		resp1, err := http.Get(url1)
 		require.NoError(t, err, "Should be able to make first request")
@@ -273,7 +273,7 @@ func TestCoinsMarketChartCaching(t *testing.T) {
 		body1, err := io.ReadAll(resp1.Body)
 		require.NoError(t, err, "Should be able to read first response")
 
-		// Make a request for 60 days (should also be enriched to 90 internally and hit cache)
+		// Make a request for 60 days (should also be rounded up to 90 internally and hit cache)
 		url2 := env.ServerBaseURL + "/api/v1/coins/bitcoin/market_chart?days=60"
 		resp2, err := http.Get(url2)
 		require.NoError(t, err, "Should be able to make second request")

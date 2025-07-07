@@ -14,12 +14,13 @@ const MetricsPrefix = "market_fetcher_"
 
 // Service constants
 const (
-	ServiceLBMarkets = "lb-markets"
-	ServiceLBPrices  = "lb-prices"
-	ServiceCoins     = "coins"
-	ServicePrices    = "prices"
-	ServiceMarkets   = "markets"
-	ServicePlatforms = "platforms"
+	ServiceLBMarkets    = "lb-markets"
+	ServiceLBPrices     = "lb-prices"
+	ServiceCoins        = "coins"
+	ServicePrices       = "prices"
+	ServiceMarkets      = "markets"
+	ServiceMarketCharts = "market-charts"
+	ServicePlatforms    = "platforms"
 )
 
 var (
@@ -52,7 +53,7 @@ var (
 	)
 
 	// Service-specific Coingecko request counter
-	// Cardinality: ~20 (4 services × 5 statuses)
+	// Cardinality: ~25 (5 services × 5 statuses)
 	ServiceCoingeckoRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "service_coingecko_requests_total",
@@ -62,7 +63,7 @@ var (
 	)
 
 	// Data fetch cycle duration per service
-	// Cardinality: ~4 (number of services)
+	// Cardinality: ~5 (number of services)
 	DataFetchCycleDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: MetricsPrefix + "data_fetch_cycle_duration_seconds",
@@ -72,7 +73,7 @@ var (
 	)
 
 	// Requests per cycle gauge (resets each cycle)
-	// Cardinality: ~4 (number of services)
+	// Cardinality: ~5 (number of services)
 	RequestsPerCycleGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "requests_per_cycle",
@@ -82,7 +83,7 @@ var (
 	)
 
 	// Request status counts per cycle
-	// Cardinality: ~20 (4 services × 5 statuses)
+	// Cardinality: ~25 (5 services × 5 statuses)
 	CycleRequestStatusGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "cycle_request_status_count",
@@ -92,7 +93,7 @@ var (
 	)
 
 	// Service cache size
-	// Cardinality: ~4 (number of services)
+	// Cardinality: ~5 (number of services)
 	ServiceCacheSizeGauge = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: MetricsPrefix + "service_cache_size",
@@ -102,7 +103,7 @@ var (
 	)
 
 	// Request latency per endpoint
-	// Cardinality: ~20 (4 services × 5 endpoints per service)
+	// Cardinality: ~25 (5 services × 5 endpoints per service)
 	RequestLatencyHistogram = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: MetricsPrefix + "request_latency_seconds",
@@ -112,7 +113,7 @@ var (
 	)
 
 	// Retry attempts counter
-	// Cardinality: ~4 (number of services)
+	// Cardinality: ~5 (number of services)
 	ServiceRetryCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "service_retry_attempts_total",
@@ -122,7 +123,7 @@ var (
 	)
 
 	// Rate limit hits counter
-	// Cardinality: ~4 (number of services)
+	// Cardinality: ~5 (number of services)
 	RateLimitCounter = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: MetricsPrefix + "rate_limit_hits_total",

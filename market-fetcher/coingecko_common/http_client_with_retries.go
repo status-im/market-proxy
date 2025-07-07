@@ -73,23 +73,19 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 	var lastErr error
 
 	for attempt := 0; attempt < c.Opts.MaxRetries; attempt++ {
-		// Only log retry attempts after the first one
 		if attempt > 0 {
 			log.Printf("%s: Retry %d/%d after error: %v",
 				c.Opts.LogPrefix, attempt, c.Opts.MaxRetries-1, lastErr)
 
-			// Record retry attempt
 			if c.StatusHandler != nil {
 				c.StatusHandler.OnRetry()
 			}
 
-			// Calculate backoff with jitter
 			backoffDuration := calculateBackoffWithJitter(c.Opts.BaseBackoff, attempt)
 			log.Printf("%s: Waiting %.2fs before retry", c.Opts.LogPrefix, backoffDuration.Seconds())
 			time.Sleep(backoffDuration)
 		}
 
-		// Start time for measuring request duration
 		requestStart := time.Now()
 
 		// Execute request
@@ -98,15 +94,12 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 
 		if err != nil {
 			lastErr = fmt.Errorf("request failed after %.2fs: %v", requestDuration.Seconds(), err)
-			// Record error
 			if c.StatusHandler != nil {
 				c.StatusHandler.OnRequest("error")
 			}
 			continue
 		}
 
-		// Process response
-		// Extract page parameter for consistent logging
 		pageContext := 0
 		if page, exists := extractPageFromRequest(req); exists {
 			pageContext = page
@@ -114,34 +107,28 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 
 		responseBody, err := processResponse(resp, pageContext, requestDuration)
 		if err != nil {
-			// Check if we should retry this error or give up
 			if isRetryableError(resp.StatusCode) {
 				lastErr = err
 				resp.Body.Close()
-				// Record rate limited request
 				if c.StatusHandler != nil {
 					c.StatusHandler.OnRequest("rate_limited")
 				}
 				continue
 			}
 
-			// For non-retryable errors, fail immediately
 			resp.Body.Close()
-			// Record general error
 			if c.StatusHandler != nil {
 				c.StatusHandler.OnRequest("error")
 			}
 			return nil, nil, requestDuration, err
 		}
 
-		// Record successful request
 		if c.StatusHandler != nil {
 			c.StatusHandler.OnRequest("success")
 		}
 		return resp, responseBody, requestDuration, nil
 	}
 
-	// If we got here, all retries failed
 	return nil, nil, 0, fmt.Errorf("all %d attempts failed, last error: %v",
 		c.Opts.MaxRetries, lastErr)
 }
@@ -160,7 +147,6 @@ func calculateBackoffWithJitter(baseBackoff time.Duration, attempt int) time.Dur
 
 // extractPageFromRequest tries to extract page parameter from request URL
 func extractPageFromRequest(req *http.Request) (int, bool) {
-	// Extract page from query parameters if exists
 	if pageStr := req.URL.Query().Get("page"); pageStr != "" {
 		var page int
 		_, err := fmt.Sscanf(pageStr, "%d", &page)
@@ -173,14 +159,10 @@ func extractPageFromRequest(req *http.Request) (int, bool) {
 
 // processResponse reads and processes the HTTP response
 func processResponse(resp *http.Response, page int, requestDuration time.Duration) ([]byte, error) {
-	// Check for rate limit or other errors
 	if resp.StatusCode != http.StatusOK {
-		// Read error body for more details
 		body, _ := io.ReadAll(resp.Body)
 
-		// Determine if this is a rate limit issue
 		if resp.StatusCode == http.StatusTooManyRequests {
-			// Check for retry-after header
 			retryAfter := resp.Header.Get("Retry-After")
 			return nil, fmt.Errorf("rate limit exceeded (status %d), retry after %s: %s",
 				resp.StatusCode, retryAfter, string(body))
@@ -190,13 +172,11 @@ func processResponse(resp *http.Response, page int, requestDuration time.Duratio
 			resp.StatusCode, requestDuration.Seconds(), string(body))
 	}
 
-	// Try to read the response body
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response: %v", err)
 	}
 
-	// Log response size
 	log.Printf("%s: Response size for page %d: %.2f KB", resp.Request.Host, page, float64(len(responseBody))/1024)
 
 	return responseBody, nil
@@ -204,9 +184,9 @@ func processResponse(resp *http.Response, page int, requestDuration time.Duratio
 
 // isRetryableError determines if a given HTTP status code should trigger a retry
 func isRetryableError(statusCode int) bool {
-	return statusCode == http.StatusTooManyRequests || // 429 Too Many Requests
-		statusCode == http.StatusInternalServerError || // 500 Internal Server Error
-		statusCode == http.StatusBadGateway || // 502 Bad Gateway
-		statusCode == http.StatusServiceUnavailable || // 503 Service Unavailable
-		statusCode == http.StatusGatewayTimeout // 504 Gateway Timeout
+	return statusCode == http.StatusTooManyRequests ||
+		statusCode == http.StatusInternalServerError ||
+		statusCode == http.StatusBadGateway ||
+		statusCode == http.StatusServiceUnavailable ||
+		statusCode == http.StatusGatewayTimeout
 }

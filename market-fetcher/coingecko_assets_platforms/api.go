@@ -2,7 +2,6 @@ package coingecko_assets_platforms
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"sync/atomic"
 
@@ -36,42 +35,22 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
-	availableKeys := c.keyManager.GetAvailableKeys()
-
-	var lastError error
-
-	for _, apiKey := range availableKeys {
+	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
-		requestBuilder := NewAssetsPlatformsRequestBuilder(baseURL)
+		requestBuilder := NewAssetsPlatformsRequestBuilder(baseURL).
+			WithFilter(params.Filter).
+			WithApiKey(apiKey.Key, apiKey.Type)
 
-		if params.Filter != "" {
-			requestBuilder.WithFilter(params.Filter)
-		}
-
-		if apiKey.Key != "" {
-			requestBuilder.builder.WithApiKey(apiKey.Key, apiKey.Type)
-		}
-
-		request, err := requestBuilder.builder.Build()
+		request, err := requestBuilder.Build()
 		if err != nil {
 			log.Printf("CoinGecko-AssetsPlatforms: Error building request with key type %v: %v", apiKey.Type, err)
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		resp, body, _, err := c.httpClient.ExecuteRequest(request)
-
 		if err != nil {
-			log.Printf("CoinGecko-AssetsPlatforms: Request failed with key type %v: %v", apiKey.Type, err)
-
-			if apiKey.Key != "" {
-				log.Printf("CoinGecko-AssetsPlatforms: Marking key as failed and adding to backoff")
-				c.keyManager.MarkKeyAsFailed(apiKey.Key)
-			}
-
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		resp.Body.Close()
@@ -81,11 +60,19 @@ func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (As
 		var result interface{}
 		if err := json.Unmarshal(body, &result); err != nil {
 			log.Printf("CoinGecko-AssetsPlatforms: Error parsing JSON response: %v", err)
-			return nil, err
+			return nil, false, err
 		}
 
-		return result, nil
+		return result, true, nil
 	}
 
-	return nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
+	onFailed := cg.CreateFailCallback(c.keyManager)
+	availableKeys := c.keyManager.GetAvailableKeys()
+
+	result, err := cg.TryWithKeys(availableKeys, "CoinGecko-AssetsPlatforms", executor, onFailed)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.(AssetsPlatformsResponse), nil
 }

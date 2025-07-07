@@ -11,32 +11,34 @@ const (
 )
 
 type MarketChartRequestBuilder struct {
-	builder *cg.CoingeckoRequestBuilder
-	coinID  string
+	*cg.CoingeckoRequestBuilder
+	coinID string
 }
 
 func NewMarketChartRequestBuilder(baseURL, coinID string) *MarketChartRequestBuilder {
 	apiPath := fmt.Sprintf(MARKET_CHART_API_PATH_TEMPLATE, coinID)
 
 	rb := &MarketChartRequestBuilder{
-		builder: cg.NewCoingeckoRequestBuilder(baseURL, apiPath),
-		coinID:  coinID,
+		CoingeckoRequestBuilder: cg.NewCoingeckoRequestBuilder(baseURL, apiPath),
+		coinID:                  coinID,
 	}
 
-	rb.builder.WithCurrency("usd")
-	rb.WithDays("30")
+	rb.WithCurrency("usd")
+	rb.WithDays("90")
 
 	return rb
 }
 
 func (rb *MarketChartRequestBuilder) WithDays(days string) *MarketChartRequestBuilder {
-	rb.builder.With("days", days)
+	if days != "" {
+		rb.With("days", days)
+	}
 	return rb
 }
 
 func (rb *MarketChartRequestBuilder) WithInterval(interval string) *MarketChartRequestBuilder {
 	if interval != "" {
-		rb.builder.With("interval", interval)
+		rb.With("interval", interval)
 	}
 	return rb
 }

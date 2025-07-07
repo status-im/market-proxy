@@ -9,18 +9,18 @@ const (
 )
 
 type AssetsPlatformsRequestBuilder struct {
-	builder *cg.CoingeckoRequestBuilder
+	*cg.CoingeckoRequestBuilder
 }
 
 func NewAssetsPlatformsRequestBuilder(baseURL string) *AssetsPlatformsRequestBuilder {
 	return &AssetsPlatformsRequestBuilder{
-		builder: cg.NewCoingeckoRequestBuilder(baseURL, ASSETS_PLATFORMS_API_PATH),
+		CoingeckoRequestBuilder: cg.NewCoingeckoRequestBuilder(baseURL, ASSETS_PLATFORMS_API_PATH),
 	}
 }
 
 func (rb *AssetsPlatformsRequestBuilder) WithFilter(filter string) *AssetsPlatformsRequestBuilder {
 	if filter != "" {
-		rb.builder.With("filter", filter)
+		rb.With("filter", filter)
 	}
 	return rb
 }

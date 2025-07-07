@@ -14,18 +14,17 @@ const (
 
 // MarketsRequestBuilder implements the Builder pattern for CoinGecko markets API requests
 type MarketsRequestBuilder struct {
-	// Composition with base request builder
-	builder *cg.CoingeckoRequestBuilder
+	*cg.CoingeckoRequestBuilder
 }
 
 // NewMarketRequestBuilder creates a new request builder for markets endpoint
 func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
 	rb := &MarketsRequestBuilder{
-		builder: cg.NewCoingeckoRequestBuilder(baseURL, MARKETS_API_PATH),
+		CoingeckoRequestBuilder: cg.NewCoingeckoRequestBuilder(baseURL, MARKETS_API_PATH),
 	}
 
 	// Add default market parameters
-	rb.builder.WithCurrency("usd")
+	rb.WithCurrency("usd")
 	rb.WithOrder("market_cap_desc")
 
 	return rb
@@ -33,46 +32,53 @@ func NewMarketRequestBuilder(baseURL string) *MarketsRequestBuilder {
 
 // WithPage adds page parameter for pagination
 func (rb *MarketsRequestBuilder) WithPage(page int) *MarketsRequestBuilder {
-	rb.builder.With("page", strconv.Itoa(page))
+	rb.With("page", strconv.Itoa(page))
 	return rb
 }
 
 // WithPerPage adds per_page parameter
 func (rb *MarketsRequestBuilder) WithPerPage(perPage int) *MarketsRequestBuilder {
-	rb.builder.With("per_page", strconv.Itoa(perPage))
+	rb.With("per_page", strconv.Itoa(perPage))
 	return rb
 }
 
 // WithOrder adds ordering parameter
 func (rb *MarketsRequestBuilder) WithOrder(order string) *MarketsRequestBuilder {
-	rb.builder.With("order", order)
+	if order != "" {
+		rb.With("order", order)
+	}
 	return rb
 }
 
 // WithCategory adds category parameter
 func (rb *MarketsRequestBuilder) WithCategory(category string) *MarketsRequestBuilder {
-	rb.builder.With("category", category)
+	if category != "" {
+		rb.With("category", category)
+	}
 	return rb
 }
 
 // WithIDs adds ids parameter (comma-separated list of coin IDs)
 func (rb *MarketsRequestBuilder) WithIDs(ids []string) *MarketsRequestBuilder {
 	if len(ids) > 0 {
-		rb.builder.With("ids", strings.Join(ids, ","))
+		rb.With("ids", strings.Join(ids, ","))
 	}
 	return rb
 }
 
 // WithSparkline adds sparkline parameter
 func (rb *MarketsRequestBuilder) WithSparkline(enabled bool) *MarketsRequestBuilder {
-	rb.builder.With("sparkline", strconv.FormatBool(enabled))
+	if enabled {
+		rb.With("sparkline", strconv.FormatBool(enabled))
+	}
+
 	return rb
 }
 
 // WithPriceChangePercentage adds price_change_percentage parameter
 func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string) *MarketsRequestBuilder {
 	if len(percentages) > 0 {
-		rb.builder.With("price_change_percentage", strings.Join(percentages, ","))
+		rb.With("price_change_percentage", strings.Join(percentages, ","))
 	}
 	return rb
 }

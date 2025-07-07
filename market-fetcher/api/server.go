@@ -46,10 +46,12 @@ func (s *Server) Start(ctx context.Context) error {
 	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
 	mux.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
 	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
-	// All coins endpoints are handled by the coins router
-	mux.HandleFunc("/api/v1/coins/", s.handleCoinsRoutes)
 	mux.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
 	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
+
+	// All coins endpoints are handled by the coins router
+	mux.HandleFunc("/api/v1/coins/", s.handleCoinsRoutes)
+
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -61,7 +63,6 @@ func (s *Server) Start(ctx context.Context) error {
 	log.Printf("Server starting at http://localhost:%s", s.port)
 	log.Println("Prometheus metrics available at /metrics endpoint")
 
-	// Start the server in a goroutine
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("Server error: %v", err)

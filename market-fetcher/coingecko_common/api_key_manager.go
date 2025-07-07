@@ -46,7 +46,7 @@ type APIKeyManager struct {
 	rand        *rand.Rand
 	lastFailed  map[string]time.Time // Stores the time of the last failure for each key
 	backoffTime time.Duration        // Backoff duration before retrying a failed key
-	mu          sync.RWMutex         // Protects lastFailed map
+	mu          sync.RWMutex
 }
 
 // NewAPIKeyManager creates a new API key manager
@@ -84,13 +84,10 @@ func (m *APIKeyManager) getKeysOfType(keyType KeyType) []string {
 		return []string{}
 	}
 
-	// Return keys of the requested type in their original order
 	switch keyType {
 	case ProKey:
-		// Return all Pro keys
 		return append([]string{}, m.apiTokens.Tokens...)
 	case DemoKey:
-		// Return all Demo keys
 		return append([]string{}, m.apiTokens.DemoTokens...)
 	}
 
@@ -101,7 +98,6 @@ func (m *APIKeyManager) getKeysOfType(keyType KeyType) []string {
 func (m *APIKeyManager) GetAvailableKeys() []APIKey {
 	availableKeys := []APIKey{}
 
-	// Get all Pro keys
 	proKeys := m.getKeysOfType(ProKey)
 
 	// If there's exactly one Pro key, include it even if it's in backoff

@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-func TestEnrichMarketChartParams(t *testing.T) {
+func TestRoundUpMarketChartParams(t *testing.T) {
 	tests := []struct {
 		name           string
 		inputParams    MarketChartParams
 		expectedParams MarketChartParams
 	}{
 		{
-			name: "Days 1 should be enriched to 90",
+			name: "Days 1 should be rounded up to 90",
 			inputParams: MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
@@ -24,7 +24,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			},
 		},
 		{
-			name: "Days 30 should be enriched to 90",
+			name: "Days 30 should be rounded up to 90",
 			inputParams: MarketChartParams{
 				ID:       "ethereum",
 				Currency: "usd",
@@ -50,7 +50,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			},
 		},
 		{
-			name: "Days 180 should be enriched to 365",
+			name: "Days 180 should be rounded up to 365",
 			inputParams: MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
@@ -115,7 +115,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			},
 		},
 		{
-			name: "Days 7 should be enriched to 90",
+			name: "Days 7 should be rounded up to 90",
 			inputParams: MarketChartParams{
 				ID:       "cardano",
 				Currency: "eur",
@@ -128,7 +128,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			},
 		},
 		{
-			name: "Days 14 should be enriched to 90",
+			name: "Days 14 should be rounded up to 90",
 			inputParams: MarketChartParams{
 				ID:       "polkadot",
 				Currency: "btc",
@@ -141,7 +141,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 			},
 		},
 		{
-			name: "Days 91 should be enriched to 365",
+			name: "Days 91 should be rounded up to 365",
 			inputParams: MarketChartParams{
 				ID:       "chainlink",
 				Currency: "usd",
@@ -172,7 +172,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := EnrichMarketChartParams(tt.inputParams, 90) // Use default threshold of 90 days
+			result := RoundUpMarketChartParams(tt.inputParams, 90) // Use default threshold of 90 days
 
 			// Check each field
 			if result.ID != tt.expectedParams.ID {
@@ -191,7 +191,7 @@ func TestEnrichMarketChartParams(t *testing.T) {
 	}
 }
 
-func TestEnrichMarketChartParamsInPlace(t *testing.T) {
+func TestRoundUpMarketChartParamsInPlace(t *testing.T) {
 	// Test that in-place modification works correctly
 	params := MarketChartParams{
 		ID:       "bitcoin",
@@ -199,10 +199,10 @@ func TestEnrichMarketChartParamsInPlace(t *testing.T) {
 		Days:     "30",
 	}
 
-	EnrichMarketChartParamsInPlace(&params, 90) // Use default threshold of 90 days
+	RoundUpMarketChartParamsInPlace(&params, 90) // Use default threshold of 90 days
 
 	if params.Days != "90" {
-		t.Errorf("Expected Days to be enriched to 90, got %s", params.Days)
+		t.Errorf("Expected Days to be rounded up to 90, got %s", params.Days)
 	}
 	if params.ID != "bitcoin" {
 		t.Errorf("Expected ID to remain bitcoin, got %s", params.ID)
@@ -212,7 +212,7 @@ func TestEnrichMarketChartParamsInPlace(t *testing.T) {
 	}
 }
 
-func TestEnrichMarketChartParams_OriginalUnchanged(t *testing.T) {
+func TestRoundUpMarketChartParams_OriginalUnchanged(t *testing.T) {
 	// Test that the original params are not modified when using the non-in-place function
 	original := MarketChartParams{
 		ID:       "bitcoin",
@@ -220,15 +220,15 @@ func TestEnrichMarketChartParams_OriginalUnchanged(t *testing.T) {
 		Days:     "30",
 	}
 
-	result := EnrichMarketChartParams(original, 90) // Use default threshold of 90 days
+	result := RoundUpMarketChartParams(original, 90) // Use default threshold of 90 days
 
 	// Original should remain unchanged
 	if original.Days != "30" {
 		t.Errorf("Expected original Days to remain 30, got %s", original.Days)
 	}
 
-	// Result should be enriched
+	// Result should be rounded up
 	if result.Days != "90" {
-		t.Errorf("Expected result Days to be enriched to 90, got %s", result.Days)
+		t.Errorf("Expected result Days to be rounded up to 90, got %s", result.Days)
 	}
 }

@@ -35,7 +35,6 @@ func createTestConfig() *config.Config {
 			HourlyTTL:          30 * time.Minute,
 			DailyTTL:           12 * time.Hour,
 			DailyDataThreshold: 90,
-			DefaultTTL:         5 * time.Minute,
 		},
 	}
 }
@@ -189,18 +188,18 @@ func TestService_SelectTTL(t *testing.T) {
 			expected: 12 * time.Hour,
 		},
 		{
-			name: "Invalid days should use default TTL",
+			name: "Invalid days should use daily TTL",
 			params: MarketChartParams{
 				Days: "invalid",
 			},
-			expected: 5 * time.Minute, // From config DefaultTTL
+			expected: 12 * time.Hour, // From config DailyTTL
 		},
 		{
-			name: "Empty days should use default TTL",
+			name: "Empty days should use daily TTL",
 			params: MarketChartParams{
 				Days: "",
 			},
-			expected: 5 * time.Minute, // From config DefaultTTL
+			expected: 12 * time.Hour, // From config DailyTTL
 		},
 	}
 
@@ -279,12 +278,12 @@ func TestService_MarketChart_CacheMiss(t *testing.T) {
 
 	// Mock API client
 	mockClient := new(MockAPIClient)
-	enrichedParams := MarketChartParams{
+	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd",
-		Days:     "90", // Enriched from 30 to 90
+		Days:     "90", // Rounded up from 30 to 90
 	}
-	mockClient.On("FetchMarketChart", enrichedParams).Return(sampleMarketChartData, nil)
+	mockClient.On("FetchMarketChart", roundedParams).Return(sampleMarketChartData, nil)
 	service.apiClient = mockClient
 
 	// Test parameters (original request)
@@ -304,7 +303,7 @@ func TestService_MarketChart_CacheMiss(t *testing.T) {
 	assert.Contains(t, result, "market_caps")
 	assert.Contains(t, result, "total_volumes")
 
-	// Verify that API was called with enriched params
+	// Verify that API was called with rounded params
 	mockClient.AssertExpectations(t)
 }
 
@@ -323,13 +322,13 @@ func TestService_MarketChart_CacheHit(t *testing.T) {
 	mockClient := new(MockAPIClient)
 	service.apiClient = mockClient
 
-	// Pre-populate cache with enriched data
-	enrichedParams := MarketChartParams{
+	// Pre-populate cache with rounded data
+	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd",
 		Days:     "90",
 	}
-	cacheKey := service.createCacheKey(enrichedParams)
+	cacheKey := service.createCacheKey(roundedParams)
 
 	// Marshal the sample data to cache format
 	cacheData, _ := json.Marshal(sampleMarketChartData)
@@ -372,12 +371,12 @@ func TestService_MarketChart_APIError(t *testing.T) {
 
 	// Mock API client to return error
 	mockClient := new(MockAPIClient)
-	enrichedParams := MarketChartParams{
+	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd",
 		Days:     "90",
 	}
-	mockClient.On("FetchMarketChart", enrichedParams).Return(map[string][]byte{}, fmt.Errorf("API error"))
+	mockClient.On("FetchMarketChart", roundedParams).Return(map[string][]byte{}, fmt.Errorf("API error"))
 	service.apiClient = mockClient
 
 	// Test parameters
@@ -412,12 +411,12 @@ func TestService_MarketChart_DefaultValues(t *testing.T) {
 
 	// Mock API client
 	mockClient := new(MockAPIClient)
-	enrichedParams := MarketChartParams{
+	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd", // Default currency
-		Days:     "90",  // Enriched from default 30
+		Days:     "90",  // Rounded up from default 30
 	}
-	mockClient.On("FetchMarketChart", enrichedParams).Return(sampleMarketChartData, nil)
+	mockClient.On("FetchMarketChart", roundedParams).Return(sampleMarketChartData, nil)
 	service.apiClient = mockClient
 
 	// Test parameters with empty values
@@ -437,47 +436,47 @@ func TestService_MarketChart_DefaultValues(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func TestService_MarketChart_EnrichmentLogic(t *testing.T) {
+func TestService_MarketChart_RoundUpLogic(t *testing.T) {
 	tests := []struct {
 		name         string
 		originalDays string
-		enrichedDays string
+		roundedDays  string
 		expectedTTL  time.Duration
 	}{
 		{
-			name:         "30 days should be enriched to 90",
+			name:         "30 days should be rounded up to 90",
 			originalDays: "30",
-			enrichedDays: "90",
+			roundedDays:  "90",
 			expectedTTL:  30 * time.Minute,
 		},
 		{
-			name:         "60 days should be enriched to 90",
+			name:         "60 days should be rounded up to 90",
 			originalDays: "60",
-			enrichedDays: "90",
+			roundedDays:  "90",
 			expectedTTL:  30 * time.Minute,
 		},
 		{
 			name:         "90 days should stay 90",
 			originalDays: "90",
-			enrichedDays: "90",
+			roundedDays:  "90",
 			expectedTTL:  30 * time.Minute,
 		},
 		{
-			name:         "180 days should be enriched to 365",
+			name:         "180 days should be rounded up to 365",
 			originalDays: "180",
-			enrichedDays: "365",
+			roundedDays:  "365",
 			expectedTTL:  12 * time.Hour,
 		},
 		{
 			name:         "365 days should stay 365",
 			originalDays: "365",
-			enrichedDays: "365",
+			roundedDays:  "365",
 			expectedTTL:  12 * time.Hour,
 		},
 		{
 			name:         "max days should stay max",
 			originalDays: "max",
-			enrichedDays: "max",
+			roundedDays:  "max",
 			expectedTTL:  12 * time.Hour,
 		},
 	}
@@ -496,12 +495,12 @@ func TestService_MarketChart_EnrichmentLogic(t *testing.T) {
 
 			// Mock API client
 			mockClient := new(MockAPIClient)
-			enrichedParams := MarketChartParams{
+			roundedParams := MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
-				Days:     tt.enrichedDays,
+				Days:     tt.roundedDays,
 			}
-			mockClient.On("FetchMarketChart", enrichedParams).Return(sampleMarketChartData, nil)
+			mockClient.On("FetchMarketChart", roundedParams).Return(sampleMarketChartData, nil)
 			service.apiClient = mockClient
 
 			// Test parameters
@@ -519,10 +518,10 @@ func TestService_MarketChart_EnrichmentLogic(t *testing.T) {
 			assert.NotNil(t, result)
 
 			// Verify TTL selection
-			ttl := service.selectTTL(enrichedParams)
+			ttl := service.selectTTL(roundedParams)
 			assert.Equal(t, tt.expectedTTL, ttl)
 
-			// Verify API was called with enriched params
+			// Verify API was called with rounded params
 			mockClient.AssertExpectations(t)
 		})
 	}
@@ -541,13 +540,13 @@ func TestService_MarketChart_DataFilter(t *testing.T) {
 
 	// Mock API client
 	mockClient := new(MockAPIClient)
-	enrichedParams := MarketChartParams{
+	roundedParams := MarketChartParams{
 		ID:         "bitcoin",
 		Currency:   "usd",
 		Days:       "90",
-		DataFilter: "prices", // This should be passed through without enrichment
+		DataFilter: "prices", // This should be passed through without rounding
 	}
-	mockClient.On("FetchMarketChart", enrichedParams).Return(sampleMarketChartData, nil)
+	mockClient.On("FetchMarketChart", roundedParams).Return(sampleMarketChartData, nil)
 	service.apiClient = mockClient
 
 	// Test parameters with data filter

@@ -40,19 +40,19 @@ func TestStripMarketChartResponse_MaxDays(t *testing.T) {
 		Days:     "max",
 	}
 
-	enrichedResponse := createTestResponseMap(90)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(90)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 
-	if len(result) != len(enrichedResponse) {
-		t.Errorf("Expected result length %d, got %d", len(enrichedResponse), len(result))
+	if len(result) != len(roundedResponse) {
+		t.Errorf("Expected result length %d, got %d", len(roundedResponse), len(result))
 	}
 
 	// Verify data is unchanged
-	for key := range enrichedResponse {
+	for key := range roundedResponse {
 		if _, exists := result[key]; !exists {
 			t.Errorf("Expected key %s to exist in result", key)
 		}
@@ -67,15 +67,15 @@ func TestStripMarketChartResponse_FilterByDays(t *testing.T) {
 		Days:     "7",
 	}
 
-	enrichedResponse := createTestResponseMap(90)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(90)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 
-	if len(result) != len(enrichedResponse) {
-		t.Errorf("Expected result length %d, got %d", len(enrichedResponse), len(result))
+	if len(result) != len(roundedResponse) {
+		t.Errorf("Expected result length %d, got %d", len(roundedResponse), len(result))
 	}
 
 	// Verify that data was filtered
@@ -107,16 +107,16 @@ func TestStripMarketChartResponse_EmptyDays(t *testing.T) {
 		Days:     "",
 	}
 
-	enrichedResponse := createTestResponseMap(30)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 
 	// Should return all data unchanged
-	if len(result) != len(enrichedResponse) {
-		t.Errorf("Expected result length %d, got %d", len(enrichedResponse), len(result))
+	if len(result) != len(roundedResponse) {
+		t.Errorf("Expected result length %d, got %d", len(roundedResponse), len(result))
 	}
 }
 
@@ -128,16 +128,16 @@ func TestStripMarketChartResponse_InvalidDays(t *testing.T) {
 		Days:     "invalid",
 	}
 
-	enrichedResponse := createTestResponseMap(30)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 
 	// Should return all data unchanged when days parsing fails
-	if len(result) != len(enrichedResponse) {
-		t.Errorf("Expected result length %d, got %d", len(enrichedResponse), len(result))
+	if len(result) != len(roundedResponse) {
+		t.Errorf("Expected result length %d, got %d", len(roundedResponse), len(result))
 	}
 }
 
@@ -149,51 +149,23 @@ func TestStripMarketChartResponse_InvalidJSON(t *testing.T) {
 		Days:     "7",
 	}
 
-	enrichedResponse := map[string]interface{}{
+	roundedResponse := map[string]interface{}{
 		"prices": "invalid json",
 	}
 
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
 	}
 
 	// Should return original data when JSON parsing fails
-	if len(result) != len(enrichedResponse) {
-		t.Errorf("Expected result length %d, got %d", len(enrichedResponse), len(result))
+	if len(result) != len(roundedResponse) {
+		t.Errorf("Expected result length %d, got %d", len(roundedResponse), len(result))
 	}
 
-	if result["prices"] != enrichedResponse["prices"] {
+	if result["prices"] != roundedResponse["prices"] {
 		t.Errorf("Expected original data to be preserved when JSON parsing fails")
-	}
-}
-
-func TestStripMarketChartResponseInPlace(t *testing.T) {
-	// Test in-place modification
-	originalParams := MarketChartParams{
-		ID:       "bitcoin",
-		Currency: "usd",
-		Days:     "7",
-	}
-
-	enrichedResponse := createTestResponseMap(30)
-	originalData := make(map[string]interface{})
-	for k, v := range enrichedResponse {
-		originalData[k] = v
-	}
-
-	err := StripMarketChartResponseInPlace(originalParams, enrichedResponse)
-
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
-
-	// Verify that original map was modified
-	// Note: We can't easily compare the data directly since it's been filtered
-	// But we can verify that the structure is maintained
-	if len(enrichedResponse) != len(originalData) {
-		t.Error("Expected map structure to be maintained after in-place modification")
 	}
 }
 
@@ -234,8 +206,8 @@ func TestStripMarketChartResponse_FilterByDataKeys(t *testing.T) {
 		DataFilter: "prices,market_caps",
 	}
 
-	enrichedResponse := createTestResponseMap(30)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
@@ -269,8 +241,8 @@ func TestStripMarketChartResponse_FilterByDataKeysAndDays(t *testing.T) {
 		DataFilter: "prices",
 	}
 
-	enrichedResponse := createTestResponseMap(90)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(90)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
@@ -307,8 +279,8 @@ func TestStripMarketChartResponse_EmptyDataFilter(t *testing.T) {
 		DataFilter: "",
 	}
 
-	enrichedResponse := createTestResponseMap(30)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)
@@ -337,8 +309,8 @@ func TestStripMarketChartResponse_DataFilterWithSpaces(t *testing.T) {
 		DataFilter: " prices , total_volumes ",
 	}
 
-	enrichedResponse := createTestResponseMap(30)
-	result, err := StripMarketChartResponse(originalParams, enrichedResponse)
+	roundedResponse := createTestResponseMap(30)
+	result, err := StripMarketChartResponse(originalParams, roundedResponse)
 
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)

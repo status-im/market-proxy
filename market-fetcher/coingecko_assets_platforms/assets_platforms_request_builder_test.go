@@ -12,7 +12,7 @@ func TestNewAssetsPlatformsRequestBuilder(t *testing.T) {
 	builder := NewAssetsPlatformsRequestBuilder(baseURL)
 
 	assert.NotNil(t, builder)
-	assert.NotNil(t, builder.builder)
+	assert.NotNil(t, builder.CoingeckoRequestBuilder)
 }
 
 func TestAssetsPlatformsRequestBuilder_WithFilter(t *testing.T) {
@@ -53,7 +53,7 @@ func TestAssetsPlatformsRequestBuilder_WithFilter(t *testing.T) {
 			assert.Equal(t, builder, result)
 
 			// Build the request to check URL
-			req, err := builder.builder.Build()
+			req, err := builder.Build()
 			assert.NoError(t, err)
 
 			if tt.expectedInURL {
@@ -131,10 +131,10 @@ func TestAssetsPlatformsRequestBuilder_Build(t *testing.T) {
 			}
 
 			if tt.apiKey != "" {
-				builder.builder.WithApiKey(tt.apiKey, tt.keyType)
+				builder.WithApiKey(tt.apiKey, tt.keyType)
 			}
 
-			req, err := builder.builder.Build()
+			req, err := builder.Build()
 
 			assert.NoError(t, err)
 			assert.NotNil(t, req)
@@ -184,7 +184,7 @@ func TestAssetsPlatformsRequestBuilder_URLConstruction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := NewAssetsPlatformsRequestBuilder(tt.baseURL)
-			req, err := builder.builder.Build()
+			req, err := builder.Build()
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedURL, req.URL.String())
@@ -204,7 +204,7 @@ func TestAssetsPlatformsRequestBuilder_MethodChaining(t *testing.T) {
 	finalBuilder := NewAssetsPlatformsRequestBuilder(baseURL).
 		WithFilter("polygon")
 
-	req, err := finalBuilder.builder.Build()
+	req, err := finalBuilder.Build()
 	assert.NoError(t, err)
 	assert.Contains(t, req.URL.RawQuery, "filter=polygon")
 }
