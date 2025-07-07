@@ -2,7 +2,6 @@ package coingecko_markets
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -83,64 +82,37 @@ func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
 func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Response, []byte, error) {
-	// Get available API keys from the key manager
-	availableKeys := c.keyManager.GetAvailableKeys()
-
-	// Track errors to return if all keys fail
-	var lastError error
-
-	// Try each key until one succeeds
-	for _, apiKey := range availableKeys {
+	// Create executor function that attempts to fetch with a given API key
+	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
 		// Get the appropriate base URL for this key type
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		// Create request builder for markets endpoint
 		requestBuilder := NewMarketRequestBuilder(baseURL)
 
-		// Configure request with pagination parameters only if values are not 0
+		// Add pagination parameters only if values are not 0
 		if params.Page > 0 {
-			requestBuilder.WithPage(params.Page)
+			requestBuilder = requestBuilder.WithPage(params.Page)
 		}
 		if params.PerPage > 0 {
-			requestBuilder.WithPerPage(params.PerPage)
+			requestBuilder = requestBuilder.WithPerPage(params.PerPage)
 		}
 
-		// Apply parameters from MarketsParams
-		if params.Currency != "" {
-			requestBuilder.WithCurrency(params.Currency)
-		}
-
-		if params.Order != "" {
-			requestBuilder.WithOrder(params.Order)
-		}
-
-		if params.Category != "" {
-			requestBuilder.WithCategory(params.Category)
-		}
-
-		if len(params.IDs) > 0 {
-			requestBuilder.WithIDs(params.IDs)
-		}
-
-		if params.SparklineEnabled {
-			requestBuilder.WithSparkline(params.SparklineEnabled)
-		}
-
-		if len(params.PriceChangePercentage) > 0 {
-			requestBuilder.WithPriceChangePercentage(params.PriceChangePercentage)
-		}
-
-		// Add API key if available
-		if apiKey.Key != "" {
-			requestBuilder.WithApiKey(apiKey.Key, apiKey.Type)
-		}
+		// Configure remaining parameters with chaining
+		requestBuilder.
+			WithOrder(params.Order).
+			WithCategory(params.Category).
+			WithIDs(params.IDs).
+			WithSparkline(params.SparklineEnabled).
+			WithPriceChangePercentage(params.PriceChangePercentage).
+			WithCurrency(params.Currency).
+			WithApiKey(apiKey.Key, apiKey.Type)
 
 		// Build the HTTP request
 		request, err := requestBuilder.Build()
 		if err != nil {
 			log.Printf("CoinGecko: Error building request with key type %v: %v", apiKey.Type, err)
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		// Log the attempt
@@ -149,27 +121,35 @@ func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Re
 		// Execute the request with retries
 		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
 
-		// If the request failed
 		if err != nil {
-			log.Printf("CoinGecko: Request failed with key type %v: %v", apiKey.Type, err)
-
-			// Mark the key as failed if it's not the NoKey
-			if apiKey.Key != "" {
-				log.Printf("CoinGecko: Marking key as failed and adding to backoff")
-				c.keyManager.MarkKeyAsFailed(apiKey.Key)
-			}
-
-			lastError = err
-			continue
+			return nil, false, err
 		}
 
 		// If we got here, the request succeeded
 		log.Printf("CoinGecko: Raw request successful for page %d with key type %v in %.2fs",
 			params.Page, apiKey.Type, duration.Seconds())
 
-		return resp, body, nil
+		// Return both response and body as a struct
+		result := struct {
+			Response *http.Response
+			Body     []byte
+		}{resp, body}
+
+		return result, true, nil
 	}
 
-	// If we got here, all keys failed
-	return nil, nil, fmt.Errorf("all API keys failed, last error: %v", lastError)
+	onFailed := cg.CreateFailCallback(c.keyManager)
+	availableKeys := c.keyManager.GetAvailableKeys()
+
+	result, err := cg.TryWithKeys(availableKeys, "CoinGecko", executor, onFailed)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	responseData := result.(struct {
+		Response *http.Response
+		Body     []byte
+	})
+
+	return responseData.Response, responseData.Body, nil
 }

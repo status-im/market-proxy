@@ -1,9 +1,10 @@
 package coingecko_prices
 
 import (
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"log"
 	"time"
+
+	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 const (

@@ -14,7 +14,7 @@ func TestNewPricesRequestBuilder(t *testing.T) {
 	builder := NewPricesRequestBuilder(baseURL)
 
 	assert.NotNil(t, builder)
-	assert.NotNil(t, builder.builder)
+	assert.NotNil(t, builder.CoingeckoRequestBuilder)
 }
 
 func TestPricesRequestBuilder_WithIds(t *testing.T) {

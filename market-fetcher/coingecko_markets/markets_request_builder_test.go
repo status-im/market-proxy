@@ -66,7 +66,8 @@ func TestMarketsRequestBuilder_SpecificBehavior(t *testing.T) {
 		{
 			name: "With custom currency and order",
 			configuration: func(rb *MarketsRequestBuilder) {
-				rb.WithCurrency("eur").WithOrder("volume_desc")
+				rb.WithCurrency("eur")
+				rb.WithOrder("volume_desc")
 			},
 			checkURL: func(t *testing.T, urlStr string) {
 				parsedURL, err := url.Parse(urlStr)
@@ -171,7 +172,7 @@ func TestMarketsRequestBuilder_SpecificBehavior(t *testing.T) {
 
 				query := parsedURL.Query()
 
-				if query.Get("sparkline") != "false" {
+				if query.Has("sparkline") {
 					t.Errorf("Expected sparkline 'false', got %s", query.Get("sparkline"))
 				}
 			},

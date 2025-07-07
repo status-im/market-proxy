@@ -59,6 +59,7 @@ services:
       - REACT_APP_API_URL=http://localhost:8080
       - REACT_APP_PROXY_USER=${MARKET_PROXY_USER}
       - REACT_APP_PROXY_PASSWORD=${MARKET_PROXY_PASSWORD}
+      - REACT_APP_COINGECKO_PROXY_URL=http://localhost:8080/coingecko-local-proxy
     ports:
       - "3000:3000"
     depends_on:

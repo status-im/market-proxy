@@ -10,12 +10,10 @@ import (
 func (s *Server) handleAssetsPlatforms(w http.ResponseWriter, r *http.Request) {
 	params := coingecko_assets_platforms.AssetsPlatformsParams{}
 
-	// Parse filter parameter (optional)
 	if filterParam := r.URL.Query().Get("filter"); filterParam != "" {
 		params.Filter = filterParam
 	}
 
-	// Call assets platforms service
 	data, err := s.assetsPlatformsService.AssetsPlatforms(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch assets platforms: "+err.Error(), http.StatusInternalServerError)

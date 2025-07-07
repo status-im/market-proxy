@@ -9,6 +9,7 @@ Go application that provides cached cryptocurrency data via REST API. The servic
 - Periodic updates of top token prices from CoinGecko (leaderboard)
 - CoinGecko-compatible `/api/v3/coins/markets` endpoint with pagination
 - CoinGecko-compatible `/api/v3/simple/price` endpoint with caching
+- CoinGecko-compatible `/api/v3/coins/{coin_id}/market_chart` endpoint with intelligent caching
 - Configurable update intervals, token limits, and cache TTLs
 - REST API endpoints for accessing token, market, and price data
 - Rate limit handling for CoinGecko API
@@ -61,6 +62,14 @@ coingecko_markets:
   chunk_size: 250              # Tokens per API request (max 250)
   request_delay: 200ms         # Delay between requests
   ttl: 5m                      # Market data cache TTL
+
+# Market chart service with intelligent caching
+coingecko_market_chart:
+  hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)
+  daily_ttl: 12h              # TTL for daily data (requests with days > daily_data_threshold)  
+  daily_data_threshold: 90    # threshold in days: <= 90 days = hourly data, > 90 days = daily data
+  default_ttl: 5m             # fallback TTL when parameters cannot be parsed
+  try_free_api_first: true    # try free API (no key) first when no interval is specified
 
 # API tokens file
 tokens_file: "coingecko_api_tokens.json"
@@ -181,6 +190,24 @@ coingecko_markets:
 ```
 
 The `market_params_normalize` section allows you to normalize incoming parameters to ensure consistent cache behavior. When configured, these values will override user-provided parameters, ensuring that different requests with varying parameters will be cached using the same normalized keys. This prevents cache fragmentation and improves cache hit rates.
+
+#### CoinGecko Market Chart Service
+
+```yaml
+coingecko_market_chart:
+  hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)
+  daily_ttl: 12h              # TTL for daily data (requests with days > daily_data_threshold)  
+  daily_data_threshold: 90    # threshold in days: <= 90 days = hourly data, > 90 days = daily data
+  default_ttl: 5m             # fallback TTL when parameters cannot be parsed
+  try_free_api_first: true    # try free API (no key) first when no interval is specified
+```
+
+The market chart service implements intelligent caching with adaptive TTL:
+- Adaptive TTL**: Different cache durations based on data granularity (hourly vs daily)
+- Data Threshold: Uses `daily_data_threshold` to determine appropriate data granularity
+- Request Enrichment: Always fetches maximum available data for the given interval type
+- Response Filtering: Returns only the requested time range to the client
+- Free API Priority: Uses free API when possible, falls back to paid tiers when needed
 ## Request Flow
 
 ### Top Markets Updates
@@ -213,9 +240,10 @@ The `market_params_normalize` section allows you to normalize incoming parameter
 3. Top simple prices available via `/api/v1/leaderboard/simpleprices`
 4. CoinGecko-compatible markets via `/api/v1/coins/markets`
 5. CoinGecko-compatible simple prices via `/api/v1/simple/price`
-6. Token platform data available via `/api/v1/coins/list`
-7. Health check available via `/health`
-8. Prometheus metrics available via `/metrics`
+6. CoinGecko-compatible market chart via `/api/v1/coins/{coin_id}/market_chart`
+7. Token platform data available via `/api/v1/coins/list`
+8. Health check available via `/health`
+9. Prometheus metrics available via `/metrics`
 
 ## API Endpoints
 
@@ -306,6 +334,28 @@ CoinGecko-compatible simple price endpoint:
     "eur": 2500.00,
     "usd_market_cap": 360000000000
   }
+}
+```
+
+### GET /api/v1/coins/{coin_id}/market_chart
+CoinGecko-compatible market chart endpoint with intelligent caching:
+```bash
+# Query parameters: ?days=7&interval=daily
+```
+```json
+{
+  "prices": [
+    [1640995200000, 50000.00],
+    [1641081600000, 51000.00]
+  ],
+  "market_caps": [
+    [1640995200000, 1000000000000],
+    [1641081600000, 1020000000000]
+  ],
+  "total_volumes": [
+    [1640995200000, 50000000000],
+    [1641081600000, 52000000000]
+  ]
 }
 ```
 
