@@ -635,32 +635,7 @@
           },
           "unit": "none"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*24h.*"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "24h Usage"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*Month.*"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Monthly Usage"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "pluginVersion": "10.0.0",
       "targets": [
@@ -692,7 +667,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "round(increase(market_fetcher_coingecko_requests_total[24h]))",
+          "expr": "sum(round(increase(market_fetcher_coingecko_requests_total[24h])))",
           "legendFormat": "Total requests (24h)",
           "range": true,
           "refId": "C"
@@ -703,7 +678,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "round(increase(market_fetcher_coingecko_requests_total[30d]))",
+          "expr": "sum(round(increase(market_fetcher_coingecko_requests_total[30d])))",
           "legendFormat": "Total requests (Month)",
           "range": true,
           "refId": "D"
