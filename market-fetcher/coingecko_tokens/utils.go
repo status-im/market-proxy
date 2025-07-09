@@ -1,8 +1,6 @@
 package coingecko_tokens
 
-// FilterTokensByPlatform filters tokens to keep only the supported platforms
-// It returns a new slice of tokens with only the supported platforms in each token's platforms map
-// Tokens without any supported platforms are excluded from the result
+// FilterTokensByPlatform filters tokens to keep only supported platforms and native tokens
 func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token {
 	result := make([]Token, 0, len(tokens))
 
@@ -13,17 +11,19 @@ func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token
 	}
 
 	for _, token := range tokens {
-		// Create a new platforms map with only supported platforms
-		filteredPlatforms := make(map[string]string)
+		// Check if token ID is a supported platform (native token)
+		isNativeToken := supportedPlatformsMap[token.ID]
 
+		// Filter platforms to keep only supported ones
+		filteredPlatforms := make(map[string]string)
 		for platform, address := range token.Platforms {
 			if supportedPlatformsMap[platform] {
 				filteredPlatforms[platform] = address
 			}
 		}
 
-		// Only include tokens that have at least one supported platform
-		if len(filteredPlatforms) > 0 {
+		// Include token if it's a native token OR has supported platforms
+		if isNativeToken || len(filteredPlatforms) > 0 {
 			token.Platforms = filteredPlatforms
 			result = append(result, token)
 		}
@@ -32,7 +32,7 @@ func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token
 	return result
 }
 
-// CountTokensByPlatform counts the number of tokens per platform
+// CountTokensByPlatform counts tokens per platform
 func CountTokensByPlatform(tokens []Token) map[string]int {
 	platformCounts := make(map[string]int)
 
