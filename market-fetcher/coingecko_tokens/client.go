@@ -10,25 +10,20 @@ import (
 )
 
 const (
-	// Default URL for CoinGecko API
 	DefaultCoinGeckoBaseURL = "https://api.coingecko.com"
-	// Endpoint for coin list with platforms
-	CoinsListEndpoint = "/api/v3/coins/list?include_platform=true"
+	CoinsListEndpoint       = "/api/v3/coins/list?include_platform=true"
 )
 
-// Client handles HTTP communication with the CoinGecko API
 type Client struct {
 	baseURL    string
 	httpClient *cg.HTTPClientWithRetries
 }
 
-// NewClient creates a new API client
 func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 	if baseURL == "" {
 		baseURL = DefaultCoinGeckoBaseURL
 	}
 
-	// Create retry options
 	retryOpts := cg.DefaultRetryOptions()
 	retryOpts.LogPrefix = "CoinGecko-Tokens"
 
@@ -38,7 +33,7 @@ func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 	}
 }
 
-// FetchTokens retrieves the list of tokens from CoinGecko API
+// FetchTokens retrieves tokens from CoinGecko API
 func (c *Client) FetchTokens() ([]Token, error) {
 	url := fmt.Sprintf("%s%s", c.baseURL, CoinsListEndpoint)
 
