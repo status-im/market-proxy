@@ -36,12 +36,12 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 	params := coingecko_common.MarketsParams{}
 
-	currency := r.URL.Query().Get("vs_currency")
+	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {
 		params.Currency = currency
 	}
 
-	order := r.URL.Query().Get("order")
+	order := getParamLowercase(r, "order")
 	if order != "" {
 		params.Order = order
 	}
@@ -58,11 +58,11 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if idsParam := r.URL.Query().Get("ids"); idsParam != "" {
-		params.IDs = strings.Split(idsParam, ",")
+	if idsParam := getParamLowercase(r, "ids"); idsParam != "" {
+		params.IDs = splitParamLowercase(idsParam)
 	}
 
-	if categoryParam := r.URL.Query().Get("category"); categoryParam != "" {
+	if categoryParam := getParamLowercase(r, "category"); categoryParam != "" {
 		params.Category = categoryParam
 	}
 
@@ -72,8 +72,8 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if priceChangeParam := r.URL.Query().Get("price_change_percentage"); priceChangeParam != "" {
-		params.PriceChangePercentage = strings.Split(priceChangeParam, ",")
+	if priceChangeParam := getParamLowercase(r, "price_change_percentage"); priceChangeParam != "" {
+		params.PriceChangePercentage = splitParamLowercase(priceChangeParam)
 	}
 
 	data, err := s.marketsService.Markets(params)
@@ -93,19 +93,19 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	params := coingecko_common.PriceParams{}
 
-	idsParam := r.URL.Query().Get("ids")
+	idsParam := getParamLowercase(r, "ids")
 	if idsParam == "" {
 		http.Error(w, "Parameter 'ids' is required", http.StatusBadRequest)
 		return
 	}
-	params.IDs = strings.Split(idsParam, ",")
+	params.IDs = splitParamLowercase(idsParam)
 
-	currenciesParam := r.URL.Query().Get("vs_currencies")
+	currenciesParam := getParamLowercase(r, "vs_currencies")
 	if currenciesParam == "" {
 		http.Error(w, "Parameter 'vs_currencies' is required", http.StatusBadRequest)
 		return
 	}
-	params.Currencies = strings.Split(currenciesParam, ",")
+	params.Currencies = splitParamLowercase(currenciesParam)
 
 	if marketCapParam := r.URL.Query().Get("include_market_cap"); marketCapParam != "" {
 		if marketCap, err := strconv.ParseBool(marketCapParam); err == nil {
@@ -149,12 +149,12 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	coinID := pathSegments[3]
+	coinID := strings.ToLower(pathSegments[3])
 
-	currency := r.URL.Query().Get("vs_currency")
-	days := r.URL.Query().Get("days")
-	interval := r.URL.Query().Get("interval")
-	dataFilter := r.URL.Query().Get("data_filter")
+	currency := getParamLowercase(r, "vs_currency")
+	days := getParamLowercase(r, "days")
+	interval := getParamLowercase(r, "interval")
+	dataFilter := getParamLowercase(r, "data_filter")
 
 	params := coingecko_market_chart.MarketChartParams{
 		ID:         coinID,

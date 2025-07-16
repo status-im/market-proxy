@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -51,4 +52,25 @@ func (s *Server) Stop() {
 			log.Printf("Error shutting down server: %v", err)
 		}
 	}
+}
+
+func getParamLowercase(r *http.Request, key string) string {
+	value := r.URL.Query().Get(key)
+	if value != "" {
+		return strings.ToLower(value)
+	}
+	return ""
+}
+
+func splitParamLowercase(param string) []string {
+	if param == "" {
+		return nil
+	}
+
+	parts := strings.Split(param, ",")
+	result := make([]string, len(parts))
+	for i, part := range parts {
+		result[i] = strings.ToLower(strings.TrimSpace(part))
+	}
+	return result
 }

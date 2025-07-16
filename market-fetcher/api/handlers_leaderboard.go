@@ -29,7 +29,7 @@ func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request)
 // handleLeaderboardSimplePrices responds with simple price quotes filtered by currency
 func (s *Server) handleLeaderboardSimplePrices(w http.ResponseWriter, r *http.Request) {
 	// Parse currency parameter
-	currency := r.URL.Query().Get("currency")
+	currency := getParamLowercase(r, "currency")
 
 	prices := s.cgService.GetTopPricesQuotes(currency)
 	s.sendJSONResponse(w, prices)
