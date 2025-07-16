@@ -10,7 +10,7 @@ import (
 func (s *Server) handleAssetsPlatforms(w http.ResponseWriter, r *http.Request) {
 	params := coingecko_assets_platforms.AssetsPlatformsParams{}
 
-	if filterParam := r.URL.Query().Get("filter"); filterParam != "" {
+	if filterParam := getParamLowercase(r, "filter"); filterParam != "" {
 		params.Filter = filterParam
 	}
 
