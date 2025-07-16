@@ -14,6 +14,7 @@ func TestGetParamLowercase(t *testing.T) {
 		queryParams map[string]string
 		key         string
 		expected    string
+		nilRequest  bool
 	}{
 		{
 			name:        "converts uppercase parameter to lowercase",
@@ -51,19 +52,32 @@ func TestGetParamLowercase(t *testing.T) {
 			key:         "filter",
 			expected:    "test-123_abc",
 		},
+		{
+			name:        "returns empty string for nil request",
+			queryParams: nil,
+			key:         "any",
+			expected:    "",
+			nilRequest:  true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock HTTP request with query parameters
-			req := &http.Request{
-				URL: &url.URL{},
+			var req *http.Request
+
+			if tt.nilRequest {
+				req = nil
+			} else {
+				// Create a mock HTTP request with query parameters
+				req = &http.Request{
+					URL: &url.URL{},
+				}
+				q := req.URL.Query()
+				for key, value := range tt.queryParams {
+					q.Set(key, value)
+				}
+				req.URL.RawQuery = q.Encode()
 			}
-			q := req.URL.Query()
-			for key, value := range tt.queryParams {
-				q.Set(key, value)
-			}
-			req.URL.RawQuery = q.Encode()
 
 			result := getParamLowercase(req, tt.key)
 			assert.Equal(t, tt.expected, result)
@@ -95,7 +109,7 @@ func TestSplitParamLowercase(t *testing.T) {
 		{
 			name:     "handles empty string",
 			param:    "",
-			expected: nil,
+			expected: []string{},
 		},
 		{
 			name:     "handles values with spaces and trims them",
@@ -113,24 +127,39 @@ func TestSplitParamLowercase(t *testing.T) {
 			expected: []string{"btc-usd", "eth_eur", "ada123"},
 		},
 		{
-			name:     "handles empty values in the list",
+			name:     "filters out empty values in the list",
 			param:    "bitcoin,,ethereum",
-			expected: []string{"bitcoin", "", "ethereum"},
+			expected: []string{"bitcoin", "ethereum"},
 		},
 		{
-			name:     "handles single comma",
+			name:     "filters out empty values from single comma",
 			param:    ",",
-			expected: []string{"", ""},
+			expected: []string{},
 		},
 		{
-			name:     "handles trailing comma",
+			name:     "filters out trailing comma",
 			param:    "bitcoin,ethereum,",
-			expected: []string{"bitcoin", "ethereum", ""},
+			expected: []string{"bitcoin", "ethereum"},
 		},
 		{
-			name:     "handles leading comma",
+			name:     "filters out leading comma",
 			param:    ",bitcoin,ethereum",
-			expected: []string{"", "bitcoin", "ethereum"},
+			expected: []string{"bitcoin", "ethereum"},
+		},
+		{
+			name:     "filters out whitespace-only values",
+			param:    "bitcoin,   ,ethereum",
+			expected: []string{"bitcoin", "ethereum"},
+		},
+		{
+			name:     "handles multiple consecutive commas",
+			param:    "bitcoin,,,ethereum",
+			expected: []string{"bitcoin", "ethereum"},
+		},
+		{
+			name:     "returns empty slice for whitespace and commas only",
+			param:    " , , , ",
+			expected: []string{},
 		},
 	}
 

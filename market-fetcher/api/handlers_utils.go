@@ -55,6 +55,9 @@ func (s *Server) Stop() {
 }
 
 func getParamLowercase(r *http.Request, key string) string {
+	if r == nil {
+		return ""
+	}
 	value := r.URL.Query().Get(key)
 	if value != "" {
 		return strings.ToLower(value)
@@ -64,13 +67,17 @@ func getParamLowercase(r *http.Request, key string) string {
 
 func splitParamLowercase(param string) []string {
 	if param == "" {
-		return nil
+		return []string{}
 	}
 
 	parts := strings.Split(param, ",")
-	result := make([]string, len(parts))
-	for i, part := range parts {
-		result[i] = strings.ToLower(strings.TrimSpace(part))
+	result := []string{}
+	for _, part := range parts {
+		trimmed := strings.ToLower(strings.TrimSpace(part))
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
 	}
+
 	return result
 }
