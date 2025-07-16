@@ -254,6 +254,33 @@ func TestService_MergeCurrencies(t *testing.T) {
 	result4 := priceService.mergeCurrencies([]string{"usd", "eth", "eur", "dot"})
 	expected4 := []string{"usd", "eur", "btc", "eth", "dot"}
 	assert.Equal(t, expected4, result4)
+
+	// Test case insensitive merging - uppercase currencies should be converted to lowercase
+	result5 := priceService.mergeCurrencies([]string{"USD", "ETH", "EUR", "DOT"})
+	expected5 := []string{"usd", "eur", "btc", "eth", "dot"}
+	assert.Equal(t, expected5, result5)
+
+	// Test mixed case currencies with duplicates
+	result6 := priceService.mergeCurrencies([]string{"USD", "usd", "ETH", "eth", "BTC", "btc"})
+	expected6 := []string{"usd", "eur", "btc", "eth"}
+	assert.Equal(t, expected6, result6)
+
+	// Test all uppercase config with mixed case user input
+	cfgUpper := &config.Config{
+		CoingeckoPrices: config.CoingeckoPricesFetcher{
+			Currencies: []string{"USD", "EUR", "BTC"},
+			TTL:        30 * time.Second,
+		},
+	}
+	priceServiceUpper := &Service{config: cfgUpper}
+	result7 := priceServiceUpper.mergeCurrencies([]string{"eth", "ADA", "usd"})
+	expected7 := []string{"usd", "eur", "btc", "eth", "ada"}
+	assert.Equal(t, expected7, result7)
+
+	// Test various case combinations to ensure no duplicates
+	result8 := priceService.mergeCurrencies([]string{"Usd", "UsD", "uSd", "usd", "ETH", "Eth", "eTh"})
+	expected8 := []string{"usd", "eur", "btc", "eth"}
+	assert.Equal(t, expected8, result8)
 }
 
 func TestService_GetConfigCurrencies(t *testing.T) {

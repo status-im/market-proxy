@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/metrics"
@@ -151,20 +152,25 @@ func (s *Service) loadMissingPrices(missingKeys []string, params cg.PriceParams)
 func (s *Service) mergeCurrencies(userCurrencies []string) []string {
 	// Start with config currencies
 	configCurrencies := s.getConfigCurrencies()
-	allCurrencies := make([]string, len(configCurrencies))
-	copy(allCurrencies, configCurrencies)
+	allCurrencies := make([]string, 0, len(configCurrencies)+len(userCurrencies))
 
 	// Create a set of existing currencies for fast lookup
 	currencySet := make(map[string]bool)
+
 	for _, currency := range configCurrencies {
-		currencySet[currency] = true
+		lowerCurrency := strings.ToLower(currency)
+		if !currencySet[lowerCurrency] {
+			allCurrencies = append(allCurrencies, lowerCurrency)
+			currencySet[lowerCurrency] = true
+		}
 	}
 
 	// Add user currencies that aren't already in config
 	for _, currency := range userCurrencies {
-		if !currencySet[currency] {
-			allCurrencies = append(allCurrencies, currency)
-			currencySet[currency] = true
+		lowerCurrency := strings.ToLower(currency)
+		if !currencySet[lowerCurrency] {
+			allCurrencies = append(allCurrencies, lowerCurrency)
+			currencySet[lowerCurrency] = true
 		}
 	}
 
