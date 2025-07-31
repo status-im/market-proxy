@@ -18,6 +18,13 @@
       "name": "R2Credential",
       "symbol": "R2WBTC",
       "decimals": 8
+    },
+    {
+      "chainId": 10,
+      "address": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
+      "name": "Tether USD",
+      "symbol": "USDT",
+      "decimals": 6
     }
   ]
 }
