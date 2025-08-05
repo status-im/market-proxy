@@ -2,11 +2,7 @@ package coingecko_tokens
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/status-im/market-proxy/interfaces"
 
@@ -14,7 +10,6 @@ import (
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/metrics"
-	"github.com/status-im/market-proxy/scheduler"
 )
 
 type Service struct {
@@ -26,8 +21,7 @@ type Service struct {
 		sync.RWMutex
 		tokens []interfaces.Token
 	}
-	scheduler   *scheduler.Scheduler
-	initialized atomic.Bool
+	periodicUpdater *PeriodicUpdater
 }
 
 func NewService(config *config.Config) *Service {
@@ -40,67 +34,43 @@ func NewService(config *config.Config) *Service {
 
 	client := NewClient(baseURL, metricsWriter)
 
-	return &Service{
+	service := &Service{
 		config:              config,
 		client:              client,
 		metricsWriter:       metricsWriter,
 		subscriptionManager: events.NewSubscriptionManager(),
 	}
+
+	// Create periodic updater with callback
+	service.periodicUpdater = NewPeriodicUpdater(
+		config.TokensFetcher,
+		client,
+		metricsWriter,
+		service.onTokensUpdated,
+	)
+
+	return service
+}
+
+// onTokensUpdated is the callback called when tokens are updated
+func (s *Service) onTokensUpdated(ctx context.Context, tokens []interfaces.Token) error {
+	// Update cache
+	s.cache.Lock()
+	s.cache.tokens = tokens
+	s.cache.Unlock()
+
+	// Emit update notification
+	s.subscriptionManager.Emit(ctx)
+
+	return nil
 }
 
 func (s *Service) Start(ctx context.Context) error {
-	updateInterval := s.config.TokensFetcher.UpdateInterval
-
-	// Skip periodic updates if interval is 0 or negative
-	if updateInterval <= 0 {
-		log.Printf("Tokens service: periodic updates disabled (interval: %v)", updateInterval)
-		return nil
-	}
-
-	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
-		if err := s.fetchAndUpdate(ctx); err != nil {
-			log.Printf("Error updating tokens: %v", err)
-		} else {
-			s.initialized.Store(true)
-		}
-	})
-
-	s.scheduler.Start(ctx, true)
-
-	return nil
+	return s.periodicUpdater.Start(ctx)
 }
 
 func (s *Service) Stop() {
-	if s.scheduler != nil {
-		s.scheduler.Stop()
-	}
-}
-
-func (s *Service) fetchAndUpdate(ctx context.Context) error {
-	s.metricsWriter.ResetCycleMetrics()
-	startTime := time.Now()
-
-	tokens, err := s.client.FetchTokens()
-	if err != nil {
-		return fmt.Errorf("failed to fetch tokens: %w", err)
-	}
-
-	filteredTokens := FilterTokensByPlatform(tokens, s.config.TokensFetcher.SupportedPlatforms)
-
-	s.cache.Lock()
-	s.cache.tokens = filteredTokens
-	s.cache.Unlock()
-
-	tokensByPlatform := CountTokensByPlatform(filteredTokens)
-
-	s.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
-	s.metricsWriter.RecordCacheSize(len(filteredTokens))
-	metrics.RecordTokensByPlatform(tokensByPlatform)
-
-	s.subscriptionManager.Emit(ctx)
-
-	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
-	return nil
+	s.periodicUpdater.Stop()
 }
 
 // GetTokens returns cached tokens
@@ -121,7 +91,7 @@ func (s *Service) Healthy() bool {
 	tokensLen := len(s.cache.tokens)
 	s.cache.RUnlock()
 
-	return s.initialized.Load() && tokensLen > 0
+	return s.periodicUpdater.IsInitialized() && tokensLen > 0
 }
 
 func (s *Service) SubscribeOnTokensUpdate() chan struct{} {
