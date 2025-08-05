@@ -2,12 +2,12 @@ package api
 
 import (
 	"fmt"
-	"github.com/status-im/market-proxy/interfaces"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/coingecko_market_chart"
 )
 
@@ -92,7 +92,7 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 
 // handleSimplePrice implements CoinGecko-compatible /api/v3/simple/price endpoint
 func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
-	params := coingecko_common.PriceParams{}
+	params := interfaces.PriceParams{}
 
 	idsParam := getParamLowercase(r, "ids")
 	if idsParam == "" {

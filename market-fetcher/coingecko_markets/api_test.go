@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/status-im/market-proxy/interfaces"
 	"io"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/status-im/market-proxy/interfaces"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"

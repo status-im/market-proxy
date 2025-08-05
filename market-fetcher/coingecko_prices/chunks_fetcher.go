@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
 )
 
 const (
@@ -56,7 +56,7 @@ func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 
 	// Calculate number of chunks
 	numChunks := (len(params.IDs) + f.chunkSize - 1) / f.chunkSize
-	log.Printf("PriceFetcher: Fetching prices for %d tokens in %d chunks", len(params.IDs), numChunks)
+	log.Printf("CoingeckoPricesService: Fetching prices for %d tokens in %d chunks", len(params.IDs), numChunks)
 
 	// Initialize result map
 	result := make(map[string][]byte)
@@ -72,7 +72,7 @@ func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 
 		// Get chunk of token IDs
 		chunk := params.IDs[start:end]
-		log.Printf("PriceFetcher: Fetching chunk %d/%d with %d tokens", i+1, numChunks, len(chunk))
+		log.Printf("CoingeckoPricesService: Fetching chunk %d/%d with %d tokens", i+1, numChunks, len(chunk))
 
 		// Fetch prices for this chunk
 		chunkStartTime := time.Now()
@@ -88,11 +88,11 @@ func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 		}
 		chunkData, err := f.apiClient.FetchPrices(chunkParams)
 		if err != nil {
-			log.Printf("PriceFetcher: Error fetching chunk: %v", err)
+			log.Printf("CoingeckoPricesService: Error fetching chunk: %v", err)
 			return nil, err
 		}
 		duration := time.Since(chunkStartTime)
-		log.Printf("PriceFetcher: Completed chunk %d/%d with %d tokens in %.2fs", i+1, numChunks, len(chunk), duration.Seconds())
+		log.Printf("CoingeckoPricesService: Completed chunk %d/%d with %d tokens in %.2fs", i+1, numChunks, len(chunk), duration.Seconds())
 
 		// Merge chunk data into result
 		for tokenId, tokenData := range chunkData {
@@ -101,16 +101,16 @@ func (f *ChunksFetcher) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 
 		// Add delay between chunks if not the last chunk
 		if i < numChunks-1 && f.requestDelay > 0 {
-			log.Printf("PriceFetcher: Waiting for %v before fetching next chunk", f.requestDelay)
+			log.Printf("CoingeckoPricesService: Waiting for %v before fetching next chunk", f.requestDelay)
 			time.Sleep(f.requestDelay)
 		} else if i < numChunks-1 {
-			log.Printf("PriceFetcher: No delay configured, fetching next chunk immediately")
+			log.Printf("CoingeckoPricesService: No delay configured, fetching next chunk immediately")
 		}
 	}
 
 	// Log completion
 	tokensPerSecond := float64(len(params.IDs)) / time.Since(startTime).Seconds()
-	log.Printf("PriceFetcher: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
+	log.Printf("CoingeckoPricesService: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
 		len(params.IDs), numChunks, tokensPerSecond)
 
 	return result, nil

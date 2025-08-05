@@ -1,4 +1,6 @@
-package coingecko_common
+package interfaces
+
+//go:generate mockgen -destination=mocks/coingecko_prices.go . CoingeckoPricesService
 
 // PriceParams represents parameters for price requests
 type PriceParams struct {
@@ -22,12 +24,18 @@ type PriceParams struct {
 // This is the raw JSON structure that CoinGecko returns and what we store in cache
 type SimplePriceResponse map[string]interface{}
 
-// PriceFetcher interface for fetching prices of top tokens
-type PriceFetcher interface {
+// CoingeckoPricesService interface for fetching prices of top tokens
+type CoingeckoPricesService interface {
 	// SimplePrices returns cached prices using PriceParams structure
 	SimplePrices(params PriceParams) (SimplePriceResponse, CacheStatus, error)
 
 	// TopPrices fetches prices for top tokens with specified currencies
 	// Similar to TopMarkets in markets service, provides clean interface for token price fetching
 	TopPrices(tokenIDs []string, currencies []string) (SimplePriceResponse, CacheStatus, error)
+
+	// SubscribeTopMarketsUpdate subscribes to markets update notifications
+	SubscribeTopPricesUpdate() chan struct{}
+
+	// Unsubscribe unsubscribes from markets update notifications
+	Unsubscribe(ch chan struct{})
 }

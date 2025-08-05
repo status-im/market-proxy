@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/status-im/market-proxy/cache"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
@@ -116,7 +115,7 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 
 // Markets fetches markets data using cache with specified parameters
 // Returns full CoinGecko markets response in APIResponse format
-func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, cg.CacheStatus, error) {
+func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
 	// Check if specific IDs are requested
 	if len(params.IDs) > 0 {
 		return s.MarketsByIds(params)
@@ -124,11 +123,11 @@ func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsRe
 
 	// TODO: Implement general markets fetching without specific IDs
 	log.Printf("Markets called without specific IDs - returning empty array (TODO: implement general fetching)")
-	return interfaces.MarketsResponse([]interface{}{}), cg.CacheStatusMiss, nil
+	return interfaces.MarketsResponse([]interface{}{}), interfaces.CacheStatusMiss, nil
 }
 
 // MarketsByIds fetches markets data for specific token IDs using cache
-func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interfaces.MarketsResponse, cacheStatus cg.CacheStatus, err error) {
+func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interfaces.MarketsResponse, cacheStatus interfaces.CacheStatus, err error) {
 	log.Printf("Loading markets data for %d specific IDs with currency=%s", len(params.IDs), params.Currency)
 	params = s.getParamsOverride(params)
 	cacheKeys := createCacheKeys(params)
@@ -150,13 +149,13 @@ func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interf
 			}
 		}
 		log.Printf("Returning cached data for all %d tokens", len(marketData))
-		return interfaces.MarketsResponse(marketData), cg.CacheStatusFull, nil
+		return interfaces.MarketsResponse(marketData), interfaces.CacheStatusFull, nil
 	}
 
 	if len(cachedData) > 0 {
-		cacheStatus = cg.CacheStatusPartial
+		cacheStatus = interfaces.CacheStatusPartial
 	} else {
-		cacheStatus = cg.CacheStatusMiss
+		cacheStatus = interfaces.CacheStatusMiss
 	}
 
 	// Some tokens are missing from cache - fetch from API
@@ -232,7 +231,7 @@ func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResp
 	return interfaces.MarketsResponse(marketData), nil
 }
 
-func (s *Service) SubscribeOnMarketsUpdate() chan struct{} {
+func (s *Service) SubscribeTopMarketsUpdate() chan struct{} {
 	return s.subscriptionManager.Subscribe()
 }
 

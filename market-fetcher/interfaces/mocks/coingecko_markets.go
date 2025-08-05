@@ -12,7 +12,6 @@ package mock_interfaces
 import (
 	reflect "reflect"
 
-	coingecko_common "github.com/status-im/market-proxy/coingecko_common"
 	interfaces "github.com/status-im/market-proxy/interfaces"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -41,11 +40,11 @@ func (m *MockCoingeckoMarketsService) EXPECT() *MockCoingeckoMarketsServiceMockR
 }
 
 // Markets mocks base method.
-func (m *MockCoingeckoMarketsService) Markets(arg0 interfaces.MarketsParams) (interfaces.MarketsResponse, coingecko_common.CacheStatus, error) {
+func (m *MockCoingeckoMarketsService) Markets(arg0 interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Markets", arg0)
 	ret0, _ := ret[0].(interfaces.MarketsResponse)
-	ret1, _ := ret[1].(coingecko_common.CacheStatus)
+	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -56,18 +55,18 @@ func (mr *MockCoingeckoMarketsServiceMockRecorder) Markets(arg0 any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Markets", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).Markets), arg0)
 }
 
-// SubscribeOnMarketsUpdate mocks base method.
-func (m *MockCoingeckoMarketsService) SubscribeOnMarketsUpdate() chan struct{} {
+// SubscribeTopMarketsUpdate mocks base method.
+func (m *MockCoingeckoMarketsService) SubscribeTopMarketsUpdate() chan struct{} {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeOnMarketsUpdate")
+	ret := m.ctrl.Call(m, "SubscribeTopMarketsUpdate")
 	ret0, _ := ret[0].(chan struct{})
 	return ret0
 }
 
-// SubscribeOnMarketsUpdate indicates an expected call of SubscribeOnMarketsUpdate.
-func (mr *MockCoingeckoMarketsServiceMockRecorder) SubscribeOnMarketsUpdate() *gomock.Call {
+// SubscribeTopMarketsUpdate indicates an expected call of SubscribeTopMarketsUpdate.
+func (mr *MockCoingeckoMarketsServiceMockRecorder) SubscribeTopMarketsUpdate() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOnMarketsUpdate", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).SubscribeOnMarketsUpdate))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTopMarketsUpdate", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).SubscribeTopMarketsUpdate))
 }
 
 // TopMarkets mocks base method.

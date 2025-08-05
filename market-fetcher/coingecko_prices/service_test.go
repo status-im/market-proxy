@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	cg "github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/cache"
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	api_mocks "github.com/status-im/market-proxy/coingecko_prices/mocks"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"

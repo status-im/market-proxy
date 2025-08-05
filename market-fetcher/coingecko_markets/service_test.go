@@ -3,9 +3,10 @@ package coingecko_markets
 import (
 	"context"
 	"errors"
-	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 	"time"
+
+	"github.com/status-im/market-proxy/interfaces"
 
 	"github.com/status-im/market-proxy/cache"
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"

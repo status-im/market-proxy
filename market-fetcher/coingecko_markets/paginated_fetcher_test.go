@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 	"time"
+
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 // MockAPIClient for testing PaginatedFetcher

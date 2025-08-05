@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
 )
 
 // stripResponse filters the cached response to only include user-requested currencies and fields

@@ -1,9 +1,10 @@
 package coingecko_tokens
 
 import (
-	"github.com/status-im/market-proxy/interfaces"
 	"reflect"
 	"testing"
+
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 func TestFilterTokensByPlatform(t *testing.T) {

@@ -1,4 +1,4 @@
-package coingecko_common
+package interfaces
 
 type CacheStatus string
 

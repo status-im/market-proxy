@@ -7,20 +7,23 @@ import (
 	"log"
 	"strings"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/metrics"
 
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 )
 
 // Service provides price fetching functionality with caching
 type Service struct {
-	cache         cache.Cache
-	fetcher       *ChunksFetcher
-	config        *config.Config
-	metricsWriter *metrics.MetricsWriter
-	apiClient     APIClient
+	cache               cache.Cache
+	fetcher             *ChunksFetcher
+	config              *config.Config
+	metricsWriter       *metrics.MetricsWriter
+	apiClient           APIClient
+	subscriptionManager *events.SubscriptionManager
 }
 
 // NewService creates a new price service with the given cache and config
@@ -42,11 +45,12 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	fetcher := NewChunksFetcher(apiClient, chunkSize, requestDelayMs)
 
 	return &Service{
-		cache:         cache,
-		fetcher:       fetcher,
-		config:        config,
-		metricsWriter: metricsWriter,
-		apiClient:     apiClient,
+		cache:               cache,
+		fetcher:             fetcher,
+		config:              config,
+		metricsWriter:       metricsWriter,
+		apiClient:           apiClient,
+		subscriptionManager: events.NewSubscriptionManager(),
 	}
 }
 
@@ -66,10 +70,10 @@ func (s *Service) Stop() {
 
 // SimplePrices fetches prices for the given parameters using cache
 // Returns raw CoinGecko JSON response with cache status
-func (s *Service) SimplePrices(params cg.PriceParams) (resp cg.SimplePriceResponse, cacheStatus cg.CacheStatus, err error) {
-	cacheStatus = cg.CacheStatusFull
+func (s *Service) SimplePrices(params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
+	cacheStatus = interfaces.CacheStatusFull
 	if len(params.IDs) == 0 {
-		return cg.SimplePriceResponse{}, cacheStatus, nil
+		return interfaces.SimplePriceResponse{}, cacheStatus, nil
 	}
 	cacheKeys := createCacheKeys(params)
 	requestedTokens := len(params.IDs)
@@ -79,9 +83,9 @@ func (s *Service) SimplePrices(params cg.PriceParams) (resp cg.SimplePriceRespon
 		missingCount := len(missingKeys)
 		cachedCount := requestedTokens - missingCount
 		if cachedCount > 0 {
-			cacheStatus = cg.CacheStatusPartial
+			cacheStatus = interfaces.CacheStatusPartial
 		} else {
-			cacheStatus = cg.CacheStatusMiss
+			cacheStatus = interfaces.CacheStatusMiss
 		}
 		return s.loadMissingPrices(missingKeys, params)
 	}
@@ -93,7 +97,7 @@ func (s *Service) SimplePrices(params cg.PriceParams) (resp cg.SimplePriceRespon
 	}
 
 	// Combine results from all cache keys
-	fullResponse := make(cg.SimplePriceResponse)
+	fullResponse := make(interfaces.SimplePriceResponse)
 
 	for i, tokenID := range params.IDs {
 		cacheKey := cacheKeys[i]
@@ -115,7 +119,7 @@ func (s *Service) SimplePrices(params cg.PriceParams) (resp cg.SimplePriceRespon
 }
 
 // loadMissingPrices loads price data for missing cache keys using ChunksFetcher
-func (s *Service) loadMissingPrices(missingKeys []string, params cg.PriceParams) (map[string][]byte, error) {
+func (s *Service) loadMissingPrices(missingKeys []string, params interfaces.PriceParams) (map[string][]byte, error) {
 	log.Printf("Loading missing price data for %d cache keys", len(missingKeys))
 
 	// Extract token IDs from missing cache keys
@@ -129,7 +133,7 @@ func (s *Service) loadMissingPrices(missingKeys []string, params cg.PriceParams)
 	allCurrencies := s.mergeCurrencies(params.Currencies)
 
 	// Use ChunksFetcher to get prices from CoinGecko API
-	fetchParams := cg.PriceParams{
+	fetchParams := interfaces.PriceParams{
 		IDs:                  missingTokens,
 		Currencies:           allCurrencies,
 		IncludeMarketCap:     true,
@@ -197,9 +201,9 @@ func (s *Service) getConfigCurrencies() []string {
 
 // TopPrices fetches prices for top tokens with specified currencies
 // Similar to TopMarkets in markets service, provides clean interface for token price fetching
-func (s *Service) TopPrices(tokenIDs []string, currencies []string) (cg.SimplePriceResponse, cg.CacheStatus, error) {
+func (s *Service) TopPrices(tokenIDs []string, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	log.Printf("TopPrices called for %d tokens with %d currencies", len(tokenIDs), len(currencies))
-	params := cg.PriceParams{
+	params := interfaces.PriceParams{
 		IDs:                  tokenIDs,
 		Currencies:           currencies,
 		IncludeMarketCap:     true,
@@ -214,4 +218,14 @@ func (s *Service) TopPrices(tokenIDs []string, currencies []string) (cg.SimplePr
 // Healthy checks if the service is operational
 func (s *Service) Healthy() bool {
 	return true
+}
+
+// SubscribeTopPricesUpdate subscribes to prices update notifications
+func (s *Service) SubscribeTopPricesUpdate() chan struct{} {
+	return s.subscriptionManager.Subscribe()
+}
+
+// Unsubscribe unsubscribes from prices update notifications
+func (s *Service) Unsubscribe(ch chan struct{}) {
+	s.subscriptionManager.Unsubscribe(ch)
 }

@@ -12,7 +12,7 @@ package mock_coingecko_prices
 import (
 	reflect "reflect"
 
-	coingecko_common "github.com/status-im/market-proxy/coingecko_common"
+	interfaces "github.com/status-im/market-proxy/interfaces"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,7 +40,7 @@ func (m *MockAPIClient) EXPECT() *MockAPIClientMockRecorder {
 }
 
 // FetchPrices mocks base method.
-func (m *MockAPIClient) FetchPrices(arg0 coingecko_common.PriceParams) (map[string][]byte, error) {
+func (m *MockAPIClient) FetchPrices(arg0 interfaces.PriceParams) (map[string][]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchPrices", arg0)
 	ret0, _ := ret[0].(map[string][]byte)

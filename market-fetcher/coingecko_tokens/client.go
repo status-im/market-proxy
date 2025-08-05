@@ -3,8 +3,9 @@ package coingecko_tokens
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/status-im/market-proxy/interfaces"
 	"net/http"
+
+	"github.com/status-im/market-proxy/interfaces"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/metrics"

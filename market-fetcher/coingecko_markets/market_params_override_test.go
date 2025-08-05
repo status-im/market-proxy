@@ -1,8 +1,9 @@
 package coingecko_markets
 
 import (
-	"github.com/status-im/market-proxy/interfaces"
 	"testing"
+
+	"github.com/status-im/market-proxy/interfaces"
 
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	"github.com/status-im/market-proxy/config"

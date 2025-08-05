@@ -6,7 +6,8 @@ import (
 	"sync"
 	"time"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
@@ -15,7 +16,7 @@ import (
 // TopPricesUpdater handles periodic price updates for top tokens
 type TopPricesUpdater struct {
 	config         *config.Config
-	priceFetcher   cg.PriceFetcher
+	priceFetcher   cg.CoingeckoPricesService
 	priceScheduler *scheduler.Scheduler
 	metricsWriter  *metrics.MetricsWriter
 	// Cache for top tokens prices
@@ -31,7 +32,7 @@ type TopPricesUpdater struct {
 }
 
 // NewTopPricesUpdater creates a new top prices updater
-func NewTopPricesUpdater(cfg *config.Config, priceFetcher cg.PriceFetcher) *TopPricesUpdater {
+func NewTopPricesUpdater(cfg *config.Config, priceFetcher cg.CoingeckoPricesService) *TopPricesUpdater {
 	updater := &TopPricesUpdater{
 		config:        cfg,
 		priceFetcher:  priceFetcher,

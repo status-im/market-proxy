@@ -3,7 +3,8 @@ package coingecko_leaderboard
 import (
 	"testing"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
 )
