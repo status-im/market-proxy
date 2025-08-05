@@ -11,6 +11,8 @@ import (
 	"github.com/status-im/market-proxy/metrics"
 )
 
+//go:generate mockgen -destination=mocks/api_client.go . APIClient
+
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPage fetches a single page of data with given parameters

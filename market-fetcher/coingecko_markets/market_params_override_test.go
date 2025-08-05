@@ -3,9 +3,11 @@ package coingecko_markets
 import (
 	"testing"
 
+	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 // Helper functions for creating string and int pointers
@@ -15,7 +17,11 @@ func boolPtr(b bool) *bool       { return &b }
 
 func TestService_getParamsOverride(t *testing.T) {
 	t.Run("No normalization config - returns params as is", func(t *testing.T) {
-		service := NewService(&MockCache{}, createTestConfig())
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockCache := cache_mocks.NewMockCache(ctrl)
+		service := NewService(mockCache, createTestConfig())
 
 		originalParams := cg.MarketsParams{
 			Currency:              "eur",
@@ -32,6 +38,9 @@ func TestService_getParamsOverride(t *testing.T) {
 	})
 
 	t.Run("With normalization config - overrides parameters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestConfig()
 		cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{
 			VsCurrency:            stringPtr("usd"),
@@ -42,7 +51,8 @@ func TestService_getParamsOverride(t *testing.T) {
 			Category:              stringPtr(""),
 		}
 
-		service := NewService(&MockCache{}, cfg)
+		mockCache := cache_mocks.NewMockCache(ctrl)
+		service := NewService(mockCache, cfg)
 
 		originalParams := cg.MarketsParams{
 			Currency:              "eur",
@@ -64,6 +74,9 @@ func TestService_getParamsOverride(t *testing.T) {
 	})
 
 	t.Run("Partial normalization config - overrides only configured parameters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestConfig()
 		cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{
 			VsCurrency: stringPtr("usd"),
@@ -71,7 +84,8 @@ func TestService_getParamsOverride(t *testing.T) {
 			// Other fields not configured
 		}
 
-		service := NewService(&MockCache{}, cfg)
+		mockCache := cache_mocks.NewMockCache(ctrl)
+		service := NewService(mockCache, cfg)
 
 		originalParams := cg.MarketsParams{
 			Currency:              "eur",

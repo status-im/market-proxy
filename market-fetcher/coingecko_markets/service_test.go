@@ -7,46 +7,13 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/cache"
+	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	cg "github.com/status-im/market-proxy/coingecko_common"
+	api_mocks "github.com/status-im/market-proxy/coingecko_markets/mocks"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"go.uber.org/mock/gomock"
 )
-
-// MockCache implements cache.Cache interface for testing
-type MockCache struct {
-	mock.Mock
-}
-
-func (m *MockCache) GetOrLoad(keys []string, loader cache.LoaderFunc, loadOnlyMissingKeys bool, ttl time.Duration) (map[string][]byte, error) {
-	args := m.Called(keys, loader, loadOnlyMissingKeys, ttl)
-	return args.Get(0).(map[string][]byte), args.Error(1)
-}
-
-func (m *MockCache) Get(keys []string) (map[string][]byte, []string, error) {
-	args := m.Called(keys)
-	return args.Get(0).(map[string][]byte), args.Get(1).([]string), args.Error(2)
-}
-
-func (m *MockCache) Set(data map[string][]byte, ttl time.Duration) error {
-	args := m.Called(data, ttl)
-	return args.Error(0)
-}
-
-// MockServiceAPIClient implements APIClient interface for testing service
-type MockServiceAPIClient struct {
-	mock.Mock
-}
-
-func (m *MockServiceAPIClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
-	args := m.Called(params)
-	return args.Get(0).([][]byte), args.Error(1)
-}
-
-func (m *MockServiceAPIClient) Healthy() bool {
-	args := m.Called()
-	return args.Bool(0)
-}
 
 // Test data constants
 var (
@@ -69,6 +36,9 @@ func createTestConfig() *config.Config {
 }
 
 func TestNewService(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
 		name   string
 		cache  cache.Cache
@@ -76,7 +46,7 @@ func TestNewService(t *testing.T) {
 	}{
 		{
 			name:   "Valid service creation",
-			cache:  &MockCache{},
+			cache:  cache_mocks.NewMockCache(ctrl),
 			config: createTestConfig(),
 		},
 		{
@@ -99,6 +69,9 @@ func TestNewService(t *testing.T) {
 }
 
 func TestService_Start(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
 		name        string
 		cache       cache.Cache
@@ -107,7 +80,7 @@ func TestService_Start(t *testing.T) {
 	}{
 		{
 			name:        "Start with valid cache",
-			cache:       &MockCache{},
+			cache:       cache_mocks.NewMockCache(ctrl),
 			expectError: false,
 		},
 		{
@@ -138,7 +111,11 @@ func TestService_Start(t *testing.T) {
 }
 
 func TestService_Stop(t *testing.T) {
-	service := NewService(&MockCache{}, createTestConfig())
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockCache := cache_mocks.NewMockCache(ctrl)
+	service := NewService(mockCache, createTestConfig())
 
 	// Should not panic
 	assert.NotPanics(t, func() {
@@ -147,7 +124,11 @@ func TestService_Stop(t *testing.T) {
 }
 
 func TestService_parseTokensData(t *testing.T) {
-	service := NewService(&MockCache{}, createTestConfig())
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockCache := cache_mocks.NewMockCache(ctrl)
+	service := NewService(mockCache, createTestConfig())
 
 	tests := []struct {
 		name              string
@@ -239,11 +220,14 @@ func TestService_cacheTokensByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := &MockCache{}
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockCache := cache_mocks.NewMockCache(ctrl)
 			service := NewService(mockCache, createTestConfig())
 
 			if len(tt.tokensData) > 0 {
-				mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(tt.cacheSetError)
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(tt.cacheSetError)
 			}
 
 			marketData, err := service.cacheTokensByID(tt.tokensData)
@@ -254,8 +238,6 @@ func TestService_cacheTokensByID(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, marketData, tt.expectedLen)
 			}
-
-			mockCache.AssertExpectations(t)
 		})
 	}
 }
@@ -280,17 +262,18 @@ func TestService_Healthy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockAPIClient := &MockServiceAPIClient{}
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			service := &Service{
 				apiClient: mockAPIClient,
 			}
 
-			mockAPIClient.On("Healthy").Return(tt.apiClientHealthy)
+			mockAPIClient.EXPECT().Healthy().Return(tt.apiClientHealthy)
 
 			result := service.Healthy()
 			assert.Equal(t, tt.expected, result)
-
-			mockAPIClient.AssertExpectations(t)
 		})
 	}
 }
@@ -323,34 +306,32 @@ func TestService_Markets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := &MockCache{}
-			mockAPIClient := &MockServiceAPIClient{}
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			service := NewService(mockCache, createTestConfig())
 			service.apiClient = mockAPIClient
 
 			if tt.expectCall {
 				// Mock cache behavior for MarketsByIds
-				mockCache.On("Get", mock.AnythingOfType("[]string")).Return(
+				mockCache.EXPECT().Get(gomock.Any()).Return(
 					map[string][]byte{},
 					[]string{"markets:bitcoin", "markets:ethereum"},
 					nil,
 				)
-				mockAPIClient.On("FetchPage", mock.AnythingOfType("coingecko_common.MarketsParams")).Return(
+				mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
 					[][]byte{sampleMarketData1, sampleMarketData2},
 					nil,
 				)
-				mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
 			}
 
 			result, _, err := service.Markets(tt.params)
 
 			assert.NoError(t, err)
 			assert.Len(t, result, tt.expectedLen)
-
-			if tt.expectCall {
-				mockCache.AssertExpectations(t)
-				mockAPIClient.AssertExpectations(t)
-			}
 		})
 	}
 }
@@ -411,13 +392,16 @@ func TestService_MarketsByIds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := &MockCache{}
-			mockAPIClient := &MockServiceAPIClient{}
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			service := NewService(mockCache, createTestConfig())
 			service.apiClient = mockAPIClient
 
 			// Setup cache mock
-			mockCache.On("Get", mock.AnythingOfType("[]string")).Return(
+			mockCache.EXPECT().Get(gomock.Any()).Return(
 				tt.cachedData,
 				tt.missingKeys,
 				tt.cacheError,
@@ -425,13 +409,13 @@ func TestService_MarketsByIds(t *testing.T) {
 
 			// Setup API mock if needed
 			if len(tt.missingKeys) > 0 {
-				mockAPIClient.On("FetchPage", mock.AnythingOfType("coingecko_common.MarketsParams")).Return(
+				mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
 					tt.apiData,
 					tt.apiError,
 				)
 
 				if tt.apiError == nil {
-					mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
+					mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
 				}
 			}
 
@@ -442,11 +426,6 @@ func TestService_MarketsByIds(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedLen)
-			}
-
-			mockCache.AssertExpectations(t)
-			if len(tt.missingKeys) > 0 {
-				mockAPIClient.AssertExpectations(t)
 			}
 		})
 	}
@@ -490,19 +469,22 @@ func TestService_TopMarkets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := &MockCache{}
-			mockAPIClient := &MockServiceAPIClient{}
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			service := NewService(mockCache, createTestConfig())
 			service.apiClient = mockAPIClient
 
 			// Mock the paginated fetcher behavior through API client
-			mockAPIClient.On("FetchPage", mock.AnythingOfType("coingecko_common.MarketsParams")).Return(
+			mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
 				tt.apiData,
 				tt.apiError,
-			).Maybe()
+			).AnyTimes()
 
 			if tt.apiError == nil {
-				mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 			}
 
 			result, err := service.TopMarkets(tt.limit, tt.currency)
@@ -513,21 +495,20 @@ func TestService_TopMarkets(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedLen)
 			}
-
-			if tt.apiError == nil {
-				mockCache.AssertExpectations(t)
-			}
 		})
 	}
 }
 
 func TestService_MarketsByIds_DefaultParams(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	// Helper functions for creating pointers
 	strPtr := func(s string) *string { return &s }
 	intPtr := func(i int) *int { return &i }
 
-	mockCache := &MockCache{}
-	mockAPIClient := &MockServiceAPIClient{}
+	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 
 	// Create config with MarketParamsNormalize to test default values
 	cfg := createTestConfig()
@@ -546,25 +527,26 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 		// Currency, Order, PerPage, Page not set - should get defaults
 	}
 
-	mockCache.On("Get", mock.AnythingOfType("[]string")).Return(
+	mockCache.EXPECT().Get(gomock.Any()).Return(
 		map[string][]byte{},
 		[]string{"markets:bitcoin"},
 		nil,
 	)
 
-	mockAPIClient.On("FetchPage", mock.MatchedBy(func(p cg.MarketsParams) bool {
-		return p.Currency == "usd" &&
-			p.Order == "market_cap_desc" &&
-			p.PerPage == MARKETS_DEFAULT_CHUNK_SIZE
-	})).Return([][]byte{sampleMarketData1}, nil)
+	mockAPIClient.EXPECT().FetchPage(gomock.AssignableToTypeOf(cg.MarketsParams{})).DoAndReturn(
+		func(p cg.MarketsParams) ([][]byte, error) {
+			// Verify default parameters are applied
+			assert.Equal(t, "usd", p.Currency)
+			assert.Equal(t, "market_cap_desc", p.Order)
+			assert.Equal(t, MARKETS_DEFAULT_CHUNK_SIZE, p.PerPage)
+			return [][]byte{sampleMarketData1}, nil
+		},
+	)
 
-	mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
+	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
 
 	result, _, err := service.MarketsByIds(params)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
-
-	mockCache.AssertExpectations(t)
-	mockAPIClient.AssertExpectations(t)
 }
