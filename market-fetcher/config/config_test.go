@@ -43,6 +43,13 @@ coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
   currency: usd
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -88,6 +95,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: invalid
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: true,
 		},
@@ -97,6 +111,13 @@ coingecko_leaderboard:
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -113,6 +134,13 @@ coingecko_leaderboard:
   update_interval: 1m
   limit: 100
   request_delay: 0s
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -128,6 +156,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -161,6 +196,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms: []
@@ -290,6 +332,13 @@ coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
   currency: usd
+coingecko_markets:
+  tiers:
+    - name: "test"
+      range_from: 1
+      range_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:

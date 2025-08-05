@@ -26,7 +26,7 @@ coingecko_leaderboard:
 
 coingecko_markets:
   request_delay: 100ms     # short delay for tests
-  ttl: 5m                  # cache TTL for tests
+  default_ttl: 5m          # default cache TTL for tests
   market_params_normalize: # normalize parameters for consistent caching
     vs_currency: "usd"     # always use USD for tests
     order: "market_cap_desc" # always order by market cap
@@ -34,6 +34,12 @@ coingecko_markets:
     sparkline: false       # no sparkline for tests
     price_change_percentage: "1h,24h" # test price changes
     category: ""           # no category filtering
+  tiers:                   # required tier configuration
+    - name: "test"         # test tier
+      range_from: 1        # tokens 1-500 for tests
+      range_to: 500
+      update_interval: 1s  # fast updates for tests
+      ttl: 5s              # short TTL for tests
 
 coingecko_prices:
   

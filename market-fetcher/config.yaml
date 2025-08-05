@@ -15,10 +15,8 @@ coingecko_leaderboard:
 
 coingecko_markets:
   request_delay: 1s           # delay between requests
-  ttl: 30m                    # time to live for cached market data
-  top_markets_update_interval: 30m  # interval for periodic top markets updates
-  top_markets_limit: 500      # limit for top markets to fetch periodically
   currency: usd               # currency for market data
+  default_ttl: 30m            # default TTL for non-tier operations
   market_params_normalize:    # override user parameters to normalize cache keys
     vs_currency: "usd"        # always use USD regardless of user request
     order: "market_cap_desc"  # always order by market cap
@@ -26,6 +24,20 @@ coingecko_markets:
     sparkline: false          # never include sparkline data
     price_change_percentage: "1h,24h"  # always include 1h and 24h price changes
     category: ""              # never filter by category
+  
+  # Tier-based configuration for different token ranges
+  tiers:
+    - name: "top-500"           # High-frequency tier for top tokens
+      range_from: 1             # Top 500 tokens (rank 1-500)
+      range_to: 500
+      update_interval: 30s      # Update every 30 seconds
+      ttl: 65s                  # Cache for 65 seconds
+    
+    - name: "top-501-10000"     # Medium-frequency tier for mid-range tokens
+      range_from: 501           # Tokens ranked 501-10000
+      range_to: 10000
+      update_interval: 30m      # Update every 30 minutes
+      ttl: 60m                  # Cache for 60 minutes
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request

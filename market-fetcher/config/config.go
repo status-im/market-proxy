@@ -55,5 +55,10 @@ func LoadConfig(filename string) (*Config, error) {
 		config.APITokens = apiTokens
 	}
 
+	// Validate coingecko markets configuration
+	if err := config.CoingeckoMarkets.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid coingecko_markets configuration: %w", err)
+	}
+
 	return &config, nil
 }
