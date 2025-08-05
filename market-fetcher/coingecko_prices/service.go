@@ -20,6 +20,7 @@ type Service struct {
 	fetcher       *ChunksFetcher
 	config        *config.Config
 	metricsWriter *metrics.MetricsWriter
+	apiClient     APIClient
 }
 
 // NewService creates a new price service with the given cache and config
@@ -45,6 +46,7 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 		fetcher:       fetcher,
 		config:        config,
 		metricsWriter: metricsWriter,
+		apiClient:     apiClient,
 	}
 }
 

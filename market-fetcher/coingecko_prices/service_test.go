@@ -5,37 +5,56 @@ import (
 	"testing"
 	"time"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
-
 	"github.com/status-im/market-proxy/cache"
+	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
+	cg "github.com/status-im/market-proxy/coingecko_common"
+	api_mocks "github.com/status-im/market-proxy/coingecko_prices/mocks"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
-func TestService_Basic(t *testing.T) {
-	// Create cache service
-	cacheConfig := cache.DefaultCacheConfig()
-	cacheService := cache.NewService(cacheConfig)
+// Test data constants
+var (
+	samplePriceData1 = []byte(`{"usd":45000,"eur":38000}`)
+	samplePriceData2 = []byte(`{"usd":3000,"eur":2500}`)
+)
 
-	// Create test config
-	cfg := &config.Config{
-		APITokens: &config.APITokens{
-			Tokens: []string{},
-		},
+func createTestConfig() *config.Config {
+	return &config.Config{
 		CoingeckoPrices: config.CoingeckoPricesFetcher{
 			Currencies: []string{"usd", "eur"},
 			TTL:        30 * time.Second,
 		},
+		APITokens: &config.APITokens{
+			Tokens: []string{"test-token"},
+		},
 	}
+}
+
+func TestService_Basic(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
+
+	// Create test config
+	cfg := createTestConfig()
 
 	// Create price service
-	priceService := NewService(cacheService, cfg)
+	priceService := NewService(mockCache, cfg)
+
+	// Create mock API client and set it
+	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+	priceService.apiClient = mockAPIClient
+	priceService.fetcher.apiClient = mockAPIClient
 
 	// Test Start method
 	err := priceService.Start(context.Background())
 	assert.NoError(t, err)
 
-	// Test SimplePrices with empty IDs
+	// Test SimplePrices with empty IDs - no API calls should be made
 	response, _, err := priceService.SimplePrices(cg.PriceParams{
 		IDs:        []string{},
 		Currencies: []string{"usd"},
@@ -46,23 +65,22 @@ func TestService_Basic(t *testing.T) {
 }
 
 func TestService_SimplePricesWithMissingData(t *testing.T) {
-	// Create cache service
-	cacheConfig := cache.DefaultCacheConfig()
-	cacheService := cache.NewService(cacheConfig)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
 
 	// Create test config
-	cfg := &config.Config{
-		APITokens: &config.APITokens{
-			Tokens: []string{},
-		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
-			Currencies: []string{"usd", "eur"},
-			TTL:        30 * time.Second,
-		},
-	}
+	cfg := createTestConfig()
 
 	// Create price service
-	priceService := NewService(cacheService, cfg)
+	priceService := NewService(mockCache, cfg)
+
+	// Create mock API client and set it
+	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+	priceService.apiClient = mockAPIClient
+	priceService.fetcher.apiClient = mockAPIClient
 
 	// Test SimplePrices with data not in cache
 	params := cg.PriceParams{
@@ -70,10 +88,24 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 		Currencies: []string{"usd", "eur"},
 	}
 
+	// Set up mock expectations
+	// Cache will call the loader with missing keys
+	mockAPIData := map[string][]byte{
+		"bitcoin":  samplePriceData1,
+		"ethereum": samplePriceData2,
+	}
+	mockAPIClient.EXPECT().FetchPrices(gomock.Any()).Return(mockAPIData, nil)
+
+	// Cache will call the loader and return the loaded data
+	mockCache.EXPECT().GetOrLoad(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(keys []string, loader cache.LoaderFunc, loadOnlyMissingKeys bool, ttl time.Duration) (map[string][]byte, error) {
+			// Simulate all keys are missing, so loader is called
+			return loader(keys)
+		})
+
 	response, _, err := priceService.SimplePrices(params)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
-	// Response might be empty since we're using real API client that might fail in tests
 }
 
 func TestService_CacheKeys(t *testing.T) {
@@ -128,23 +160,22 @@ func TestService_CacheKeys(t *testing.T) {
 }
 
 func TestService_StartStop(t *testing.T) {
-	// Create cache service
-	cacheConfig := cache.DefaultCacheConfig()
-	cacheService := cache.NewService(cacheConfig)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
 
 	// Create test config
-	cfg := &config.Config{
-		APITokens: &config.APITokens{
-			Tokens: []string{},
-		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
-			Currencies: []string{"usd", "eur"},
-			TTL:        30 * time.Second,
-		},
-	}
+	cfg := createTestConfig()
 
 	// Create price service
-	priceService := NewService(cacheService, cfg)
+	priceService := NewService(mockCache, cfg)
+
+	// Create mock API client and set it
+	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+	priceService.apiClient = mockAPIClient
+	priceService.fetcher.apiClient = mockAPIClient
 
 	// Test Start
 	err := priceService.Start(context.Background())
@@ -158,15 +189,7 @@ func TestService_StartStop(t *testing.T) {
 
 func TestService_StartWithoutCache(t *testing.T) {
 	// Create test config
-	cfg := &config.Config{
-		APITokens: &config.APITokens{
-			Tokens: []string{},
-		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
-			Currencies: []string{"usd", "eur"},
-			TTL:        30 * time.Second,
-		},
-	}
+	cfg := createTestConfig()
 
 	// Create price service without cache
 	priceService := NewService(nil, cfg)
@@ -178,23 +201,22 @@ func TestService_StartWithoutCache(t *testing.T) {
 }
 
 func TestService_LoadMissingPrices(t *testing.T) {
-	// Create cache service
-	cacheConfig := cache.DefaultCacheConfig()
-	cacheService := cache.NewService(cacheConfig)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
 
 	// Create test config
-	cfg := &config.Config{
-		APITokens: &config.APITokens{
-			Tokens: []string{},
-		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
-			Currencies: []string{"usd", "eur"},
-			TTL:        30 * time.Second,
-		},
-	}
+	cfg := createTestConfig()
 
 	// Create price service
-	priceService := NewService(cacheService, cfg)
+	priceService := NewService(mockCache, cfg)
+
+	// Create mock API client and set it
+	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+	priceService.apiClient = mockAPIClient
+	priceService.fetcher.apiClient = mockAPIClient
 
 	// Test parameters
 	params := cg.PriceParams{
@@ -208,13 +230,19 @@ func TestService_LoadMissingPrices(t *testing.T) {
 		"simple_price:ethereum",
 	}
 
+	// Set up mock expectations for API client
+	mockAPIData := map[string][]byte{
+		"bitcoin":  samplePriceData1,
+		"ethereum": samplePriceData2,
+	}
+	mockAPIClient.EXPECT().FetchPrices(gomock.Any()).Return(mockAPIData, nil)
+
 	// Call loadMissingPrices
 	result, err := priceService.loadMissingPrices(missingKeys, params)
 
-	// Should not return error even if API fails
+	// Should not return error
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	// Result might be empty since we're using real API that might fail in tests
 
 	// Test with empty missing keys
 	emptyResult, err := priceService.loadMissingPrices([]string{}, params)
