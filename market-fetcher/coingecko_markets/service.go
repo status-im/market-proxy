@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	// Default values
 	MARKETS_DEFAULT_CHUNK_SIZE    = 250  // CoinGecko's API max per_page value
 	MARKETS_DEFAULT_REQUEST_DELAY = 1000 // 1 second in milliseconds
 	ID_FIELD                      = "id"
@@ -27,7 +26,6 @@ type Service struct {
 	apiClient     APIClient
 }
 
-// NewService creates a new markets service with the given cache and config
 func NewService(cache cache.Cache, config *config.Config) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
@@ -114,7 +112,7 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 
 // Markets fetches markets data using cache with specified parameters
 // Returns full CoinGecko markets response in APIResponse format
-func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, error) {
+func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, cg.CacheStatus, error) {
 	// Check if specific IDs are requested
 	if len(params.IDs) > 0 {
 		return s.MarketsByIds(params)
@@ -122,34 +120,15 @@ func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, error) {
 
 	// TODO: Implement general markets fetching without specific IDs
 	log.Printf("Markets called without specific IDs - returning empty array (TODO: implement general fetching)")
-	return cg.MarketsResponse([]interface{}{}), nil
+	return cg.MarketsResponse([]interface{}{}), cg.CacheStatusMiss, nil
 }
 
 // MarketsByIds fetches markets data for specific token IDs using cache
-func (s *Service) MarketsByIds(params cg.MarketsParams) (cg.MarketsResponse, error) {
+func (s *Service) MarketsByIds(params cg.MarketsParams) (response cg.MarketsResponse, cacheStatus cg.CacheStatus, err error) {
 	log.Printf("Loading markets data for %d specific IDs with currency=%s", len(params.IDs), params.Currency)
-
-	// Apply parameters normalization from config
 	params = s.getParamsOverride(params)
-
-	// Set default values if not provided
-	if params.Currency == "" {
-		params.Currency = "usd"
-	}
-	if params.Order == "" {
-		params.Order = "market_cap_desc"
-	}
-	if params.PerPage <= 0 {
-		params.PerPage = MARKETS_DEFAULT_CHUNK_SIZE
-	}
-	if params.Page <= 0 {
-		params.Page = 1
-	}
-
-	// Create cache keys for individual tokens
 	cacheKeys := createCacheKeys(params)
 
-	// Check cache for individual tokens
 	cachedData, missingKeys, err := s.cache.Get(cacheKeys)
 	if err != nil {
 		log.Printf("Failed to check cache: %v", err)
@@ -167,7 +146,13 @@ func (s *Service) MarketsByIds(params cg.MarketsParams) (cg.MarketsResponse, err
 			}
 		}
 		log.Printf("Returning cached data for all %d tokens", len(marketData))
-		return cg.MarketsResponse(marketData), nil
+		return cg.MarketsResponse(marketData), cg.CacheStatusFull, nil
+	}
+
+	if len(cachedData) > 0 {
+		cacheStatus = cg.CacheStatusPartial
+	} else {
+		cacheStatus = cg.CacheStatusMiss
 	}
 
 	// Some tokens are missing from cache - fetch from API
@@ -175,17 +160,17 @@ func (s *Service) MarketsByIds(params cg.MarketsParams) (cg.MarketsResponse, err
 	tokensData, err := s.apiClient.FetchPage(params)
 	if err != nil {
 		log.Printf("apiClient.FetchPage failed to fetch markets data: %v", err)
-		return nil, fmt.Errorf("failed to fetch markets data: %w", err)
+		return nil, cacheStatus, fmt.Errorf("failed to fetch markets data: %w", err)
 	}
 
 	// Cache tokens by their IDs
 	marketData, err := s.cacheTokensByID(tokensData)
 	if err != nil {
-		return nil, err
+		return nil, cacheStatus, err
 	}
 
 	log.Printf("Loaded and cached markets data with %d coins", len(marketData))
-	return cg.MarketsResponse(marketData), nil
+	return cg.MarketsResponse(marketData), cacheStatus, nil
 }
 
 // Healthy checks if the service is operational

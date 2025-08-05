@@ -63,24 +63,31 @@ func (s *Service) Stop() {
 }
 
 // SimplePrices fetches prices for the given parameters using cache
-// Returns raw CoinGecko JSON response
-func (s *Service) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, error) {
+// Returns raw CoinGecko JSON response with cache status
+func (s *Service) SimplePrices(params cg.PriceParams) (resp cg.SimplePriceResponse, cacheStatus cg.CacheStatus, err error) {
+	cacheStatus = cg.CacheStatusFull
 	if len(params.IDs) == 0 {
-		return cg.SimplePriceResponse{}, nil
+		return cg.SimplePriceResponse{}, cacheStatus, nil
 	}
-
-	// Create cache keys for each token ID
 	cacheKeys := createCacheKeys(params)
+	requestedTokens := len(params.IDs)
 
 	// Create loader that uses ChunksFetcher to fetch missing data
 	loader := func(missingKeys []string) (map[string][]byte, error) {
+		missingCount := len(missingKeys)
+		cachedCount := requestedTokens - missingCount
+		if cachedCount > 0 {
+			cacheStatus = cg.CacheStatusPartial
+		} else {
+			cacheStatus = cg.CacheStatusMiss
+		}
 		return s.loadMissingPrices(missingKeys, params)
 	}
 
 	// Get data from cache for all keys
 	cachedData, err := s.cache.GetOrLoad(cacheKeys, loader, true, s.config.CoingeckoPrices.TTL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get prices from cache: %w", err)
+		return nil, cacheStatus, fmt.Errorf("failed to get prices from cache: %w", err)
 	}
 
 	// Combine results from all cache keys
@@ -91,7 +98,7 @@ func (s *Service) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, e
 		if data, found := cachedData[cacheKey]; found {
 			var tokenData map[string]interface{}
 			if err := json.Unmarshal(data, &tokenData); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal cached price data for %s: %w", tokenID, err)
+				return nil, cacheStatus, fmt.Errorf("failed to unmarshal cached price data for %s: %w", tokenID, err)
 			}
 
 			// Add token data directly to full response (will be filtered later)
@@ -102,7 +109,7 @@ func (s *Service) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, e
 	// Filter the response according to user parameters
 	filteredResponse := stripResponse(fullResponse, params)
 
-	return filteredResponse, nil
+	return filteredResponse, cacheStatus, nil
 }
 
 // loadMissingPrices loads price data for missing cache keys using ChunksFetcher
@@ -184,6 +191,22 @@ func (s *Service) getConfigCurrencies() []string {
 	}
 	// Fallback to default currencies if config is not available or empty
 	return []string{"usd", "eur", "btc", "eth"}
+}
+
+// TopPrices fetches prices for top tokens with specified currencies
+// Similar to TopMarkets in markets service, provides clean interface for token price fetching
+func (s *Service) TopPrices(tokenIDs []string, currencies []string) (cg.SimplePriceResponse, cg.CacheStatus, error) {
+	log.Printf("TopPrices called for %d tokens with %d currencies", len(tokenIDs), len(currencies))
+	params := cg.PriceParams{
+		IDs:                  tokenIDs,
+		Currencies:           currencies,
+		IncludeMarketCap:     true,
+		Include24hrVol:       true,
+		Include24hrChange:    true,
+		IncludeLastUpdatedAt: true,
+	}
+
+	return s.SimplePrices(params)
 }
 
 // Healthy checks if the service is operational

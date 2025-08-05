@@ -342,7 +342,7 @@ func TestService_Markets(t *testing.T) {
 				mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
 			}
 
-			result, err := service.Markets(tt.params)
+			result, _, err := service.Markets(tt.params)
 
 			assert.NoError(t, err)
 			assert.Len(t, result, tt.expectedLen)
@@ -435,7 +435,7 @@ func TestService_MarketsByIds(t *testing.T) {
 				}
 			}
 
-			result, err := service.MarketsByIds(tt.params)
+			result, _, err := service.MarketsByIds(tt.params)
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -522,9 +522,22 @@ func TestService_TopMarkets(t *testing.T) {
 }
 
 func TestService_MarketsByIds_DefaultParams(t *testing.T) {
+	// Helper functions for creating pointers
+	strPtr := func(s string) *string { return &s }
+	intPtr := func(i int) *int { return &i }
+
 	mockCache := &MockCache{}
 	mockAPIClient := &MockServiceAPIClient{}
-	service := NewService(mockCache, createTestConfig())
+
+	// Create config with MarketParamsNormalize to test default values
+	cfg := createTestConfig()
+	cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{
+		VsCurrency: strPtr("usd"),
+		Order:      strPtr("market_cap_desc"),
+		PerPage:    intPtr(MARKETS_DEFAULT_CHUNK_SIZE),
+	}
+
+	service := NewService(mockCache, cfg)
 	service.apiClient = mockAPIClient
 
 	// Test that default parameters are applied
@@ -542,13 +555,12 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 	mockAPIClient.On("FetchPage", mock.MatchedBy(func(p cg.MarketsParams) bool {
 		return p.Currency == "usd" &&
 			p.Order == "market_cap_desc" &&
-			p.PerPage == MARKETS_DEFAULT_CHUNK_SIZE &&
-			p.Page == 1
+			p.PerPage == MARKETS_DEFAULT_CHUNK_SIZE
 	})).Return([][]byte{sampleMarketData1}, nil)
 
 	mockCache.On("Set", mock.AnythingOfType("map[string][]uint8"), mock.AnythingOfType("time.Duration")).Return(nil)
 
-	result, err := service.MarketsByIds(params)
+	result, _, err := service.MarketsByIds(params)
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)

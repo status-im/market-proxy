@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -76,7 +75,7 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		params.PriceChangePercentage = splitParamLowercase(priceChangeParam)
 	}
 
-	data, err := s.marketsService.Markets(params)
+	data, cacheStatus, err := s.marketsService.Markets(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -86,6 +85,7 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, data)
 }
 
@@ -131,12 +131,13 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := s.pricesService.SimplePrices(params)
+	response, cacheStatus, err := s.pricesService.SimplePrices(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch prices: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, response)
 }
 
@@ -174,13 +175,8 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=60")
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	s.sendJSONResponse(w, data)
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers

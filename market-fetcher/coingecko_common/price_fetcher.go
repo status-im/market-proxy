@@ -24,6 +24,10 @@ type SimplePriceResponse map[string]interface{}
 
 // PriceFetcher interface for fetching prices of top tokens
 type PriceFetcher interface {
-	// GetTopPrices returns cached prices for top tokens in specified currency
-	SimplePrices(params PriceParams) (SimplePriceResponse, error)
+	// SimplePrices returns cached prices using PriceParams structure
+	SimplePrices(params PriceParams) (SimplePriceResponse, CacheStatus, error)
+
+	// TopPrices fetches prices for top tokens with specified currencies
+	// Similar to TopMarkets in markets service, provides clean interface for token price fetching
+	TopPrices(tokenIDs []string, currencies []string) (SimplePriceResponse, CacheStatus, error)
 }

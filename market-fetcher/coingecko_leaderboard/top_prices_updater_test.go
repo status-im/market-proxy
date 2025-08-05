@@ -18,9 +18,14 @@ type MockPriceFetcher struct {
 	mock.Mock
 }
 
-func (m *MockPriceFetcher) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, error) {
+func (m *MockPriceFetcher) SimplePrices(params cg.PriceParams) (cg.SimplePriceResponse, cg.CacheStatus, error) {
 	args := m.Called(params)
-	return args.Get(0).(cg.SimplePriceResponse), args.Error(1)
+	return args.Get(0).(cg.SimplePriceResponse), args.Get(1).(cg.CacheStatus), args.Error(2)
+}
+
+func (m *MockPriceFetcher) TopPrices(tokenIDs []string, currencies []string) (cg.SimplePriceResponse, cg.CacheStatus, error) {
+	args := m.Called(tokenIDs, currencies)
+	return args.Get(0).(cg.SimplePriceResponse), args.Get(1).(cg.CacheStatus), args.Error(2)
 }
 
 // Helper function to create test config for prices updater
@@ -215,7 +220,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 			Include24hrChange:    true,
 			IncludeLastUpdatedAt: true,
 		}
-		mockFetcher.On("SimplePrices", expectedParams).Return(sampleResponse, nil)
+		mockFetcher.On("SimplePrices", expectedParams).Return(sampleResponse, cg.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -277,7 +282,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		}
 
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.On("SimplePrices", expectedParams).Return(sampleResponse, nil)
+		mockFetcher.On("SimplePrices", expectedParams).Return(sampleResponse, cg.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -296,7 +301,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 		// Mock error response
 		expectedError := errors.New("API error")
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, expectedError)
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, cg.CacheStatusMiss, expectedError)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -321,7 +326,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 		// Mock empty response
 		emptyResponse := cg.SimplePriceResponse{}
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(emptyResponse, nil)
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(emptyResponse, cg.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -361,7 +366,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		updater.SetTopTokenIDs(tokenIDs)
 
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(sampleResponse, nil)
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(sampleResponse, cg.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -380,7 +385,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, nil).Maybe()
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, cg.CacheStatusMiss, nil).Maybe()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -436,7 +441,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, nil).Maybe()
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, cg.CacheStatusMiss, nil).Maybe()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -474,7 +479,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, nil).Maybe()
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(cg.SimplePriceResponse{}, cg.CacheStatusMiss, nil).Maybe()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -583,7 +588,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 
 		// 2. Setup mock for fetchAndUpdateTopPrices
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(sampleResponse, nil)
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(sampleResponse, cg.CacheStatusMiss, nil)
 
 		// 3. Fetch and update prices
 		ctx := context.Background()
@@ -614,7 +619,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 				"usd": 50000.0,
 			},
 		}
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(firstResponse, nil).Once()
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(firstResponse, cg.CacheStatusMiss, nil).Once()
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -629,7 +634,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 				"usd": 55000.0,
 			},
 		}
-		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(secondResponse, nil).Once()
+		mockFetcher.On("SimplePrices", mock.AnythingOfType("coingecko_common.PriceParams")).Return(secondResponse, cg.CacheStatusMiss, nil).Once()
 
 		err = updater.fetchAndUpdateTopPrices(ctx)
 		assert.NoError(t, err)

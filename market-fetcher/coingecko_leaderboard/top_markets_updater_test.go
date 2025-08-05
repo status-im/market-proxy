@@ -18,9 +18,9 @@ type MockMarketsFetcher struct {
 	mock.Mock
 }
 
-func (m *MockMarketsFetcher) Markets(params cg.MarketsParams) (cg.MarketsResponse, error) {
+func (m *MockMarketsFetcher) Markets(params cg.MarketsParams) (cg.MarketsResponse, cg.CacheStatus, error) {
 	args := m.Called(params)
-	return args.Get(0).(cg.MarketsResponse), args.Error(1)
+	return args.Get(0).(cg.MarketsResponse), args.Get(1).(cg.CacheStatus), args.Error(2)
 }
 
 func (m *MockMarketsFetcher) TopMarkets(limit int, currency string) (cg.MarketsResponse, error) {

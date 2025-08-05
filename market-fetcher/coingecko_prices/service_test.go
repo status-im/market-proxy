@@ -36,7 +36,7 @@ func TestService_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test SimplePrices with empty IDs
-	response, err := priceService.SimplePrices(cg.PriceParams{
+	response, _, err := priceService.SimplePrices(cg.PriceParams{
 		IDs:        []string{},
 		Currencies: []string{"usd"},
 	})
@@ -70,7 +70,7 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 		Currencies: []string{"usd", "eur"},
 	}
 
-	response, err := priceService.SimplePrices(params)
+	response, _, err := priceService.SimplePrices(params)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	// Response might be empty since we're using real API client that might fail in tests
