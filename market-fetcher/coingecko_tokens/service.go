@@ -8,19 +8,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
 )
 
 type Service struct {
-	config        *config.Config
-	client        *Client
-	metricsWriter *metrics.MetricsWriter
-	cache         struct {
+	config              *config.Config
+	client              *Client
+	metricsWriter       *metrics.MetricsWriter
+	subscriptionManager *events.SubscriptionManager
+	cache               struct {
 		sync.RWMutex
-		tokens []Token
+		tokens []interfaces.Token
 	}
 	scheduler   *scheduler.Scheduler
 	initialized atomic.Bool
@@ -37,9 +41,10 @@ func NewService(config *config.Config) *Service {
 	client := NewClient(baseURL, metricsWriter)
 
 	return &Service{
-		config:        config,
-		client:        client,
-		metricsWriter: metricsWriter,
+		config:              config,
+		client:              client,
+		metricsWriter:       metricsWriter,
+		subscriptionManager: events.NewSubscriptionManager(),
 	}
 }
 
@@ -53,7 +58,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	s.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
-		if err := s.fetchAndUpdate(); err != nil {
+		if err := s.fetchAndUpdate(ctx); err != nil {
 			log.Printf("Error updating tokens: %v", err)
 		} else {
 			s.initialized.Store(true)
@@ -71,7 +76,7 @@ func (s *Service) Stop() {
 	}
 }
 
-func (s *Service) fetchAndUpdate() error {
+func (s *Service) fetchAndUpdate(ctx context.Context) error {
 	s.metricsWriter.ResetCycleMetrics()
 	startTime := time.Now()
 
@@ -92,17 +97,19 @@ func (s *Service) fetchAndUpdate() error {
 	s.metricsWriter.RecordCacheSize(len(filteredTokens))
 	metrics.RecordTokensByPlatform(tokensByPlatform)
 
+	s.subscriptionManager.Emit(ctx)
+
 	log.Printf("Updated tokens cache, now contains %d tokens with supported platforms", len(filteredTokens))
 	return nil
 }
 
 // GetTokens returns cached tokens
-func (s *Service) GetTokens() []Token {
+func (s *Service) GetTokens() []interfaces.Token {
 	s.cache.RLock()
 	defer s.cache.RUnlock()
 
 	// Return copy to avoid race conditions
-	tokensCopy := make([]Token, len(s.cache.tokens))
+	tokensCopy := make([]interfaces.Token, len(s.cache.tokens))
 	copy(tokensCopy, s.cache.tokens)
 
 	return tokensCopy
@@ -115,4 +122,12 @@ func (s *Service) Healthy() bool {
 	s.cache.RUnlock()
 
 	return s.initialized.Load() && tokensLen > 0
+}
+
+func (s *Service) SubscribeOnTokensUpdate() chan struct{} {
+	return s.subscriptionManager.Subscribe()
+}
+
+func (s *Service) Unsubscribe(ch chan struct{}) {
+	s.subscriptionManager.Unsubscribe(ch)
 }
