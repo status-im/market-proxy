@@ -9,6 +9,8 @@ import (
 	"github.com/status-im/market-proxy/cache"
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
+	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
 )
 
@@ -20,10 +22,11 @@ const (
 
 // Service provides markets data fetching functionality with caching
 type Service struct {
-	cache         cache.Cache
-	config        *config.Config
-	metricsWriter *metrics.MetricsWriter
-	apiClient     APIClient
+	cache               cache.Cache
+	config              *config.Config
+	metricsWriter       *metrics.MetricsWriter
+	apiClient           APIClient
+	subscriptionManager *events.SubscriptionManager
 }
 
 func NewService(cache cache.Cache, config *config.Config) *Service {
@@ -31,10 +34,11 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	apiClient := NewCoinGeckoClient(config)
 
 	return &Service{
-		cache:         cache,
-		config:        config,
-		metricsWriter: metricsWriter,
-		apiClient:     apiClient,
+		cache:               cache,
+		config:              config,
+		metricsWriter:       metricsWriter,
+		apiClient:           apiClient,
+		subscriptionManager: events.NewSubscriptionManager(),
 	}
 }
 
@@ -112,7 +116,7 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 
 // Markets fetches markets data using cache with specified parameters
 // Returns full CoinGecko markets response in APIResponse format
-func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, cg.CacheStatus, error) {
+func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, cg.CacheStatus, error) {
 	// Check if specific IDs are requested
 	if len(params.IDs) > 0 {
 		return s.MarketsByIds(params)
@@ -120,11 +124,11 @@ func (s *Service) Markets(params cg.MarketsParams) (cg.MarketsResponse, cg.Cache
 
 	// TODO: Implement general markets fetching without specific IDs
 	log.Printf("Markets called without specific IDs - returning empty array (TODO: implement general fetching)")
-	return cg.MarketsResponse([]interface{}{}), cg.CacheStatusMiss, nil
+	return interfaces.MarketsResponse([]interface{}{}), cg.CacheStatusMiss, nil
 }
 
 // MarketsByIds fetches markets data for specific token IDs using cache
-func (s *Service) MarketsByIds(params cg.MarketsParams) (response cg.MarketsResponse, cacheStatus cg.CacheStatus, err error) {
+func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interfaces.MarketsResponse, cacheStatus cg.CacheStatus, err error) {
 	log.Printf("Loading markets data for %d specific IDs with currency=%s", len(params.IDs), params.Currency)
 	params = s.getParamsOverride(params)
 	cacheKeys := createCacheKeys(params)
@@ -146,7 +150,7 @@ func (s *Service) MarketsByIds(params cg.MarketsParams) (response cg.MarketsResp
 			}
 		}
 		log.Printf("Returning cached data for all %d tokens", len(marketData))
-		return cg.MarketsResponse(marketData), cg.CacheStatusFull, nil
+		return interfaces.MarketsResponse(marketData), cg.CacheStatusFull, nil
 	}
 
 	if len(cachedData) > 0 {
@@ -170,7 +174,7 @@ func (s *Service) MarketsByIds(params cg.MarketsParams) (response cg.MarketsResp
 	}
 
 	log.Printf("Loaded and cached markets data with %d coins", len(marketData))
-	return cg.MarketsResponse(marketData), cacheStatus, nil
+	return interfaces.MarketsResponse(marketData), cacheStatus, nil
 }
 
 // Healthy checks if the service is operational
@@ -184,7 +188,7 @@ func (s *Service) Healthy() bool {
 
 // TopMarkets fetches top markets data for specified number of tokens,
 // caches individual tokens by their coingecko id and returns the response
-func (s *Service) TopMarkets(limit int, currency string) (cg.MarketsResponse, error) {
+func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResponse, error) {
 	log.Printf("Loading top %d markets data from CoinGecko API with currency=%s", limit, currency)
 
 	// Set default limit if not provided
@@ -199,7 +203,7 @@ func (s *Service) TopMarkets(limit int, currency string) (cg.MarketsResponse, er
 	}
 
 	// Create parameters for top markets request
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: currency,
 		Order:    "market_cap_desc", // Order by market cap to get top tokens
 		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
@@ -225,5 +229,13 @@ func (s *Service) TopMarkets(limit int, currency string) (cg.MarketsResponse, er
 	}
 
 	log.Printf("Loaded and cached top markets data with %d coins", len(marketData))
-	return cg.MarketsResponse(marketData), nil
+	return interfaces.MarketsResponse(marketData), nil
+}
+
+func (s *Service) SubscribeOnMarketsUpdate() chan struct{} {
+	return s.subscriptionManager.Subscribe()
+}
+
+func (s *Service) Unsubscribe(ch chan struct{}) {
+	s.subscriptionManager.Unsubscribe(ch)
 }

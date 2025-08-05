@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 	"time"
-
-	cg "github.com/status-im/market-proxy/coingecko_common"
 )
 
 // MockAPIClient for testing PaginatedFetcher
@@ -23,7 +22,7 @@ type MockAPIClient struct {
 }
 
 // FetchPage implements APIClient interface for mock
-func (m *MockAPIClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
+func (m *MockAPIClient) FetchPage(params interfaces.MarketsParams) ([][]byte, error) {
 	// Record the page request
 	m.requestedPages = append(m.requestedPages, params.Page)
 
@@ -80,7 +79,7 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 	}
 
 	// Create fetcher with total limit matching our mock data
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
@@ -143,7 +142,7 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 
 	// Create fetcher with total limit requiring all pages, and minimal delay for tests
 	totalItems := len(page1Items) + len(page2Items) + len(page3Items)
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  2, // Each page has limit 2
@@ -211,7 +210,7 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 
 	// Create fetcher with a limit less than the total available items
 	limit := 4 // Less than the total 6 items
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  3, // Each page has limit 3
@@ -264,7 +263,7 @@ func TestPaginatedFetcher_ErrorFirstPage(t *testing.T) {
 	}
 
 	// Create fetcher
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  5,
@@ -300,7 +299,7 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 	}
 
 	// Create fetcher with total limit requiring multiple pages
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  2,
@@ -336,7 +335,7 @@ func TestPaginatedFetcher_ZeroLimit(t *testing.T) {
 	}
 
 	// Create fetcher with zero total limit
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
@@ -379,7 +378,7 @@ func TestPaginatedFetcher_LargeRequest(t *testing.T) {
 
 	// Create fetcher with a large limit
 	limit := 100 // Much more than available
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
@@ -432,7 +431,7 @@ func TestPaginatedFetcher_RequestDelay(t *testing.T) {
 
 	// Create fetcher with a significant delay (100ms for test)
 	delay := 100 // 100ms delay between pages
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  1,
@@ -480,7 +479,7 @@ func TestPaginatedFetcher_ZeroDelay(t *testing.T) {
 	}
 
 	// Create fetcher with zero delay
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  1,

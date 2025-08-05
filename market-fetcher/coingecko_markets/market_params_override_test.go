@@ -1,10 +1,10 @@
 package coingecko_markets
 
 import (
+	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -23,7 +23,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		service := NewService(mockCache, createTestConfig())
 
-		originalParams := cg.MarketsParams{
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,
@@ -54,7 +54,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		service := NewService(mockCache, cfg)
 
-		originalParams := cg.MarketsParams{
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,
@@ -87,7 +87,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		service := NewService(mockCache, cfg)
 
-		originalParams := cg.MarketsParams{
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,

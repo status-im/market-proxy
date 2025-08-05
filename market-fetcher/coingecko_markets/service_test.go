@@ -3,12 +3,12 @@ package coingecko_markets
 import (
 	"context"
 	"errors"
+	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 	"time"
 
 	"github.com/status-im/market-proxy/cache"
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	api_mocks "github.com/status-im/market-proxy/coingecko_markets/mocks"
 	"github.com/status-im/market-proxy/config"
 	"github.com/stretchr/testify/assert"
@@ -281,13 +281,13 @@ func TestService_Healthy(t *testing.T) {
 func TestService_Markets(t *testing.T) {
 	tests := []struct {
 		name        string
-		params      cg.MarketsParams
+		params      interfaces.MarketsParams
 		expectCall  bool
 		expectedLen int
 	}{
 		{
 			name: "Markets with specific IDs - should call MarketsByIds",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin", "ethereum"},
 				Currency: "usd",
 			},
@@ -296,7 +296,7 @@ func TestService_Markets(t *testing.T) {
 		},
 		{
 			name: "Markets without IDs - should return empty",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				Currency: "usd",
 			},
 			expectCall:  false,
@@ -339,7 +339,7 @@ func TestService_Markets(t *testing.T) {
 func TestService_MarketsByIds(t *testing.T) {
 	tests := []struct {
 		name          string
-		params        cg.MarketsParams
+		params        interfaces.MarketsParams
 		cachedData    map[string][]byte
 		missingKeys   []string
 		cacheError    error
@@ -350,7 +350,7 @@ func TestService_MarketsByIds(t *testing.T) {
 	}{
 		{
 			name: "All data in cache",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin", "ethereum"},
 				Currency: "usd",
 			},
@@ -364,7 +364,7 @@ func TestService_MarketsByIds(t *testing.T) {
 		},
 		{
 			name: "Partial cache miss - fetch from API",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin", "ethereum"},
 				Currency: "usd",
 			},
@@ -378,7 +378,7 @@ func TestService_MarketsByIds(t *testing.T) {
 		},
 		{
 			name: "API fetch error",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin"},
 				Currency: "usd",
 			},
@@ -522,7 +522,7 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 	service.apiClient = mockAPIClient
 
 	// Test that default parameters are applied
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		IDs: []string{"bitcoin"},
 		// Currency, Order, PerPage, Page not set - should get defaults
 	}
@@ -533,8 +533,8 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 		nil,
 	)
 
-	mockAPIClient.EXPECT().FetchPage(gomock.AssignableToTypeOf(cg.MarketsParams{})).DoAndReturn(
-		func(p cg.MarketsParams) ([][]byte, error) {
+	mockAPIClient.EXPECT().FetchPage(gomock.AssignableToTypeOf(interfaces.MarketsParams{})).DoAndReturn(
+		func(p interfaces.MarketsParams) ([][]byte, error) {
 			// Verify default parameters are applied
 			assert.Equal(t, "usd", p.Currency)
 			assert.Equal(t, "market_cap_desc", p.Order)

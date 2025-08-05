@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
 	"github.com/status-im/market-proxy/scheduler"
 )
@@ -16,7 +16,7 @@ import (
 type TopMarketsUpdater struct {
 	config         *config.Config
 	scheduler      *scheduler.Scheduler
-	marketsFetcher coingecko_common.MarketsFetcher
+	marketsFetcher interfaces.CoingeckoMarketsService
 	metricsWriter  *metrics.MetricsWriter
 	onUpdate       func()
 
@@ -28,7 +28,7 @@ type TopMarketsUpdater struct {
 }
 
 // NewTopMarketsUpdater creates a new top markets updater
-func NewTopMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.MarketsFetcher) *TopMarketsUpdater {
+func NewTopMarketsUpdater(cfg *config.Config, marketsFetcher interfaces.CoingeckoMarketsService) *TopMarketsUpdater {
 	updater := &TopMarketsUpdater{
 		config:         cfg,
 		marketsFetcher: marketsFetcher,

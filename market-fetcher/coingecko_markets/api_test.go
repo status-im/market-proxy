@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/status-im/market-proxy/interfaces"
 	"io"
 	"net/http"
 	"testing"
@@ -180,7 +181,7 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -247,7 +248,7 @@ func TestCoinGeckoClient_FetchPage_ErrorHandling(t *testing.T) {
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -317,7 +318,7 @@ func TestCoinGeckoClient_FetchPage_KeyFallback(t *testing.T) {
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -394,7 +395,7 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -456,7 +457,7 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage which should update the health status
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -496,7 +497,7 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage with an error, health status should remain false
-	params = cg.MarketsParams{
+	params = interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -546,7 +547,7 @@ func TestCoinGeckoClient_FetchPage_WithCategory(t *testing.T) {
 	}
 
 	// Call FetchPage with Category parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -609,7 +610,7 @@ func TestCoinGeckoClient_FetchPage_WithIDs(t *testing.T) {
 	}
 
 	// Call FetchPage with IDs parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -672,7 +673,7 @@ func TestCoinGeckoClient_FetchPage_WithSparkline(t *testing.T) {
 	}
 
 	// Call FetchPage with SparklineEnabled parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:             1,
 		PerPage:          10,
 		Currency:         "usd",
@@ -735,7 +736,7 @@ func TestCoinGeckoClient_FetchPage_WithPriceChangePercentage(t *testing.T) {
 	}
 
 	// Call FetchPage with PriceChangePercentage parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               10,
 		Currency:              "usd",
@@ -798,7 +799,7 @@ func TestCoinGeckoClient_FetchPage_WithAllNewParameters(t *testing.T) {
 	}
 
 	// Call FetchPage with all new parameters
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               50,
 		Currency:              "usd",
@@ -875,7 +876,7 @@ func TestCoinGeckoClient_FetchPage_EmptyOptionalParameters(t *testing.T) {
 	}
 
 	// Call FetchPage with empty optional parameters
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               10,
 		Currency:              "usd",

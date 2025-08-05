@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 const (
@@ -19,12 +19,12 @@ type PaginatedFetcher struct {
 	apiClient    APIClient
 	maxLimit     int
 	totalLimit   int
-	requestDelay time.Duration    // Delay between requests
-	params       cg.MarketsParams // Markets parameters
+	requestDelay time.Duration            // Delay between requests
+	params       interfaces.MarketsParams // Markets parameters
 }
 
 // NewPaginatedFetcher creates a new paginated fetcher
-func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int, params cg.MarketsParams) *PaginatedFetcher {
+func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int, params interfaces.MarketsParams) *PaginatedFetcher {
 	// Convert delay to time.Duration - allowing 0 as valid value
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {

@@ -8,6 +8,7 @@ import (
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
 )
 
@@ -16,7 +17,7 @@ import (
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPage fetches a single page of data with given parameters
-	FetchPage(params cg.MarketsParams) ([][]byte, error)
+	FetchPage(params interfaces.MarketsParams) ([][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -51,7 +52,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPage fetches a single page of data from CoinGecko with retry capability
-func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
+func (c *CoinGeckoClient) FetchPage(params interfaces.MarketsParams) ([][]byte, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -83,7 +84,7 @@ func (c *CoinGeckoClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
 
 // executeFetchRequest is a private function that handles the actual request execution
 // and returns the raw HTTP response and body
-func (c *CoinGeckoClient) executeFetchRequest(params cg.MarketsParams) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(params interfaces.MarketsParams) (*http.Response, []byte, error) {
 	// Create executor function that attempts to fetch with a given API key
 	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
 		// Get the appropriate base URL for this key type

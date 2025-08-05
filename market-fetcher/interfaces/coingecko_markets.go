@@ -1,4 +1,26 @@
-package coingecko_common
+package interfaces
+
+import (
+	cg "github.com/status-im/market-proxy/coingecko_common"
+)
+
+//go:generate mockgen -destination=mocks/coingecko_markets.go . CoingeckoMarketsService
+
+// CoingeckoMarketsService defines the interface for CoinGecko markets service
+type CoingeckoMarketsService interface {
+	// TopMarkets fetches top markets data for specified number of tokens,
+	// caches individual tokens by their coingecko id and returns the response
+	TopMarkets(limit int, currency string) (MarketsResponse, error)
+
+	// Markets returns markets data for specified parameters
+	Markets(params MarketsParams) (MarketsResponse, cg.CacheStatus, error)
+
+	// SubscribeOnMarketsUpdate subscribes to markets update notifications
+	SubscribeOnMarketsUpdate() chan struct{}
+
+	// Unsubscribe unsubscribes from markets update notifications
+	Unsubscribe(ch chan struct{})
+}
 
 // MarketsParams represents parameters for markets requests
 type MarketsParams struct {
@@ -29,13 +51,3 @@ type MarketsParams struct {
 
 // MarketsResponse represents markets data response structure
 type MarketsResponse []interface{}
-
-// MarketsFetcher interface for fetching markets data
-type MarketsFetcher interface {
-	// Markets returns markets data for specified parameters
-	Markets(params MarketsParams) (MarketsResponse, CacheStatus, error)
-
-	// TopMarkets fetches top markets data for specified number of tokens,
-	// caches individual tokens by their coingecko id and returns the response
-	TopMarkets(limit int, currency string) (MarketsResponse, error)
-}

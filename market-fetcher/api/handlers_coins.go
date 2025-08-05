@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/status-im/market-proxy/interfaces"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 
 // handleCoinsMarkets implements CoinGecko-compatible /api/v3/coins/markets endpoint
 func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
-	params := coingecko_common.MarketsParams{}
+	params := interfaces.MarketsParams{}
 
 	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 // Service represents the CoinGecko service
@@ -17,7 +18,7 @@ type Service struct {
 }
 
 // NewService creates a new CoinGecko service
-func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher, marketsFetcher coingecko_common.MarketsFetcher) *Service {
+func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher, marketsFetcher interfaces.CoingeckoMarketsService) *Service {
 	// Create top markets updater
 	topMarketsUpdater := NewTopMarketsUpdater(cfg, marketsFetcher)
 

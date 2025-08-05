@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 const (
@@ -13,7 +13,7 @@ const (
 )
 
 // createCacheKeys creates cache keys for each token ID in MarketParams
-func createCacheKeys(params cg.MarketsParams) []string {
+func createCacheKeys(params interfaces.MarketsParams) []string {
 	if len(params.IDs) == 0 {
 		return []string{}
 	}

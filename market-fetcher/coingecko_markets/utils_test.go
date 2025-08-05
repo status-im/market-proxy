@@ -1,9 +1,9 @@
 package coingecko_markets
 
 import (
+	"github.com/status-im/market-proxy/interfaces"
 	"testing"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,47 +97,47 @@ func TestExtractTokenIDFromKey(t *testing.T) {
 func TestCreateCacheKeys(t *testing.T) {
 	tests := []struct {
 		name     string
-		params   cg.MarketsParams
+		params   interfaces.MarketsParams
 		expected []string
 	}{
 		{
 			name: "Valid params with multiple IDs",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: []string{"bitcoin", "ethereum", "litecoin"},
 			},
 			expected: []string{"markets:bitcoin", "markets:ethereum", "markets:litecoin"},
 		},
 		{
 			name: "Valid params with single ID",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: []string{"bitcoin"},
 			},
 			expected: []string{"markets:bitcoin"},
 		},
 		{
 			name: "Empty IDs slice",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: []string{},
 			},
 			expected: []string{},
 		},
 		{
 			name: "Nil IDs slice",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: nil,
 			},
 			expected: []string{},
 		},
 		{
 			name: "IDs with empty string",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: []string{"bitcoin", "", "ethereum"},
 			},
 			expected: []string{"markets:bitcoin", "markets:", "markets:ethereum"},
 		},
 		{
 			name: "IDs with special characters",
-			params: cg.MarketsParams{
+			params: interfaces.MarketsParams{
 				IDs: []string{"ethereum-classic", "1inch", "polygon-ecosystem-token"},
 			},
 			expected: []string{"markets:ethereum-classic", "markets:1inch", "markets:polygon-ecosystem-token"},
