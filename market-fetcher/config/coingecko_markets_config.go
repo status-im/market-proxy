@@ -15,7 +15,10 @@ type MarketParamsNormalize struct {
 }
 
 type CoingeckoMarketsFetcher struct {
-	RequestDelay          time.Duration          `yaml:"request_delay"`           // Delay between requests
-	TTL                   time.Duration          `yaml:"ttl"`                     // Time to live for cached market data
-	MarketParamsNormalize *MarketParamsNormalize `yaml:"market_params_normalize"` // Parameters normalization config
+	RequestDelay             time.Duration          `yaml:"request_delay"`               // Delay between requests
+	TTL                      time.Duration          `yaml:"ttl"`                         // Time to live for cached market data
+	MarketParamsNormalize    *MarketParamsNormalize `yaml:"market_params_normalize"`     // Parameters normalization config
+	TopMarketsUpdateInterval time.Duration          `yaml:"top_markets_update_interval"` // Interval for periodic top markets updates
+	TopMarketsLimit          int                    `yaml:"top_markets_limit"`           // Limit for top markets to fetch
+	Currency                 string                 `yaml:"currency"`                    // Currency for market data
 }

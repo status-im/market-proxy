@@ -26,19 +26,30 @@ type Service struct {
 	metricsWriter       *metrics.MetricsWriter
 	apiClient           APIClient
 	subscriptionManager *events.SubscriptionManager
+	periodicUpdater     *PeriodicUpdater
 }
 
 func NewService(cache cache.Cache, config *config.Config) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
 
-	return &Service{
+	service := &Service{
 		cache:               cache,
 		config:              config,
 		metricsWriter:       metricsWriter,
 		apiClient:           apiClient,
 		subscriptionManager: events.NewSubscriptionManager(),
 	}
+
+	// Create periodic updater
+	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, service)
+
+	// Set onUpdate callback to emit events to subscription manager
+	service.periodicUpdater.SetOnUpdateCallback(func(ctx context.Context) {
+		service.subscriptionManager.Emit(ctx)
+	})
+
+	return service
 }
 
 // Start implements core.Interface
@@ -46,12 +57,23 @@ func (s *Service) Start(ctx context.Context) error {
 	if s.cache == nil {
 		return fmt.Errorf("cache dependency not provided")
 	}
+
+	// Start periodic updater
+	if s.periodicUpdater != nil {
+		if err := s.periodicUpdater.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start periodic updater: %w", err)
+		}
+	}
+
 	return nil
 }
 
 // Stop implements core.Interface
 func (s *Service) Stop() {
-	// Markets service doesn't need shutdown logic for now
+	// Stop periodic updater
+	if s.periodicUpdater != nil {
+		s.periodicUpdater.Stop()
+	}
 	// Cache will handle its own cleanup
 }
 

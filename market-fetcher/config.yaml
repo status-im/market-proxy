@@ -16,6 +16,9 @@ coingecko_leaderboard:
 coingecko_markets:
   request_delay: 1s           # delay between requests
   ttl: 30m                    # time to live for cached market data
+  top_markets_update_interval: 30m  # interval for periodic top markets updates
+  top_markets_limit: 500      # limit for top markets to fetch periodically
+  currency: usd               # currency for market data
   market_params_normalize:    # override user parameters to normalize cache keys
     vs_currency: "usd"        # always use USD regardless of user request
     order: "market_cap_desc"  # always order by market cap
