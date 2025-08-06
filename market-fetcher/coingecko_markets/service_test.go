@@ -2,6 +2,7 @@ package coingecko_markets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -698,4 +699,71 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
+}
+
+func TestService_TopMarketIds(t *testing.T) {
+	t.Run("TopMarketIds with limit 0 returns all available tokens", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create fresh mocks for this test
+		mockCache := cache_mocks.NewMockCache(ctrl)
+		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
+
+		// Create config and service
+		cfg := createTestConfig()
+		service := NewService(mockCache, cfg, mockTokensService)
+
+		// Test TopMarketIds with zero limit (should use default limit)
+		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
+		tokensJSON, _ := json.Marshal(tokens)
+
+		// Mock cache to return data for page 1
+		mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
+			// Should generate keys for the first page based on default limit (250)
+			if len(keys) == 1 && keys[0] == "markets_page_ids:1" {
+				return map[string][]byte{keys[0]: tokensJSON}, []string{}, nil
+			}
+			return map[string][]byte{}, keys, nil
+		}).AnyTimes()
+
+		result, err := service.TopMarketIds(0) // limit 0 should use default (250)
+
+		assert.NoError(t, err)
+		assert.Equal(t, tokens, result)
+	})
+
+	t.Run("TopMarketIds with positive limit returns limited tokens", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create fresh mocks for this test
+		mockCache := cache_mocks.NewMockCache(ctrl)
+		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
+
+		// Create config and service
+		cfg := createTestConfig()
+		service := NewService(mockCache, cfg, mockTokensService)
+
+		// Test that TopMarketIds with positive limit works correctly
+		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
+		tokensJSON, _ := json.Marshal(tokens)
+
+		mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
+			cacheKey := keys[0]
+			if cacheKey == "markets_page_ids:1" {
+				return map[string][]byte{cacheKey: tokensJSON}, []string{}, nil
+			}
+			return map[string][]byte{}, []string{cacheKey}, nil
+		}).AnyTimes()
+
+		result, err := service.TopMarketIds(3) // limit to 3
+
+		assert.NoError(t, err)
+		assert.Equal(t, tokens[:3], result) // Should return first 3 tokens
+	})
 }

@@ -260,6 +260,35 @@ func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interf
 	return interfaces.MarketsResponse(marketData), cacheStatus, nil
 }
 
+// getMaxTokenLimit calculates the maximum token limit from tiers configuration
+func (s *Service) getMaxTokenLimit() int {
+	if s.config == nil {
+		return MARKETS_DEFAULT_CHUNK_SIZE
+	}
+
+	// Apply parameters normalization from config to get the actual per_page
+	params := interfaces.MarketsParams{
+		Currency: "usd",
+		Order:    "market_cap_desc",
+		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
+	}
+	params = s.getParamsOverride(params)
+	perPage := params.PerPage
+
+	maxPageTo := 0
+	for _, tier := range s.config.CoingeckoMarkets.Tiers {
+		if tier.PageTo > maxPageTo {
+			maxPageTo = tier.PageTo
+		}
+	}
+
+	if maxPageTo == 0 {
+		return MARKETS_DEFAULT_CHUNK_SIZE
+	}
+
+	return maxPageTo * perPage
+}
+
 // Healthy checks if the service is operational
 func (s *Service) Healthy() bool {
 	// Check if the periodic updater is healthy
@@ -273,9 +302,16 @@ func (s *Service) Healthy() bool {
 func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResponse, error) {
 	log.Printf("Loading top %d markets data from cache with currency=%s", limit, currency)
 
-	// Set default limit if not provided
+	// Set default limit if not provided or invalid
 	if limit <= 0 {
 		limit = 100
+	}
+
+	// Ensure limit doesn't exceed maximum available tokens
+	maxLimit := s.getMaxTokenLimit()
+	if limit > maxLimit {
+		limit = maxLimit
+		log.Printf("Limit adjusted to maximum available: %d", limit)
 	}
 
 	// Get top market token IDs from cache
@@ -313,7 +349,7 @@ func (s *Service) TopMarketIds(limit int) ([]string, error) {
 
 	// Set default limit if not provided
 	if limit <= 0 {
-		limit = 100
+		limit = MARKETS_DEFAULT_CHUNK_SIZE
 	}
 
 	// Create default parameters to get per_page setting
@@ -327,32 +363,37 @@ func (s *Service) TopMarketIds(limit int) ([]string, error) {
 	params = s.getParamsOverride(params)
 	perPage := params.PerPage
 
-	// Calculate how many pages we need to check
+	// Calculate how many pages we need
 	pageTo := (limit + perPage - 1) / perPage // Ceiling division
 
-	var allTokenIDs []string
+	// Generate cache keys for all pages at once
+	pageIdsCacheKeys := createPageIdsCacheKeys(1, pageTo)
+	if len(pageIdsCacheKeys) == 0 {
+		log.Printf("No cache keys generated for pages 1-%d", pageTo)
+		return []string{}, nil
+	}
 
-	// Fetch token IDs from cached pages
+	// Fetch all pages in one batch operation
+	cachedData, missingKeys, err := s.cache.Get(pageIdsCacheKeys)
+	if err != nil {
+		log.Printf("Failed to check cache for pages 1-%d: %v", pageTo, err)
+		return nil, fmt.Errorf("failed to check cache: %w", err)
+	}
+
+	if len(missingKeys) > 0 {
+		log.Printf("Missing %d pages in cache out of %d requested", len(missingKeys), len(pageIdsCacheKeys))
+	}
+
+	// Collect token IDs from all cached pages in order
+	var allTokenIDs []string
 	for page := 1; page <= pageTo; page++ {
 		pageIdsCacheKey := createPageIdsCacheKey(page)
-		cachedData, missingKeys, err := s.cache.Get([]string{pageIdsCacheKey})
-
-		if err != nil {
-			log.Printf("Failed to check cache for page %d: %v", page, err)
-			continue
-		}
-
-		// If this page is missing, we can't provide complete top list
-		if len(missingKeys) > 0 || len(cachedData) == 0 {
-			log.Printf("Page %d token IDs not found in cache", page)
-			continue
-		}
-
-		// Unmarshal the token IDs for this page
 		if tokenIDsBytes, exists := cachedData[pageIdsCacheKey]; exists {
 			var pageTokenIDs []string
 			if err := json.Unmarshal(tokenIDsBytes, &pageTokenIDs); err == nil {
 				allTokenIDs = append(allTokenIDs, pageTokenIDs...)
+			} else {
+				log.Printf("Failed to unmarshal token IDs for page %d: %v", page, err)
 			}
 		}
 	}
@@ -362,7 +403,7 @@ func (s *Service) TopMarketIds(limit int) ([]string, error) {
 		allTokenIDs = allTokenIDs[:limit]
 	}
 
-	log.Printf("Returning %d token IDs from cache (requested %d)", len(allTokenIDs), limit)
+	log.Printf("Returning %d token IDs from cache (requested %d, %d pages)", len(allTokenIDs), limit, pageTo)
 	return allTokenIDs, nil
 }
 

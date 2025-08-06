@@ -25,10 +25,6 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	cacheService := cache.NewService(cfg.Cache)
 	registry.Register(cacheService)
 
-	// Create CoinGecko Prices service with cache dependency
-	pricesService := coingecko_prices.NewService(cacheService, cfg)
-	registry.Register(pricesService)
-
 	// Create Tokens core (needed by markets service)
 	tokensService := coingecko_tokens.NewService(cfg)
 	registry.Register(tokensService)
@@ -36,6 +32,10 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	// Create CoinGecko Markets service with cache and tokens service dependencies
 	marketsService := coingecko_markets.NewService(cacheService, cfg, tokensService)
 	registry.Register(marketsService)
+
+	// Create CoinGecko Prices service with cache, markets service, and tokens service dependencies
+	pricesService := coingecko_prices.NewService(cacheService, cfg, marketsService, tokensService)
+	registry.Register(pricesService)
 
 	// Create CoinGecko Market Chart service with cache dependency
 	marketChartService := coingecko_market_chart.NewService(cacheService, cfg)

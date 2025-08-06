@@ -35,16 +35,30 @@ coingecko_markets:
       page_from: 3              # from 501-10000
       page_to: 40
       update_interval: 30m      # Update every 30 minutes
+      fetch_coinslist_ids: true # fetch missing tokens from coinslist list filtered by platforms
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request
   request_delay: 1s           # 2 seconds delay between requests
-  ttl: 30s                    # time to live for cached price data (30 seconds)
+  ttl: 10m                    # time to live for cached price data
   currencies:                 # default currencies to fetch
     - usd
     - eur
     - btc
     - eth
+  
+  # Tier-based configuration for different token ranges
+  tiers:
+    - name: "top-1000"          # High-frequency tier for top tokens
+      token_from: 1             # Top 1000 tokens
+      token_to: 1000
+      update_interval: 30s      # Update every 30 seconds
+
+    - name: "top-1001-10000"    # Medium-frequency tier for mid-range tokens
+      token_from: 1001          # from 1001-10000
+      token_to: 10000
+      update_interval: 5m       # Update every 5 minutes
+      fetch_coinslist_ids: true # fetch missing tokens from coinslist list filtered by platforms
 
 coingecko_market_chart:
   hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)

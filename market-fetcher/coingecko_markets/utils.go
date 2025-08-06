@@ -78,6 +78,19 @@ func createPageIdsCacheKey(pageID int) string {
 	return fmt.Sprintf("%s%d", CACHE_KEY_PAGE_IDS_PREFIX, pageID)
 }
 
+// createPageIdsCacheKeys creates cache keys for a range of pages (from to to, inclusive)
+func createPageIdsCacheKeys(from, to int) []string {
+	if from <= 0 || to <= 0 || from > to {
+		return nil
+	}
+
+	keys := make([]string, 0, to-from+1)
+	for page := from; page <= to; page++ {
+		keys = append(keys, createPageIdsCacheKey(page))
+	}
+	return keys
+}
+
 // ConvertMarketsResponseToCoinGeckoData converts raw markets response data to CoinGeckoData slice
 // This function processes the [][]byte from coins/markets API, unmarshals each item, and converts to CoinGeckoData
 func ConvertMarketsResponseToCoinGeckoData(tokensData [][]byte) []CoinGeckoData {
