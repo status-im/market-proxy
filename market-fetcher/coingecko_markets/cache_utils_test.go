@@ -262,7 +262,7 @@ func TestParsePagesData_PageMapping(t *testing.T) {
 	// Assertions
 	require.NoError(t, err)
 	assert.Len(t, pageMapping, 3)
-	assert.Len(t, cacheData, 3)
+	assert.Len(t, cacheData, 6) // 3 page entries + 3 page ID entries
 
 	// Check that all pages are present in pageMapping
 	assert.Contains(t, pageMapping, 1)
@@ -323,7 +323,7 @@ func TestParsePagesData_SinglePage(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Len(t, pageMapping, 1)
-	assert.Len(t, cacheData, 1)
+	assert.Len(t, cacheData, 2) // 1 page entry + 1 page ID entry
 
 	// Check page mapping
 	assert.Contains(t, pageMapping, 5)

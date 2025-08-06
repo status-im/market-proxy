@@ -8,6 +8,9 @@ type CoingeckoMarketsService interface {
 	// caches individual tokens by their coingecko id and returns the response
 	TopMarkets(limit int, currency string) (MarketsResponse, error)
 
+	// TopMarketIds fetches top market token IDs for specified limit from cache
+	TopMarketIds(limit int) ([]string, error)
+
 	// Markets returns markets data for specified parameters
 	Markets(params MarketsParams) (MarketsResponse, CacheStatus, error)
 

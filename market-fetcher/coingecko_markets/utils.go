@@ -14,6 +14,9 @@ const (
 
 	// CACHE_KEY_PAGE_PREFIX is the prefix used for page-based cache keys in markets module
 	CACHE_KEY_PAGE_PREFIX = "markets_page:"
+
+	// CACHE_KEY_PAGE_IDS_PREFIX is the prefix used for page-based token IDs cache keys
+	CACHE_KEY_PAGE_IDS_PREFIX = "markets_page_ids:"
 )
 
 // createCacheKeys creates cache keys for each token ID in MarketParams
@@ -68,6 +71,11 @@ func getCacheKey(tokenID string) string {
 // createPageCacheKey creates a single cache key for page-based requests
 func createPageCacheKey(pageID int) string {
 	return fmt.Sprintf("%s%d", CACHE_KEY_PAGE_PREFIX, pageID)
+}
+
+// createPageIdsCacheKey creates a cache key for page IDs
+func createPageIdsCacheKey(pageID int) string {
+	return fmt.Sprintf("%s%d", CACHE_KEY_PAGE_IDS_PREFIX, pageID)
 }
 
 // ConvertMarketsResponseToCoinGeckoData converts raw markets response data to CoinGeckoData slice

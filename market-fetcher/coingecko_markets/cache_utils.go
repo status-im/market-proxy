@@ -39,7 +39,7 @@ func parsePagesData(pagesData []PageData) (map[int]interface{}, map[string][]byt
 	cacheData := make(map[string][]byte)
 
 	for _, pageData := range pagesData {
-		// Create page cache key
+		// Create page cache key for full page data
 		cacheKey := createPageCacheKey(pageData.Page)
 
 		// Serialize page data
@@ -52,7 +52,40 @@ func parsePagesData(pagesData []PageData) (map[int]interface{}, map[string][]byt
 
 		// Add page data to mapping
 		pageMapping[pageData.Page] = pageData.Data
+
+		// Extract token IDs from page data and create page IDs cache entry
+		tokenIDs := extractTokenIDsFromPageData(pageData.Data)
+		if len(tokenIDs) > 0 {
+			pageIdsCacheKey := createPageIdsCacheKey(pageData.Page)
+			tokenIDsBytes, err := json.Marshal(tokenIDs)
+			if err == nil {
+				cacheData[pageIdsCacheKey] = tokenIDsBytes
+			}
+		}
 	}
 
 	return pageMapping, cacheData, nil
+}
+
+// extractTokenIDsFromPageData extracts token IDs from page data preserving order
+func extractTokenIDsFromPageData(pageData [][]byte) []string {
+	var tokenIDs []string
+
+	for _, tokenBytes := range pageData {
+		var tokenData interface{}
+		if err := json.Unmarshal(tokenBytes, &tokenData); err != nil {
+			continue
+		}
+
+		// Extract ID from token data
+		if tokenMap, ok := tokenData.(map[string]interface{}); ok {
+			if id, exists := tokenMap[ID_FIELD]; exists {
+				if tokenID, ok := id.(string); ok && tokenID != "" {
+					tokenIDs = append(tokenIDs, tokenID)
+				}
+			}
+		}
+	}
+
+	return tokenIDs
 }

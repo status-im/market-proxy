@@ -213,7 +213,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 			Include24hrChange:    true,
 			IncludeLastUpdatedAt: true,
 		}
-		mockFetcher.EXPECT().SimplePrices(expectedParams).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), expectedParams).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -275,7 +275,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		}
 
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.EXPECT().SimplePrices(expectedParams).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), expectedParams).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -294,7 +294,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 		// Mock error response
 		expectedError := errors.New("API error")
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, expectedError)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, expectedError)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -318,7 +318,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 		// Mock empty response
 		emptyResponse := interfaces.SimplePriceResponse{}
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(emptyResponse, interfaces.CacheStatusMiss, nil)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(emptyResponse, interfaces.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -357,7 +357,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		updater.SetTopTokenIDs(tokenIDs)
 
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -375,7 +375,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -431,7 +431,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -469,7 +469,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential scheduler calls
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -578,7 +578,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 
 		// 2. Setup mock for fetchAndUpdateTopPrices
 		sampleResponse := createSamplePriceResponse()
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 
 		// 3. Fetch and update prices
 		ctx := context.Background()
@@ -609,7 +609,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 				"usd": 50000.0,
 			},
 		}
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(firstResponse, interfaces.CacheStatusMiss, nil).Times(1)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(firstResponse, interfaces.CacheStatusMiss, nil).Times(1)
 
 		ctx := context.Background()
 		err := updater.fetchAndUpdateTopPrices(ctx)
@@ -624,7 +624,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 				"usd": 55000.0,
 			},
 		}
-		mockFetcher.EXPECT().SimplePrices(gomock.Any()).Return(secondResponse, interfaces.CacheStatusMiss, nil).Times(1)
+		mockFetcher.EXPECT().SimplePrices(gomock.Any(), gomock.Any()).Return(secondResponse, interfaces.CacheStatusMiss, nil).Times(1)
 
 		err = updater.fetchAndUpdateTopPrices(ctx)
 		assert.NoError(t, err)

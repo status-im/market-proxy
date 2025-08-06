@@ -89,7 +89,7 @@ func TestNewService(t *testing.T) {
 			assert.Equal(t, tt.cache, service.cache)
 			assert.Equal(t, tt.config, service.config)
 			assert.NotNil(t, service.metricsWriter)
-			assert.NotNil(t, service.apiClient)
+			assert.NotNil(t, service.periodicUpdater)
 			assert.Equal(t, mockTokensService, service.tokensService)
 		})
 	}
@@ -398,19 +398,27 @@ func TestService_cacheTokensByID(t *testing.T) {
 
 func TestService_Healthy(t *testing.T) {
 	tests := []struct {
-		name             string
-		apiClientHealthy bool
-		expected         bool
+		name                   string
+		periodicUpdaterHealthy bool
+		hasPeriodicUpdater     bool
+		expected               bool
 	}{
 		{
-			name:             "Healthy API client",
-			apiClientHealthy: true,
-			expected:         true,
+			name:                   "Healthy periodic updater",
+			periodicUpdaterHealthy: true,
+			hasPeriodicUpdater:     true,
+			expected:               true,
 		},
 		{
-			name:             "Unhealthy API client",
-			apiClientHealthy: false,
-			expected:         false,
+			name:                   "Unhealthy periodic updater",
+			periodicUpdaterHealthy: false,
+			hasPeriodicUpdater:     true,
+			expected:               false,
+		},
+		{
+			name:               "No periodic updater",
+			hasPeriodicUpdater: false,
+			expected:           false,
 		},
 	}
 
@@ -419,12 +427,17 @@ func TestService_Healthy(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-			service := &Service{
-				apiClient: mockAPIClient,
-			}
+			service := &Service{}
 
-			mockAPIClient.EXPECT().Healthy().Return(tt.apiClientHealthy)
+			if tt.hasPeriodicUpdater {
+				mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+				mockAPIClient.EXPECT().Healthy().Return(tt.periodicUpdaterHealthy).AnyTimes()
+
+				periodicUpdater := &PeriodicUpdater{
+					apiClient: mockAPIClient,
+				}
+				service.periodicUpdater = periodicUpdater
+			}
 
 			result := service.Healthy()
 			assert.Equal(t, tt.expected, result)
@@ -464,23 +477,19 @@ func TestService_Markets(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
-			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
-			service.apiClient = mockAPIClient
 
 			if tt.expectCall {
-				// Mock cache behavior for MarketsByIds
+				// Mock cache behavior for MarketsByIds - return cached data
 				mockCache.EXPECT().Get(gomock.Any()).Return(
-					map[string][]byte{},
-					[]string{"markets:bitcoin", "markets:ethereum"},
+					map[string][]byte{
+						"markets:bitcoin":  sampleMarketData1,
+						"markets:ethereum": sampleMarketData2,
+					},
+					[]string{},
 					nil,
 				)
-				mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
-					[][]byte{sampleMarketData1, sampleMarketData2},
-					nil,
-				)
-				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
 			}
 
 			result, _, err := service.Markets(tt.params)
@@ -498,8 +507,6 @@ func TestService_MarketsByIds(t *testing.T) {
 		cachedData    map[string][]byte
 		missingKeys   []string
 		cacheError    error
-		apiData       [][]byte
-		apiError      error
 		expectedLen   int
 		expectedError bool
 	}{
@@ -518,7 +525,7 @@ func TestService_MarketsByIds(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name: "Partial cache miss - fetch from API",
+			name: "Partial cache miss - only returns cached data",
 			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin", "ethereum"},
 				Currency: "usd",
@@ -527,21 +534,19 @@ func TestService_MarketsByIds(t *testing.T) {
 				"markets:bitcoin": sampleMarketData1,
 			},
 			missingKeys:   []string{"markets:ethereum"},
-			apiData:       [][]byte{sampleMarketData1, sampleMarketData2},
-			expectedLen:   2,
+			expectedLen:   1, // Only returns cached data
 			expectedError: false,
 		},
 		{
-			name: "API fetch error",
+			name: "Complete cache miss - returns empty",
 			params: interfaces.MarketsParams{
 				IDs:      []string{"bitcoin"},
 				Currency: "usd",
 			},
 			cachedData:    map[string][]byte{},
 			missingKeys:   []string{"markets:bitcoin"},
-			apiError:      errors.New("API error"),
 			expectedLen:   0,
-			expectedError: true,
+			expectedError: false,
 		},
 	}
 
@@ -551,10 +556,8 @@ func TestService_MarketsByIds(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
-			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
-			service.apiClient = mockAPIClient
 
 			// Setup cache mock
 			mockCache.EXPECT().Get(gomock.Any()).Return(
@@ -562,18 +565,6 @@ func TestService_MarketsByIds(t *testing.T) {
 				tt.missingKeys,
 				tt.cacheError,
 			)
-
-			// Setup API mock if needed
-			if len(tt.missingKeys) > 0 {
-				mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
-					tt.apiData,
-					tt.apiError,
-				)
-
-				if tt.apiError == nil {
-					mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
-				}
-			}
 
 			result, _, err := service.MarketsByIds(tt.params)
 
@@ -592,33 +583,40 @@ func TestService_TopMarkets(t *testing.T) {
 		name          string
 		limit         int
 		currency      string
-		apiData       [][]byte
-		apiError      error
+		topMarketsIDs []string
+		cachedData    map[string][]byte
 		expectedLen   int
 		expectedError bool
 	}{
 		{
-			name:          "Successful top markets fetch",
+			name:          "Successful top markets from cache",
 			limit:         2,
 			currency:      "usd",
-			apiData:       [][]byte{sampleMarketData1, sampleMarketData2},
+			topMarketsIDs: []string{"bitcoin", "ethereum"},
+			cachedData: map[string][]byte{
+				"markets_page_ids:1": []byte(`["bitcoin","ethereum"]`),
+				"markets:bitcoin":    sampleMarketData1,
+				"markets:ethereum":   sampleMarketData2,
+			},
 			expectedLen:   2,
 			expectedError: false,
 		},
 		{
-			name:          "API error",
+			name:          "No cached top market IDs",
 			limit:         1,
 			currency:      "usd",
-			apiError:      errors.New("API error"),
+			topMarketsIDs: []string{},
+			cachedData:    map[string][]byte{},
 			expectedLen:   0,
-			expectedError: true,
+			expectedError: false,
 		},
 		{
 			name:          "Default parameters",
-			limit:         0,  // Should default to 100
-			currency:      "", // Should default to "usd"
-			apiData:       [][]byte{sampleMarketData1},
-			expectedLen:   1,
+			limit:         0, // Should default to 100
+			currency:      "",
+			topMarketsIDs: []string{"bitcoin"},
+			cachedData:    map[string][]byte{},
+			expectedLen:   0, // No data in cache, so returns empty
 			expectedError: false,
 		},
 	}
@@ -629,20 +627,24 @@ func TestService_TopMarkets(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
-			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
-			service.apiClient = mockAPIClient
 
-			// Mock the paginated fetcher behavior through API client
-			mockAPIClient.EXPECT().FetchPage(gomock.Any()).Return(
-				tt.apiData,
-				tt.apiError,
-			).AnyTimes()
+			// Mock cache reads for both TopMarketIds and MarketsByIds
+			mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
+				result := make(map[string][]byte)
+				var missingKeys []string
 
-			if tt.apiError == nil {
-				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-			}
+				for _, key := range keys {
+					if data, exists := tt.cachedData[key]; exists {
+						result[key] = data
+					} else {
+						missingKeys = append(missingKeys, key)
+					}
+				}
+
+				return result, missingKeys, nil
+			}).AnyTimes()
 
 			result, err := service.TopMarkets(tt.limit, tt.currency)
 
@@ -665,7 +667,6 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 	intPtr := func(i int) *int { return &i }
 
 	mockCache := cache_mocks.NewMockCache(ctrl)
-	mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
 
 	// Create config with MarketParamsNormalize to test default values
 	cfg := createTestConfig()
@@ -677,31 +678,21 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 
 	mockTokensService := createMockTokensService(ctrl)
 	service := NewService(mockCache, cfg, mockTokensService)
-	service.apiClient = mockAPIClient
 
-	// Test that default parameters are applied
+	// Test that service works with cached data and default parameters
 	params := interfaces.MarketsParams{
 		IDs: []string{"bitcoin"},
 		// Currency, Order, PerPage, Page not set - should get defaults
 	}
 
+	// Return cached data so no API call is needed
 	mockCache.EXPECT().Get(gomock.Any()).Return(
-		map[string][]byte{},
-		[]string{"markets:bitcoin"},
+		map[string][]byte{
+			"markets:bitcoin": sampleMarketData1,
+		},
+		[]string{}, // No missing keys
 		nil,
 	)
-
-	mockAPIClient.EXPECT().FetchPage(gomock.AssignableToTypeOf(interfaces.MarketsParams{})).DoAndReturn(
-		func(p interfaces.MarketsParams) ([][]byte, error) {
-			// Verify default parameters are applied
-			assert.Equal(t, "usd", p.Currency)
-			assert.Equal(t, "market_cap_desc", p.Order)
-			assert.Equal(t, MARKETS_DEFAULT_CHUNK_SIZE, p.PerPage)
-			return [][]byte{sampleMarketData1}, nil
-		},
-	)
-
-	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
 
 	result, _, err := service.MarketsByIds(params)
 

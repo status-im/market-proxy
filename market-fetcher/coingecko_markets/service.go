@@ -24,7 +24,6 @@ type Service struct {
 	cache               cache.Cache
 	config              *cfg.Config
 	metricsWriter       *metrics.MetricsWriter
-	apiClient           APIClient
 	subscriptionManager *events.SubscriptionManager
 	periodicUpdater     *PeriodicUpdater
 	tokensService       interfaces.CoingeckoTokensService
@@ -40,7 +39,6 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 		cache:               cache,
 		config:              config,
 		metricsWriter:       metricsWriter,
-		apiClient:           apiClient,
 		subscriptionManager: events.NewSubscriptionManager(),
 		tokensService:       tokensService,
 	}
@@ -49,36 +47,42 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, apiClient)
 
 	// Set onUpdateTierPages callback to cache tokens and emit events to subscription manager
-	service.periodicUpdater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier cfg.MarketTier, pagesData []PageData) {
-		// Cache by individual ids
-		for _, pageData := range pagesData {
-			_, err := service.cacheTokensByID(pageData.Data)
-			if err != nil {
-				log.Printf("Failed to cache markets data by id: %v", err)
-			}
-		}
-
-		// Cache pages
-		_, err := service.cacheTokensPage(tier, pagesData)
-		if err != nil {
-			log.Printf("Failed to cache page data: %v", err)
-		}
-		service.subscriptionManager.Emit(ctx)
-	})
+	service.periodicUpdater.SetOnUpdateTierPagesCallback(service.handleTierPagesUpdate)
 
 	// Set onUpdateMissingExtraIds callback to cache missing tokens by ID
-	service.periodicUpdater.SetOnUpdateMissingExtraIdsCallback(func(ctx context.Context, tokensData [][]byte) {
-		// Cache missing tokens by their IDs
-		_, err := service.cacheTokensByID(tokensData)
-		if err != nil {
-			log.Printf("Failed to cache missing extra IDs: %v", err)
-		} else {
-			log.Printf("Successfully cached %d missing extra IDs", len(tokensData))
-		}
-		service.subscriptionManager.Emit(ctx)
-	})
+	service.periodicUpdater.SetOnUpdateMissingExtraIdsCallback(service.handleMissingExtraIdsUpdate)
 
 	return service
+}
+
+// handleTierPagesUpdate handles tier pages update by caching tokens and emitting events
+func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier, pagesData []PageData) {
+	// Cache by individual ids
+	for _, pageData := range pagesData {
+		_, err := s.cacheTokensByID(pageData.Data)
+		if err != nil {
+			log.Printf("Failed to cache markets data by id: %v", err)
+		}
+	}
+
+	// Cache pages
+	_, err := s.cacheTokensPage(tier, pagesData)
+	if err != nil {
+		log.Printf("Failed to cache page data: %v", err)
+	}
+	s.subscriptionManager.Emit(ctx)
+}
+
+// handleMissingExtraIdsUpdate handles missing extra IDs update by caching tokens and emitting events
+func (s *Service) handleMissingExtraIdsUpdate(ctx context.Context, tokensData [][]byte) {
+	// Cache missing tokens by their IDs
+	_, err := s.cacheTokensByID(tokensData)
+	if err != nil {
+		log.Printf("Failed to cache missing extra IDs: %v", err)
+	} else {
+		log.Printf("Successfully cached %d missing extra IDs", len(tokensData))
+	}
+	s.subscriptionManager.Emit(ctx)
 }
 
 // onTokenListChanged is called when token list is updated
@@ -213,114 +217,153 @@ func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsRe
 	return interfaces.MarketsResponse([]interface{}{}), interfaces.CacheStatusMiss, nil
 }
 
-// MarketsByIds fetches markets data for specific token IDs using cache
+// MarketsByIds fetches markets data for specific token IDs using cache only
 func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interfaces.MarketsResponse, cacheStatus interfaces.CacheStatus, err error) {
-	log.Printf("Loading markets data for %d specific IDs with currency=%s", len(params.IDs), params.Currency)
+	log.Printf("Loading markets data for %d specific IDs from cache with currency=%s", len(params.IDs), params.Currency)
 	params = s.getParamsOverride(params)
 	cacheKeys := createCacheKeys(params)
 
 	cachedData, missingKeys, err := s.cache.Get(cacheKeys)
 	if err != nil {
 		log.Printf("Failed to check cache: %v", err)
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("failed to check cache: %w", err)
 	}
 
-	// If all tokens are in cache, return cached data preserving order from cacheKeys
-	if len(missingKeys) == 0 && len(cachedData) == len(cacheKeys) {
-		marketData := make([]interface{}, 0, len(cacheKeys))
-		for _, cacheKey := range cacheKeys {
-			if tokenBytes, exists := cachedData[cacheKey]; exists {
-				var tokenData interface{}
-				if err := json.Unmarshal(tokenBytes, &tokenData); err == nil {
-					marketData = append(marketData, tokenData)
-				}
+	// Build response from cached data, preserving order from cacheKeys
+	marketData := make([]interface{}, 0, len(cacheKeys))
+	for _, cacheKey := range cacheKeys {
+		if tokenBytes, exists := cachedData[cacheKey]; exists {
+			var tokenData interface{}
+			if err := json.Unmarshal(tokenBytes, &tokenData); err == nil {
+				marketData = append(marketData, tokenData)
 			}
 		}
-		log.Printf("Returning cached data for all %d tokens", len(marketData))
-		return interfaces.MarketsResponse(marketData), interfaces.CacheStatusFull, nil
 	}
 
-	if len(cachedData) > 0 {
+	// Log missing keys but don't fetch from API - only return cached data
+	if len(missingKeys) > 0 {
+		log.Printf("Missing %d tokens in cache - service only returns pre-warmed data from periodic updater", len(missingKeys))
+	}
+
+	// Determine cache status
+	if len(missingKeys) == 0 && len(cachedData) == len(cacheKeys) {
+		cacheStatus = interfaces.CacheStatusFull
+		log.Printf("Returning cached data for all %d tokens", len(marketData))
+	} else if len(cachedData) > 0 {
 		cacheStatus = interfaces.CacheStatusPartial
+		log.Printf("Returning partial cached data for %d tokens (requested %d, missing %d)", len(marketData), len(cacheKeys), len(missingKeys))
 	} else {
 		cacheStatus = interfaces.CacheStatusMiss
+		log.Printf("No tokens found in cache for %d requested tokens", len(cacheKeys))
 	}
 
-	// Some tokens are missing from cache - fetch from API
-	log.Printf("Cache miss for some tokens, fetching from API")
-	tokensData, err := s.apiClient.FetchPage(params)
-	if err != nil {
-		log.Printf("apiClient.FetchPage failed to fetch markets data: %v", err)
-		return nil, cacheStatus, fmt.Errorf("failed to fetch markets data: %w", err)
-	}
-
-	// Cache tokens by their IDs
-	marketData, err := s.cacheTokensByID(tokensData)
-	if err != nil {
-		return nil, cacheStatus, err
-	}
-
-	log.Printf("Loaded and cached markets data with %d coins", len(marketData))
 	return interfaces.MarketsResponse(marketData), cacheStatus, nil
 }
 
 // Healthy checks if the service is operational
 func (s *Service) Healthy() bool {
-	// Check if we can fetch at least one page
-	if s.apiClient != nil {
-		return s.apiClient.Healthy()
+	// Check if the periodic updater is healthy
+	if s.periodicUpdater != nil {
+		return s.periodicUpdater.Healthy()
 	}
 	return false
 }
 
-// TopMarkets fetches top markets data for specified number of tokens,
-// caches individual tokens by their coingecko id and returns the response
+// TopMarkets fetches top markets data for specified number of tokens from cache
 func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResponse, error) {
-	log.Printf("Loading top %d markets data from CoinGecko API with currency=%s", limit, currency)
+	log.Printf("Loading top %d markets data from cache with currency=%s", limit, currency)
 
 	// Set default limit if not provided
 	if limit <= 0 {
 		limit = 100
 	}
 
-	requestDelay := s.config.CoingeckoMarkets.RequestDelay
-	requestDelayMs := int(requestDelay.Milliseconds())
-	if requestDelayMs < 0 {
-		requestDelayMs = MARKETS_DEFAULT_REQUEST_DELAY
+	// Get top market token IDs from cache
+	tokenIDs, err := s.TopMarketIds(limit)
+	if err != nil {
+		log.Printf("Failed to get top market IDs: %v", err)
+		return nil, fmt.Errorf("failed to get top market IDs: %w", err)
 	}
 
-	// Create parameters for top markets request
+	if len(tokenIDs) == 0 {
+		log.Printf("No top market IDs found in cache - service only returns pre-warmed data from periodic updater")
+		return interfaces.MarketsResponse([]interface{}{}), nil
+	}
+
+	// Create parameters for markets request
 	params := interfaces.MarketsParams{
 		Currency: currency,
-		Order:    "market_cap_desc", // Order by market cap to get top tokens
+		IDs:      tokenIDs,
+	}
+
+	// Use MarketsByIds to get the actual market data from cache
+	response, cacheStatus, err := s.MarketsByIds(params)
+	if err != nil {
+		log.Printf("Failed to get markets data by IDs: %v", err)
+		return nil, fmt.Errorf("failed to get markets data by IDs: %w", err)
+	}
+
+	log.Printf("Returned top markets data with %d coins (cache status: %v)", len(response), cacheStatus)
+	return response, nil
+}
+
+// TopMarketIds fetches top market token IDs for specified limit from cache
+func (s *Service) TopMarketIds(limit int) ([]string, error) {
+	log.Printf("Loading top %d market IDs from cache", limit)
+
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 100
+	}
+
+	// Create default parameters to get per_page setting
+	params := interfaces.MarketsParams{
+		Currency: "usd",
+		Order:    "market_cap_desc",
 		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
 	}
 
-	// Apply parameters normalization from config
+	// Apply parameters normalization from config to get the actual per_page
 	params = s.getParamsOverride(params)
-
-	// Calculate page range based on limit
 	perPage := params.PerPage
-	pageFrom := 1
+
+	// Calculate how many pages we need to check
 	pageTo := (limit + perPage - 1) / perPage // Ceiling division
 
-	// Create PaginatedFetcher with parameters
-	fetcher := NewPaginatedFetcher(s.apiClient, pageFrom, pageTo, requestDelayMs, params)
+	var allTokenIDs []string
 
-	// Use PaginatedFetcher to get markets data as [][]byte
-	tokensData, err := fetcher.FetchData()
-	if err != nil {
-		log.Printf("PaginatedFetcher failed to fetch top markets data: %v", err)
-		return nil, fmt.Errorf("failed to fetch top markets data: %w", err)
+	// Fetch token IDs from cached pages
+	for page := 1; page <= pageTo; page++ {
+		pageIdsCacheKey := createPageIdsCacheKey(page)
+		cachedData, missingKeys, err := s.cache.Get([]string{pageIdsCacheKey})
+
+		if err != nil {
+			log.Printf("Failed to check cache for page %d: %v", page, err)
+			continue
+		}
+
+		// If this page is missing, we can't provide complete top list
+		if len(missingKeys) > 0 || len(cachedData) == 0 {
+			log.Printf("Page %d token IDs not found in cache", page)
+			continue
+		}
+
+		// Unmarshal the token IDs for this page
+		if tokenIDsBytes, exists := cachedData[pageIdsCacheKey]; exists {
+			var pageTokenIDs []string
+			if err := json.Unmarshal(tokenIDsBytes, &pageTokenIDs); err == nil {
+				allTokenIDs = append(allTokenIDs, pageTokenIDs...)
+			}
+		}
 	}
 
-	// Cache tokens by their IDs
-	marketData, err := s.cacheTokensByID(tokensData)
-	if err != nil {
-		return nil, err
+	// Limit the results to requested number
+	if len(allTokenIDs) > limit {
+		allTokenIDs = allTokenIDs[:limit]
 	}
 
-	log.Printf("Loaded and cached top markets data with %d coins", len(marketData))
-	return interfaces.MarketsResponse(marketData), nil
+	log.Printf("Returning %d token IDs from cache (requested %d)", len(allTokenIDs), limit)
+	return allTokenIDs, nil
 }
 
 func (s *Service) SubscribeTopMarketsUpdate() chan struct{} {

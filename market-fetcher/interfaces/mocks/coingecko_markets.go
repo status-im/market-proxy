@@ -69,6 +69,21 @@ func (mr *MockCoingeckoMarketsServiceMockRecorder) SubscribeTopMarketsUpdate() *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTopMarketsUpdate", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).SubscribeTopMarketsUpdate))
 }
 
+// TopMarketIds mocks base method.
+func (m *MockCoingeckoMarketsService) TopMarketIds(arg0 int) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TopMarketIds", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TopMarketIds indicates an expected call of TopMarketIds.
+func (mr *MockCoingeckoMarketsServiceMockRecorder) TopMarketIds(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMarketIds", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).TopMarketIds), arg0)
+}
+
 // TopMarkets mocks base method.
 func (m *MockCoingeckoMarketsService) TopMarkets(arg0 int, arg1 string) (interfaces.MarketsResponse, error) {
 	m.ctrl.T.Helper()
