@@ -2,8 +2,8 @@ package coingecko_markets
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -631,7 +631,24 @@ func TestService_TopMarkets(t *testing.T) {
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
-			// Mock cache reads for both TopMarketIds and MarketsByIds
+			// Initialize TopIdsManager with test data if we have topMarketsIDs
+			if len(tt.topMarketsIDs) > 0 {
+				mockTokenData := make([][]byte, len(tt.topMarketsIDs))
+				for i, tokenID := range tt.topMarketsIDs {
+					mockTokenData[i] = []byte(fmt.Sprintf(`{"id":"%s","symbol":"%s","name":"%s"}`, tokenID, tokenID, tokenID))
+				}
+
+				pageData := []PageData{
+					{
+						Page: 1,
+						Data: mockTokenData,
+					},
+				}
+
+				service.topIdsManager.UpdatePagesFromPageData(pageData)
+			}
+
+			// Mock cache reads for MarketsByIds
 			mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
 				result := make(map[string][]byte)
 				var missingKeys []string
@@ -716,18 +733,28 @@ func TestService_TopMarketIds(t *testing.T) {
 		cfg := createTestConfig()
 		service := NewService(mockCache, cfg, mockTokensService)
 
-		// Test TopMarketIds with zero limit (should use default limit)
+		// Create test data for TopIdsManager
 		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
-		tokensJSON, _ := json.Marshal(tokens)
 
-		// Mock cache to return data for page 1
-		mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
-			// Should generate keys for the first page based on default limit (250)
-			if len(keys) == 1 && keys[0] == "markets_page_ids:1" {
-				return map[string][]byte{keys[0]: tokensJSON}, []string{}, nil
-			}
-			return map[string][]byte{}, keys, nil
-		}).AnyTimes()
+		// Create mock token data
+		mockTokenData := [][]byte{
+			[]byte(`{"id":"bitcoin","symbol":"btc","name":"Bitcoin"}`),
+			[]byte(`{"id":"ethereum","symbol":"eth","name":"Ethereum"}`),
+			[]byte(`{"id":"ada","symbol":"ada","name":"Cardano"}`),
+			[]byte(`{"id":"sol","symbol":"sol","name":"Solana"}`),
+			[]byte(`{"id":"dot","symbol":"dot","name":"Polkadot"}`),
+		}
+
+		// Simulate page data update to populate TopIdsManager
+		pageData := []PageData{
+			{
+				Page: 1,
+				Data: mockTokenData,
+			},
+		}
+
+		// Initialize TopIdsManager with test data
+		service.topIdsManager.UpdatePagesFromPageData(pageData)
 
 		result, err := service.TopMarketIds(0) // limit 0 should use default (250)
 
@@ -749,17 +776,28 @@ func TestService_TopMarketIds(t *testing.T) {
 		cfg := createTestConfig()
 		service := NewService(mockCache, cfg, mockTokensService)
 
-		// Test that TopMarketIds with positive limit works correctly
+		// Create test data for TopIdsManager
 		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
-		tokensJSON, _ := json.Marshal(tokens)
 
-		mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
-			cacheKey := keys[0]
-			if cacheKey == "markets_page_ids:1" {
-				return map[string][]byte{cacheKey: tokensJSON}, []string{}, nil
-			}
-			return map[string][]byte{}, []string{cacheKey}, nil
-		}).AnyTimes()
+		// Create mock token data
+		mockTokenData := [][]byte{
+			[]byte(`{"id":"bitcoin","symbol":"btc","name":"Bitcoin"}`),
+			[]byte(`{"id":"ethereum","symbol":"eth","name":"Ethereum"}`),
+			[]byte(`{"id":"ada","symbol":"ada","name":"Cardano"}`),
+			[]byte(`{"id":"sol","symbol":"sol","name":"Solana"}`),
+			[]byte(`{"id":"dot","symbol":"dot","name":"Polkadot"}`),
+		}
+
+		// Simulate page data update to populate TopIdsManager
+		pageData := []PageData{
+			{
+				Page: 1,
+				Data: mockTokenData,
+			},
+		}
+
+		// Initialize TopIdsManager with test data
+		service.topIdsManager.UpdatePagesFromPageData(pageData)
 
 		result, err := service.TopMarketIds(3) // limit to 3
 

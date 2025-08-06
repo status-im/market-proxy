@@ -158,8 +158,39 @@ func TestCoinsListEndpoint(t *testing.T) {
 
 // waitForDataInitialization waits for services to initialize data
 func waitForDataInitialization(t *testing.T, env *TestEnv) {
-	// Wait until service contains data
-	// In a real test, this might be a timer or waiting for an event
-	// For simplicity, we just make a pause
-	time.Sleep(1 * time.Second)
+	// Wait until service contains data by polling for expected tokens
+	// This is more reliable than a fixed time delay
+	maxWait := 30 * time.Second
+	pollInterval := 500 * time.Millisecond
+	timeout := time.Now().Add(maxWait)
+
+	for time.Now().Before(timeout) {
+		// Test if the cache contains the expected test tokens
+		resp, err := http.Get(env.ServerBaseURL + "/api/v1/coins/markets?ids=bitcoin,ethereum")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				// Check if we get non-empty response
+				resp2, err2 := http.Get(env.ServerBaseURL + "/api/v1/coins/markets?ids=bitcoin,ethereum")
+				if err2 == nil {
+					body, err3 := io.ReadAll(resp2.Body)
+					resp2.Body.Close()
+					if err3 == nil {
+						var data []interface{}
+						if json.Unmarshal(body, &data) == nil && len(data) > 0 {
+							// Data is available, initialization complete
+							t.Logf("Data initialization completed, found %d tokens in cache", len(data))
+							return
+						}
+					}
+				}
+			}
+		}
+
+		time.Sleep(pollInterval)
+	}
+
+	// Fallback to original behavior if polling doesn't work
+	t.Log("Data polling timeout, falling back to fixed wait time")
+	time.Sleep(2 * time.Second)
 }

@@ -29,6 +29,7 @@ type Service struct {
 	tokensService       interfaces.CoingeckoTokensService
 	tokenUpdateCh       chan struct{}
 	cancelFunc          context.CancelFunc
+	topIdsManager       *TopIdsManager
 }
 
 func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.CoingeckoTokensService) *Service {
@@ -41,6 +42,7 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 		metricsWriter:       metricsWriter,
 		subscriptionManager: events.NewSubscriptionManager(),
 		tokensService:       tokensService,
+		topIdsManager:       NewTopIdsManager(),
 	}
 
 	// Create periodic updater
@@ -70,6 +72,10 @@ func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier
 	if err != nil {
 		log.Printf("Failed to cache page data: %v", err)
 	}
+
+	// Update top IDs manager with new pages data
+	s.topIdsManager.UpdatePagesFromPageData(pagesData)
+
 	s.subscriptionManager.Emit(ctx)
 }
 
@@ -159,6 +165,12 @@ func (s *Service) Stop() {
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.Stop()
 	}
+
+	// Clear top IDs manager
+	if s.topIdsManager != nil {
+		s.topIdsManager.Clear()
+	}
+
 	// Cache will handle its own cleanup
 }
 
@@ -343,68 +355,24 @@ func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResp
 	return response, nil
 }
 
-// TopMarketIds fetches top market token IDs for specified limit from cache
+// TopMarketIds fetches top market token IDs for specified limit from top IDs manager
 func (s *Service) TopMarketIds(limit int) ([]string, error) {
-	log.Printf("Loading top %d market IDs from cache", limit)
+	log.Printf("Loading top %d market IDs from top IDs manager", limit)
 
 	// Set default limit if not provided
 	if limit <= 0 {
 		limit = MARKETS_DEFAULT_CHUNK_SIZE
 	}
 
-	// Create default parameters to get per_page setting
-	params := interfaces.MarketsParams{
-		Currency: "usd",
-		Order:    "market_cap_desc",
-		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
-	}
+	// Get top IDs from the manager
+	topIds := s.topIdsManager.GetTopIds(limit)
 
-	// Apply parameters normalization from config to get the actual per_page
-	params = s.getParamsOverride(params)
-	perPage := params.PerPage
+	// Get manager statistics for logging
+	pageCount, totalTokens, isDirty := s.topIdsManager.GetStats()
+	log.Printf("Returning %d token IDs from top IDs manager (requested %d, %d pages, %d total tokens, dirty: %v)",
+		len(topIds), limit, pageCount, totalTokens, isDirty)
 
-	// Calculate how many pages we need
-	pageTo := (limit + perPage - 1) / perPage // Ceiling division
-
-	// Generate cache keys for all pages at once
-	pageIdsCacheKeys := createPageIdsCacheKeys(1, pageTo)
-	if len(pageIdsCacheKeys) == 0 {
-		log.Printf("No cache keys generated for pages 1-%d", pageTo)
-		return []string{}, nil
-	}
-
-	// Fetch all pages in one batch operation
-	cachedData, missingKeys, err := s.cache.Get(pageIdsCacheKeys)
-	if err != nil {
-		log.Printf("Failed to check cache for pages 1-%d: %v", pageTo, err)
-		return nil, fmt.Errorf("failed to check cache: %w", err)
-	}
-
-	if len(missingKeys) > 0 {
-		log.Printf("Missing %d pages in cache out of %d requested", len(missingKeys), len(pageIdsCacheKeys))
-	}
-
-	// Collect token IDs from all cached pages in order
-	var allTokenIDs []string
-	for page := 1; page <= pageTo; page++ {
-		pageIdsCacheKey := createPageIdsCacheKey(page)
-		if tokenIDsBytes, exists := cachedData[pageIdsCacheKey]; exists {
-			var pageTokenIDs []string
-			if err := json.Unmarshal(tokenIDsBytes, &pageTokenIDs); err == nil {
-				allTokenIDs = append(allTokenIDs, pageTokenIDs...)
-			} else {
-				log.Printf("Failed to unmarshal token IDs for page %d: %v", page, err)
-			}
-		}
-	}
-
-	// Limit the results to requested number
-	if len(allTokenIDs) > limit {
-		allTokenIDs = allTokenIDs[:limit]
-	}
-
-	log.Printf("Returning %d token IDs from cache (requested %d, %d pages)", len(allTokenIDs), limit, pageTo)
-	return allTokenIDs, nil
+	return topIds, nil
 }
 
 func (s *Service) SubscribeTopMarketsUpdate() chan struct{} {

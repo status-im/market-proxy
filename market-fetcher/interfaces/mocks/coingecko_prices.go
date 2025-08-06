@@ -71,7 +71,7 @@ func (mr *MockCoingeckoPricesServiceMockRecorder) SubscribeTopPricesUpdate() *go
 }
 
 // TopPrices mocks base method.
-func (m *MockCoingeckoPricesService) TopPrices(arg0 context.Context, arg1, arg2 []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+func (m *MockCoingeckoPricesService) TopPrices(arg0 context.Context, arg1 int, arg2 []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TopPrices", arg0, arg1, arg2)
 	ret0, _ := ret[0].(interfaces.SimplePriceResponse)

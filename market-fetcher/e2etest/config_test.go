@@ -36,17 +36,25 @@ coingecko_markets:
     category: ""           # no category filtering
   tiers:                   # required tier configuration
     - name: "test"         # test tier
-      page_from: 1        # tokens 1-500 for tests
-      page_to: 500
+      page_from: 1        # tokens 1-2 for tests - much smaller range
+      page_to: 2
       update_interval: 1s  # fast updates for tests
       ttl: 5s              # short TTL for tests
 
 coingecko_prices:
-  
   request_delay: 100ms      # short delay for tests
   currencies:               # test currencies
     - usd
     - eur
+  tiers:                    # required tier configuration  
+    - name: "top-1000"      # test tier for top tokens
+      token_from: 1         # tokens 1-1000 for tests
+      token_to: 1000
+      update_interval: 1s   # fast update interval for tests
+    - name: "top-1001-10000" # test tier for remaining tokens
+      token_from: 1001      # tokens 1001-10000 for tests
+      token_to: 10000
+      update_interval: 2s   # fast update interval for tests
 
 coingecko_coinslist:
   update_interval: 1s       # shorter interval for tests
