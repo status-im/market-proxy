@@ -25,6 +25,7 @@ type PeriodicUpdaterInterface interface {
 	SetOnMissingExtraIdsUpdatedCallback(callback func(ctx context.Context, pricesData map[string][]byte))
 	GetCacheData() map[string][]byte
 	GetCacheDataForTier(tierName string) map[string][]byte
+	ForceUpdate(ctx context.Context)
 	Healthy() bool
 }
 
@@ -194,6 +195,16 @@ func (u *PeriodicUpdater) Stop() {
 	for _, tierScheduler := range u.schedulers {
 		if tierScheduler.scheduler != nil {
 			tierScheduler.scheduler.Stop()
+		}
+	}
+}
+
+// ForceUpdate triggers immediate execution of all tier schedulers
+func (u *PeriodicUpdater) ForceUpdate(ctx context.Context) {
+	log.Printf("Force updating all %d tier schedulers", len(u.schedulers))
+	for _, tierScheduler := range u.schedulers {
+		if tierScheduler.scheduler != nil {
+			tierScheduler.scheduler.TriggerNow()
 		}
 	}
 }

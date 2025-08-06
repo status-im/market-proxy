@@ -76,6 +76,11 @@ func (u *PeriodicUpdater) SetOnUpdateMissingExtraIdsCallback(onUpdateMissingExtr
 	u.onUpdateMissingExtraIds = onUpdateMissingExtraIds
 }
 
+// SetOnInitialLoadCompletedCallback sets a callback function that will be called when all tiers complete their initial load
+func (u *PeriodicUpdater) SetOnInitialLoadCompletedCallback(onInitialLoadCompleted func(ctx context.Context)) {
+	u.onInitialLoadCompleted = onInitialLoadCompleted
+}
+
 // SetExtraIds sets the list of extra token IDs to fetch
 func (u *PeriodicUpdater) SetExtraIds(ids []string) {
 	u.extraIds.Lock()
@@ -192,6 +197,16 @@ func (u *PeriodicUpdater) Stop() {
 	}
 }
 
+// ForceUpdate triggers immediate execution of all tier schedulers
+func (u *PeriodicUpdater) ForceUpdate(ctx context.Context) {
+	log.Printf("Force updating all %d tier schedulers", len(u.schedulers))
+	for _, tierScheduler := range u.schedulers {
+		if tierScheduler.scheduler != nil {
+			tierScheduler.scheduler.TriggerNow()
+		}
+	}
+}
+
 // fetchAndUpdateTier fetches markets data for a specific tier and updates cache
 func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.MarketTier) error {
 	startTime := time.Now()
@@ -263,6 +278,9 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 	if u.onUpdateTierPages != nil {
 		go u.onUpdateTierPages(ctx, tier, pagesData)
 	}
+
+	// Check if this is the first time this tier completed and all tiers are now complete
+	u.checkAndTriggerInitialLoadCompleted(ctx, tier.Name)
 
 	return nil
 }
@@ -374,6 +392,39 @@ func (u *PeriodicUpdater) findMissingOrStaleIds(extraIds []string) []string {
 	}
 
 	return missingIds
+}
+
+// checkAndTriggerInitialLoadCompleted checks if all tiers have completed their initial load
+func (u *PeriodicUpdater) checkAndTriggerInitialLoadCompleted(ctx context.Context, tierName string) {
+	u.initialLoad.Lock()
+	defer u.initialLoad.Unlock()
+
+	// Mark this tier as completed
+	if !u.initialLoad.completedTiers[tierName] {
+		u.initialLoad.completedTiers[tierName] = true
+		log.Printf("Tier '%s' completed initial load", tierName)
+	}
+
+	// Check if all tiers are completed and we haven't triggered the callback yet
+	if !u.initialLoad.allCompleted && len(u.initialLoad.completedTiers) == len(u.config.Tiers) {
+		// Verify all configured tiers are completed
+		allCompleted := true
+		for _, tier := range u.config.Tiers {
+			if !u.initialLoad.completedTiers[tier.Name] {
+				allCompleted = false
+				break
+			}
+		}
+
+		if allCompleted {
+			u.initialLoad.allCompleted = true
+			log.Printf("All %d tiers completed initial load", len(u.config.Tiers))
+
+			if u.onInitialLoadCompleted != nil {
+				go u.onInitialLoadCompleted(ctx)
+			}
+		}
+	}
 }
 
 // Healthy checks if the periodic updater can fetch data

@@ -17,8 +17,14 @@ type CoingeckoMarketsService interface {
 	// SubscribeTopMarketsUpdate subscribes to markets update notifications
 	SubscribeTopMarketsUpdate() chan struct{}
 
+	// SubscribeInitialized subscribes to markets service initialization notifications
+	SubscribeInitialized() chan struct{}
+
 	// Unsubscribe unsubscribes from markets update notifications
 	Unsubscribe(ch chan struct{})
+
+	// UnsubscribeInitialized unsubscribes from markets initialization notifications
+	UnsubscribeInitialized(ch chan struct{})
 }
 
 // MarketsParams represents parameters for markets requests

@@ -14,14 +14,16 @@ type Scheduler struct {
 	mu          sync.Mutex
 	running     bool
 	cancel      context.CancelFunc
-	taskRunning sync.Mutex // Mutex to prevent concurrent task executions
+	taskRunning sync.Mutex    // Mutex to prevent concurrent task executions
+	triggerCh   chan struct{} // Channel to trigger immediate execution
 }
 
 // New creates a new Scheduler instance
 func New(interval time.Duration, task func(context.Context)) *Scheduler {
 	return &Scheduler{
-		interval: interval,
-		task:     task,
+		interval:  interval,
+		task:      task,
+		triggerCh: make(chan struct{}, 1), // Buffered channel to avoid blocking
 	}
 }
 
@@ -53,6 +55,8 @@ func (s *Scheduler) Start(ctx context.Context, firstRunImmediately bool) {
 		for {
 			select {
 			case <-ticker.C:
+				s.runTaskIfNotRunning(ctx)
+			case <-s.triggerCh:
 				s.runTaskIfNotRunning(ctx)
 			case <-ctx.Done():
 				return
@@ -93,4 +97,19 @@ func (s *Scheduler) IsRunning() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.running
+}
+
+// TriggerNow triggers an immediate execution of the task if the scheduler is running
+func (s *Scheduler) TriggerNow() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.running {
+		// Non-blocking send to trigger channel
+		select {
+		case s.triggerCh <- struct{}{}:
+		default:
+			// Channel is full, trigger is already pending
+		}
+	}
 }

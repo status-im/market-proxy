@@ -17,17 +17,18 @@ import (
 
 // Service provides price fetching functionality with caching
 type Service struct {
-	cache               cache.Cache
-	fetcher             *ChunksFetcher
-	config              *config.Config
-	metricsWriter       *metrics.MetricsWriter
-	subscriptionManager *events.SubscriptionManager
-	periodicUpdater     PeriodicUpdaterInterface
-	marketsService      interfaces.CoingeckoMarketsService
-	tokensService       interfaces.CoingeckoTokensService
-	marketUpdateCh      chan struct{}
-	tokenUpdateCh       chan struct{}
-	cancelFunc          context.CancelFunc
+	cache                cache.Cache
+	fetcher              *ChunksFetcher
+	config               *config.Config
+	metricsWriter        *metrics.MetricsWriter
+	subscriptionManager  *events.SubscriptionManager
+	periodicUpdater      PeriodicUpdaterInterface
+	marketsService       interfaces.CoingeckoMarketsService
+	tokensService        interfaces.CoingeckoTokensService
+	marketUpdateCh       chan struct{}
+	tokenUpdateCh        chan struct{}
+	marketsInitializedCh chan struct{}
+	cancelFunc           context.CancelFunc
 }
 
 // NewService creates a new price service with the given cache and config
@@ -49,15 +50,16 @@ func NewService(cache cache.Cache, config *config.Config, marketsService interfa
 	fetcher := NewChunksFetcher(apiClient, chunkSize, requestDelayMs)
 
 	service := &Service{
-		cache:               cache,
-		fetcher:             fetcher,
-		config:              config,
-		metricsWriter:       metricsWriter,
-		subscriptionManager: events.NewSubscriptionManager(),
-		marketsService:      marketsService,
-		tokensService:       tokensService,
-		marketUpdateCh:      make(chan struct{}, 1),
-		tokenUpdateCh:       make(chan struct{}, 1),
+		cache:                cache,
+		fetcher:              fetcher,
+		config:               config,
+		metricsWriter:        metricsWriter,
+		subscriptionManager:  events.NewSubscriptionManager(),
+		marketsService:       marketsService,
+		tokensService:        tokensService,
+		marketUpdateCh:       make(chan struct{}, 1),
+		tokenUpdateCh:        make(chan struct{}, 1),
+		marketsInitializedCh: make(chan struct{}, 1),
 	}
 
 	// Create periodic updater
@@ -174,6 +176,21 @@ func (s *Service) handleTokenUpdates(ctx context.Context) {
 	}
 }
 
+// handleMarketsInitialized handles markets service initialization events
+func (s *Service) handleMarketsInitialized(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.marketsInitializedCh:
+			log.Printf("Markets service initialized - triggering force update of prices")
+			if s.periodicUpdater != nil {
+				s.periodicUpdater.ForceUpdate(ctx)
+			}
+		}
+	}
+}
+
 // cachePricesByID caches price data by individual token IDs
 func (s *Service) cachePricesByID(pricesData map[string][]byte) error {
 	if len(pricesData) == 0 {
@@ -219,6 +236,10 @@ func (s *Service) Start(ctx context.Context) error {
 		s.marketUpdateCh = s.marketsService.SubscribeTopMarketsUpdate()
 		go s.handleMarketUpdates(goroutineCtx)
 
+		// Subscribe to markets initialization events
+		s.marketsInitializedCh = s.marketsService.SubscribeInitialized()
+		go s.handleMarketsInitialized(goroutineCtx)
+
 		// Initial call to set top market IDs
 		s.onMarketListChanged()
 	}
@@ -254,6 +275,12 @@ func (s *Service) Stop() {
 	if s.marketsService != nil && s.marketUpdateCh != nil {
 		s.marketsService.Unsubscribe(s.marketUpdateCh)
 		s.marketUpdateCh = nil
+	}
+
+	// Unsubscribe from markets initialization
+	if s.marketsService != nil && s.marketsInitializedCh != nil {
+		s.marketsService.UnsubscribeInitialized(s.marketsInitializedCh)
+		s.marketsInitializedCh = nil
 	}
 
 	// Unsubscribe from token updates

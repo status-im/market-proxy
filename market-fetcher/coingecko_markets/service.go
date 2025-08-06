@@ -21,15 +21,16 @@ const (
 
 // Service provides markets data fetching functionality with caching
 type Service struct {
-	cache               cache.Cache
-	config              *cfg.Config
-	metricsWriter       *metrics.MetricsWriter
-	subscriptionManager *events.SubscriptionManager
-	periodicUpdater     *PeriodicUpdater
-	tokensService       interfaces.CoingeckoTokensService
-	tokenUpdateCh       chan struct{}
-	cancelFunc          context.CancelFunc
-	topIdsManager       *TopIdsManager
+	cache                          cache.Cache
+	config                         *cfg.Config
+	metricsWriter                  *metrics.MetricsWriter
+	subscriptionManager            *events.SubscriptionManager
+	initializedSubscriptionManager *events.SubscriptionManager
+	periodicUpdater                *PeriodicUpdater
+	tokensService                  interfaces.CoingeckoTokensService
+	tokenUpdateCh                  chan struct{}
+	cancelFunc                     context.CancelFunc
+	topIdsManager                  *TopIdsManager
 }
 
 func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.CoingeckoTokensService) *Service {
@@ -37,12 +38,13 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 	apiClient := NewCoinGeckoClient(config)
 
 	service := &Service{
-		cache:               cache,
-		config:              config,
-		metricsWriter:       metricsWriter,
-		subscriptionManager: events.NewSubscriptionManager(),
-		tokensService:       tokensService,
-		topIdsManager:       NewTopIdsManager(),
+		cache:                          cache,
+		config:                         config,
+		metricsWriter:                  metricsWriter,
+		subscriptionManager:            events.NewSubscriptionManager(),
+		initializedSubscriptionManager: events.NewSubscriptionManager(),
+		tokensService:                  tokensService,
+		topIdsManager:                  NewTopIdsManager(),
 	}
 
 	// Create periodic updater
@@ -53,6 +55,9 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 
 	// Set onUpdateMissingExtraIds callback to cache missing tokens by ID
 	service.periodicUpdater.SetOnUpdateMissingExtraIdsCallback(service.handleMissingExtraIdsUpdate)
+
+	// Set onInitialLoadCompleted callback to emit initialization event
+	service.periodicUpdater.SetOnInitialLoadCompletedCallback(service.handleInitialLoadCompleted)
 
 	return service
 }
@@ -89,6 +94,12 @@ func (s *Service) handleMissingExtraIdsUpdate(ctx context.Context, tokensData []
 		log.Printf("Successfully cached %d missing extra IDs", len(tokensData))
 	}
 	s.subscriptionManager.Emit(ctx)
+}
+
+// handleInitialLoadCompleted handles initial load completion by emitting initialization event
+func (s *Service) handleInitialLoadCompleted(ctx context.Context) {
+	log.Printf("Markets service initial load completed - emitting Initialized event")
+	s.initializedSubscriptionManager.Emit(ctx)
 }
 
 // onTokenListChanged is called when token list is updated
@@ -379,6 +390,14 @@ func (s *Service) SubscribeTopMarketsUpdate() chan struct{} {
 	return s.subscriptionManager.Subscribe()
 }
 
+func (s *Service) SubscribeInitialized() chan struct{} {
+	return s.initializedSubscriptionManager.Subscribe()
+}
+
 func (s *Service) Unsubscribe(ch chan struct{}) {
 	s.subscriptionManager.Unsubscribe(ch)
+}
+
+func (s *Service) UnsubscribeInitialized(ch chan struct{}) {
+	s.initializedSubscriptionManager.Unsubscribe(ch)
 }
