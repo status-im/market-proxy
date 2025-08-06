@@ -10,24 +10,19 @@ import (
 
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
-	"github.com/status-im/market-proxy/scheduler"
 )
 
-// TopPricesUpdater handles periodic price updates for top tokens
+// TopPricesUpdater handles subscription-based price updates for top tokens
 type TopPricesUpdater struct {
-	config         *config.Config
-	priceFetcher   cg.CoingeckoPricesService
-	priceScheduler *scheduler.Scheduler
-	metricsWriter  *metrics.MetricsWriter
+	config             *config.Config
+	priceFetcher       cg.CoingeckoPricesService
+	metricsWriter      *metrics.MetricsWriter
+	updateSubscription chan struct{}
+	cancelFunc         context.CancelFunc
 	// Cache for top tokens prices
 	topPricesCache struct {
 		sync.RWMutex
 		data map[string]PriceQuotes // currency -> tokenID -> Quote
-	}
-	// List of top token IDs to fetch prices for
-	topTokenIDs struct {
-		sync.RWMutex
-		ids []string
 	}
 }
 
@@ -62,42 +57,28 @@ func (u *TopPricesUpdater) GetTopPricesQuotes(currency string) map[string]Quote 
 	return make(map[string]Quote)
 }
 
-// SetTopTokenIDs sets the list of top token IDs to fetch prices for
-func (u *TopPricesUpdater) SetTopTokenIDs(tokenIDs []string) {
-	u.topTokenIDs.Lock()
-	defer u.topTokenIDs.Unlock()
-	u.topTokenIDs.ids = make([]string, len(tokenIDs))
-	copy(u.topTokenIDs.ids, tokenIDs)
-}
-
-// getTopTokenIDs returns a copy of the current top token IDs list
-func (u *TopPricesUpdater) getTopTokenIDs() []string {
-	u.topTokenIDs.RLock()
-	defer u.topTokenIDs.RUnlock()
-	if len(u.topTokenIDs.ids) == 0 {
-		return nil
-	}
-	result := make([]string, len(u.topTokenIDs.ids))
-	copy(result, u.topTokenIDs.ids)
-	return result
-}
-
-// Start starts the price updater with periodic updates
+// Start starts the price updater by subscribing to price updates
 func (u *TopPricesUpdater) Start(ctx context.Context) error {
-	// Start price scheduler if configured
-	pricesUpdateInterval := u.config.CoingeckoLeaderboard.TopPricesUpdateInterval
-	if pricesUpdateInterval > 0 {
-		u.priceScheduler = scheduler.New(
-			pricesUpdateInterval,
-			func(ctx context.Context) {
-				if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
-					log.Printf("Error updating top prices: %v", err)
-				}
-			},
-		)
+	// Subscribe to price updates from the prices service if available
+	if u.priceFetcher != nil {
+		u.updateSubscription = u.priceFetcher.SubscribeTopPricesUpdate()
 
-		u.priceScheduler.Start(ctx, true)
-		log.Printf("Started price scheduler with update interval: %v", pricesUpdateInterval)
+		// Create cancelable context for the subscription handler
+		subscriptionCtx, cancel := context.WithCancel(ctx)
+		u.cancelFunc = cancel
+
+		// Start subscription handler in a goroutine
+		go u.handlePriceUpdates(subscriptionCtx)
+
+		log.Printf("Started top prices updater with subscription to price updates")
+
+		// Perform initial fetch to populate cache
+		if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
+			log.Printf("Error during initial price data fetch: %v", err)
+			// Don't return error - subscription can still work for future updates
+		}
+	} else {
+		log.Printf("No price fetcher available, price updater will not be active")
 	}
 
 	return nil
@@ -105,8 +86,31 @@ func (u *TopPricesUpdater) Start(ctx context.Context) error {
 
 // Stop stops the price updater
 func (u *TopPricesUpdater) Stop() {
-	if u.priceScheduler != nil {
-		u.priceScheduler.Stop()
+	// Cancel the subscription handler goroutine
+	if u.cancelFunc != nil {
+		u.cancelFunc()
+		u.cancelFunc = nil
+	}
+
+	// Unsubscribe from price updates
+	if u.updateSubscription != nil && u.priceFetcher != nil {
+		u.priceFetcher.Unsubscribe(u.updateSubscription)
+		u.updateSubscription = nil
+	}
+}
+
+// handlePriceUpdates handles subscription to price updates
+func (u *TopPricesUpdater) handlePriceUpdates(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-u.updateSubscription:
+			// Price data has been updated, fetch new data
+			if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
+				log.Printf("Error updating price data on subscription signal: %v", err)
+			}
+		}
 	}
 }
 
@@ -131,37 +135,19 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 		// Fetch prices for each currency using the price fetcher
 		newPricesData = make(map[string]PriceQuotes)
 
-		// Get the current list of top token IDs
-		topTokenIDs := u.getTopTokenIDs()
-		if len(topTokenIDs) == 0 {
-			log.Printf("No top token IDs configured, skipping price update")
-			newPricesData = make(map[string]PriceQuotes)
-		} else {
-			// Limit the number of tokens according to config
-			if u.config.CoingeckoLeaderboard.TopPricesLimit > 0 && len(topTokenIDs) > u.config.CoingeckoLeaderboard.TopPricesLimit {
-				topTokenIDs = topTokenIDs[:u.config.CoingeckoLeaderboard.TopPricesLimit]
-				log.Printf("Limited top tokens to %d tokens as per config", u.config.CoingeckoLeaderboard.TopPricesLimit)
-			}
-			// Make single request with all currencies
-			params := cg.PriceParams{
-				IDs:                  topTokenIDs,
-				Currencies:           currencies,
-				IncludeMarketCap:     true,
-				Include24hrVol:       true,
-				Include24hrChange:    true,
-				IncludeLastUpdatedAt: true,
-			}
+		// Determine the limit for top tokens
+		limit := u.config.CoingeckoLeaderboard.TopPricesLimit
 
-			priceResponse, _, err := u.priceFetcher.SimplePrices(ctx, params)
-			if err != nil {
-				log.Printf("Error fetching prices from price fetcher: %v", err)
-			} else if len(priceResponse) > 0 {
-				// Parse response for each currency
-				for _, currency := range currencies {
-					currencyQuotes := ConvertPriceResponseToPriceQuotes(priceResponse, currency)
-					if len(currencyQuotes) > 0 {
-						newPricesData[currency] = currencyQuotes
-					}
+		// Use TopPrices method directly
+		priceResponse, _, err := u.priceFetcher.TopPrices(ctx, limit, currencies)
+		if err != nil {
+			log.Printf("Error fetching prices from price fetcher: %v", err)
+		} else if len(priceResponse) > 0 {
+			// Parse response for each currency
+			for _, currency := range currencies {
+				currencyQuotes := ConvertPriceResponseToPriceQuotes(priceResponse, currency)
+				if len(currencyQuotes) > 0 {
+					newPricesData[currency] = currencyQuotes
 				}
 			}
 		}

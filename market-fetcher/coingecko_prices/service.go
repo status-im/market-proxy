@@ -335,12 +335,23 @@ func (s *Service) getConfigCurrencies() []string {
 	return []string{"usd", "eur", "btc", "eth"}
 }
 
-// TopPrices fetches prices for top tokens with specified currencies
+// TopPrices fetches prices for top tokens with specified limit and currencies
 // Similar to TopMarkets in markets service, provides clean interface for token price fetching
-func (s *Service) TopPrices(ctx context.Context, tokenIDs []string, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
-	log.Printf("TopPrices called for %d tokens with %d currencies", len(tokenIDs), len(currencies))
+func (s *Service) TopPrices(ctx context.Context, limit int, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+	log.Printf("TopPrices called for %d tokens with %d currencies", limit, len(currencies))
+
+	// Get top market IDs based on the limit
+	if s.marketsService == nil {
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("markets service not available")
+	}
+
+	topMarketIds, err := s.marketsService.TopMarketIds(limit)
+	if err != nil {
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("failed to get top market IDs: %w", err)
+	}
+
 	params := interfaces.PriceParams{
-		IDs:                  tokenIDs,
+		IDs:                  topMarketIds,
 		Currencies:           currencies,
 		IncludeMarketCap:     true,
 		Include24hrVol:       true,

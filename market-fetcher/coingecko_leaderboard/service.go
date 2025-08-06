@@ -37,9 +37,8 @@ func NewService(cfg *config.Config, priceFetcher interfaces.CoingeckoPricesServi
 func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 	s.onUpdate = onUpdate
 
-	// Set callback for top markets updater that will also update top tokens
+	// Set callback for top markets updater
 	s.topMarketsUpdater.SetOnUpdateCallback(func() {
-		s.updateTopTokensFromMarketsData()
 		if s.onUpdate != nil {
 			s.onUpdate()
 		}
@@ -54,15 +53,6 @@ func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
 	}
 
 	return s.topPricesUpdater.GetTopPricesQuotes(currency)
-}
-
-// updateTopTokensFromMarketsData extracts token IDs from markets data and updates top prices updater
-func (s *Service) updateTopTokensFromMarketsData() {
-	tokenIDs := s.topMarketsUpdater.GetTopTokenIDs()
-	if len(tokenIDs) > 0 {
-		s.topPricesUpdater.SetTopTokenIDs(tokenIDs)
-		log.Printf("Updated top token IDs list with %d tokens", len(tokenIDs))
-	}
 }
 
 // Start starts the CoinGecko service

@@ -64,7 +64,8 @@ func TestNewTopMarketsUpdater(t *testing.T) {
 		assert.NotNil(t, updater)
 		assert.Equal(t, cfg, updater.config)
 		assert.Equal(t, mockFetcher, updater.marketsFetcher)
-		assert.Nil(t, updater.scheduler)
+		assert.Nil(t, updater.updateSubscription)
+		assert.Nil(t, updater.cancelFunc)
 		assert.Nil(t, updater.onUpdate)
 		assert.Nil(t, updater.GetCacheData())
 	})
@@ -440,14 +441,20 @@ func TestTopMarketsUpdater_Healthy(t *testing.T) {
 }
 
 func TestTopMarketsUpdater_StartStop(t *testing.T) {
-	t.Run("Start creates and starts scheduler", func(t *testing.T) {
+	t.Run("Start subscribes to market updates", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestMarketsConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
-		// Setup mock for potential immediate scheduler call
+		// Setup mock for subscription and initial fetch
+		updateCh := make(chan struct{}, 1)
 		sampleData := createSampleMarketsData()
-		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).AnyTimes()
+
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(1) // Initial fetch
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -455,20 +462,28 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		err := updater.Start(ctx)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, updater.scheduler)
+		assert.NotNil(t, updater.updateSubscription)
+		assert.NotNil(t, updater.cancelFunc)
 
 		// Stop to clean up
+		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 	})
 
-	t.Run("Stop stops scheduler when it exists", func(t *testing.T) {
+	t.Run("Stop unsubscribes and cancels goroutine", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestMarketsConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
-		// Setup mock for potential immediate scheduler call
+		// Setup mock for subscription and initial fetch
+		updateCh := make(chan struct{}, 1)
 		sampleData := createSampleMarketsData()
-		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).AnyTimes()
+
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(1)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -476,16 +491,18 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		// Start first
 		err := updater.Start(ctx)
 		assert.NoError(t, err)
-		assert.NotNil(t, updater.scheduler)
+		assert.NotNil(t, updater.updateSubscription)
 
 		// Now stop
+		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 
-		// Scheduler should still exist but be stopped
-		assert.NotNil(t, updater.scheduler)
+		// Should be cleaned up
+		assert.Nil(t, updater.updateSubscription)
+		assert.Nil(t, updater.cancelFunc)
 	})
 
-	t.Run("Stop doesn't panic when scheduler is nil", func(t *testing.T) {
+	t.Run("Stop doesn't panic when not started", func(t *testing.T) {
 		cfg := createTestMarketsConfig()
 		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
 
@@ -495,28 +512,35 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		})
 	})
 
-	t.Run("Start with minimal update interval", func(t *testing.T) {
-		cfg := &config.Config{
-			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopMarketsUpdateInterval: time.Millisecond, // Minimal interval
-				Currency:                 "usd",
-			},
-		}
-		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t))
+	t.Run("Subscription handler responds to market updates", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		cfg := createTestMarketsConfig()
+		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
-		// Setup mock for potential immediate scheduler call
+		updateCh := make(chan struct{}, 2)
 		sampleData := createSampleMarketsData()
-		mockFetcher.EXPECT().TopMarkets(500, "usd").Return(sampleData, nil).AnyTimes() // Default limit is 500
 
-		ctx, cancel := context.WithCancel(context.Background())
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
+		// Expect initial fetch + one more when we send update signal
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(2)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
 
 		err := updater.Start(ctx)
-
 		assert.NoError(t, err)
-		assert.NotNil(t, updater.scheduler)
 
+		// Send update signal
+		updateCh <- struct{}{}
+
+		// Give some time for the goroutine to process the signal
+		time.Sleep(time.Millisecond * 100)
+
+		// Stop to clean up
+		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 	})
 }

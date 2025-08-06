@@ -9,16 +9,16 @@ import (
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
-	"github.com/status-im/market-proxy/scheduler"
 )
 
-// TopMarketsUpdater handles periodic updates of markets leaderboard data
+// TopMarketsUpdater handles subscription-based updates of markets leaderboard data
 type TopMarketsUpdater struct {
-	config         *config.Config
-	scheduler      *scheduler.Scheduler
-	marketsFetcher interfaces.CoingeckoMarketsService
-	metricsWriter  *metrics.MetricsWriter
-	onUpdate       func()
+	config             *config.Config
+	marketsFetcher     interfaces.CoingeckoMarketsService
+	metricsWriter      *metrics.MetricsWriter
+	onUpdate           func()
+	updateSubscription chan struct{}
+	cancelFunc         context.CancelFunc
 
 	// Cache for markets data
 	cache struct {
@@ -68,37 +68,56 @@ func (u *TopMarketsUpdater) GetTopTokenIDs() []string {
 	return tokenIDs
 }
 
-// Start starts the top markets updater with periodic updates
+// Start starts the top markets updater by subscribing to market updates
 func (u *TopMarketsUpdater) Start(ctx context.Context) error {
-	updateInterval := u.config.CoingeckoLeaderboard.TopMarketsUpdateInterval
+	// Subscribe to market updates from the markets service
+	u.updateSubscription = u.marketsFetcher.SubscribeTopMarketsUpdate()
 
-	// If interval is 0 or negative, skip periodic updates
-	if updateInterval <= 0 {
-		log.Printf("Top markets updater: periodic updates disabled (interval: %v)", updateInterval)
-		return nil
+	// Create cancelable context for the subscription handler
+	subscriptionCtx, cancel := context.WithCancel(ctx)
+	u.cancelFunc = cancel
+
+	// Start subscription handler in a goroutine
+	go u.handleMarketUpdates(subscriptionCtx)
+
+	log.Printf("Started top markets updater with subscription to market updates")
+
+	// Perform initial fetch to populate cache
+	if err := u.fetchAndUpdate(ctx); err != nil {
+		log.Printf("Error during initial markets data fetch: %v", err)
+		// Don't return error - subscription can still work for future updates
 	}
-
-	// Create scheduler for periodic updates
-	u.scheduler = scheduler.New(
-		updateInterval,
-		func(ctx context.Context) {
-			if err := u.fetchAndUpdate(ctx); err != nil {
-				log.Printf("Error updating markets data: %v", err)
-			}
-		},
-	)
-
-	// Start the scheduler with context
-	u.scheduler.Start(ctx, true)
-	log.Printf("Started top markets updater with update interval: %v", updateInterval)
 
 	return nil
 }
 
 // Stop stops the top markets updater
 func (u *TopMarketsUpdater) Stop() {
-	if u.scheduler != nil {
-		u.scheduler.Stop()
+	// Cancel the subscription handler goroutine
+	if u.cancelFunc != nil {
+		u.cancelFunc()
+		u.cancelFunc = nil
+	}
+
+	// Unsubscribe from market updates
+	if u.updateSubscription != nil && u.marketsFetcher != nil {
+		u.marketsFetcher.Unsubscribe(u.updateSubscription)
+		u.updateSubscription = nil
+	}
+}
+
+// handleMarketUpdates handles subscription to market updates
+func (u *TopMarketsUpdater) handleMarketUpdates(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-u.updateSubscription:
+			// Market data has been updated, fetch new data
+			if err := u.fetchAndUpdate(ctx); err != nil {
+				log.Printf("Error updating markets data on subscription signal: %v", err)
+			}
+		}
 	}
 }
 

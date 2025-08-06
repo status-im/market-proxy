@@ -31,9 +31,9 @@ type CoingeckoPricesService interface {
 	// SimplePrices returns cached prices using PriceParams structure
 	SimplePrices(ctx context.Context, params PriceParams) (SimplePriceResponse, CacheStatus, error)
 
-	// TopPrices fetches prices for top tokens with specified currencies
+	// TopPrices fetches prices for top tokens with specified limit and currencies
 	// Similar to TopMarkets in markets service, provides clean interface for token price fetching
-	TopPrices(ctx context.Context, tokenIDs []string, currencies []string) (SimplePriceResponse, CacheStatus, error)
+	TopPrices(ctx context.Context, limit int, currencies []string) (SimplePriceResponse, CacheStatus, error)
 
 	// SubscribeTopMarketsUpdate subscribes to markets update notifications
 	SubscribeTopPricesUpdate() chan struct{}
