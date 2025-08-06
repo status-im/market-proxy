@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/interfaces"
+	interface_mocks "github.com/status-im/market-proxy/interfaces/mocks"
 
 	"github.com/status-im/market-proxy/cache"
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
@@ -29,6 +30,14 @@ func createTestConfig() *config.Config {
 		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
 			RequestDelay: 1000 * time.Millisecond,
 			TTL:          300 * time.Second,
+			Tiers: []config.MarketTier{
+				{
+					Name:           "test-tier",
+					PageFrom:       1,
+					PageTo:         2,
+					UpdateInterval: 5 * time.Second,
+				},
+			},
 		},
 		APITokens: &config.APITokens{
 			Tokens: []string{"test-token"},
@@ -36,9 +45,25 @@ func createTestConfig() *config.Config {
 	}
 }
 
+func createMockTokensService(ctrl *gomock.Controller) *interface_mocks.MockCoingeckoTokensService {
+	mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+	mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{
+		{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
+		{ID: "ethereum", Symbol: "eth", Name: "Ethereum"},
+	}).AnyTimes()
+	mockTokensService.EXPECT().GetTokenIds().Return([]string{
+		"bitcoin", "ethereum",
+	}).AnyTimes()
+	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+	mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+	return mockTokensService
+}
+
 func TestNewService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
+	mockTokensService := createMockTokensService(ctrl)
 
 	tests := []struct {
 		name   string
@@ -59,12 +84,13 @@ func TestNewService(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewService(tt.cache, tt.config)
+			service := NewService(tt.cache, tt.config, mockTokensService)
 			assert.NotNil(t, service)
 			assert.Equal(t, tt.cache, service.cache)
 			assert.Equal(t, tt.config, service.config)
 			assert.NotNil(t, service.metricsWriter)
 			assert.NotNil(t, service.apiClient)
+			assert.Equal(t, mockTokensService, service.tokensService)
 		})
 	}
 }
@@ -74,29 +100,43 @@ func TestService_Start(t *testing.T) {
 	defer ctrl.Finish()
 
 	tests := []struct {
-		name        string
-		cache       cache.Cache
-		expectError bool
-		errorMsg    string
+		name          string
+		cache         cache.Cache
+		tokensService interfaces.CoingeckoTokensService
+		expectError   bool
+		errorMsg      string
+		expectCancel  bool
 	}{
 		{
-			name:        "Start with valid cache",
-			cache:       cache_mocks.NewMockCache(ctrl),
-			expectError: false,
+			name:          "Start with valid cache and tokens service",
+			cache:         cache_mocks.NewMockCache(ctrl),
+			tokensService: createMockTokensService(ctrl),
+			expectError:   false,
+			expectCancel:  true,
 		},
 		{
-			name:        "Start with nil cache",
-			cache:       nil,
-			expectError: true,
-			errorMsg:    "cache dependency not provided",
+			name:          "Start with valid cache but no tokens service",
+			cache:         cache_mocks.NewMockCache(ctrl),
+			tokensService: nil,
+			expectError:   false,
+			expectCancel:  false,
+		},
+		{
+			name:          "Start with nil cache",
+			cache:         nil,
+			tokensService: createMockTokensService(ctrl),
+			expectError:   true,
+			errorMsg:      "cache dependency not provided",
+			expectCancel:  false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &Service{
-				cache:  tt.cache,
-				config: createTestConfig(),
+				cache:         tt.cache,
+				config:        createTestConfig(),
+				tokensService: tt.tokensService,
 			}
 
 			err := service.Start(context.Background())
@@ -106,6 +146,11 @@ func TestService_Start(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errorMsg)
 			} else {
 				assert.NoError(t, err)
+				if tt.expectCancel {
+					assert.NotNil(t, service.cancelFunc, "cancelFunc should be set when tokens service is provided")
+				} else {
+					assert.Nil(t, service.cancelFunc, "cancelFunc should be nil when tokens service is not provided")
+				}
 			}
 		})
 	}
@@ -115,13 +160,125 @@ func TestService_Stop(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockCache := cache_mocks.NewMockCache(ctrl)
-	service := NewService(mockCache, createTestConfig())
+	tests := []struct {
+		name         string
+		setupService func() *Service
+		expectCancel bool
+	}{
+		{
+			name: "Stop service with tokens service and active goroutine",
+			setupService: func() *Service {
+				mockCache := cache_mocks.NewMockCache(ctrl)
+				mockTokensService := createMockTokensService(ctrl)
+				service := NewService(mockCache, createTestConfig(), mockTokensService)
 
-	// Should not panic
-	assert.NotPanics(t, func() {
-		service.Stop()
-	})
+				// Start the service to initialize the goroutine and cancelFunc
+				err := service.Start(context.Background())
+				assert.NoError(t, err)
+
+				return service
+			},
+			expectCancel: true,
+		},
+		{
+			name: "Stop service without tokens service",
+			setupService: func() *Service {
+				mockCache := cache_mocks.NewMockCache(ctrl)
+				service := NewService(mockCache, createTestConfig(), nil)
+
+				// Start the service
+				err := service.Start(context.Background())
+				assert.NoError(t, err)
+
+				return service
+			},
+			expectCancel: false,
+		},
+		{
+			name: "Stop service that was never started",
+			setupService: func() *Service {
+				mockCache := cache_mocks.NewMockCache(ctrl)
+				mockTokensService := createMockTokensService(ctrl)
+				return NewService(mockCache, createTestConfig(), mockTokensService)
+			},
+			expectCancel: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := tt.setupService()
+
+			// Verify initial state
+			if tt.expectCancel {
+				assert.NotNil(t, service.cancelFunc, "cancelFunc should be set before Stop")
+			}
+
+			// Should not panic
+			assert.NotPanics(t, func() {
+				service.Stop()
+			})
+
+			// Verify cancelFunc is cleared after Stop
+			assert.Nil(t, service.cancelFunc, "cancelFunc should be nil after Stop")
+			assert.Nil(t, service.tokenUpdateCh, "tokenUpdateCh should be nil after Stop")
+		})
+	}
+}
+
+func TestService_onTokenListChanged(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tests := []struct {
+		name           string
+		tokensService  interfaces.CoingeckoTokensService
+		expectedTokens []string
+		expectCall     bool
+	}{
+		{
+			name: "Update with valid tokens service",
+			tokensService: func() interfaces.CoingeckoTokensService {
+				mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+				mockTokensService.EXPECT().GetTokenIds().Return([]string{
+					"bitcoin", "ethereum", "cardano",
+				}).Times(1)
+				return mockTokensService
+			}(),
+			expectedTokens: []string{"bitcoin", "ethereum", "cardano"},
+			expectCall:     true,
+		},
+		{
+			name:           "Update with nil tokens service",
+			tokensService:  nil,
+			expectedTokens: nil,
+			expectCall:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCache := cache_mocks.NewMockCache(ctrl)
+			service := NewService(mockCache, createTestConfig(), tt.tokensService)
+
+			// Create a mock periodic updater to verify SetExtraIds is called
+			if tt.expectCall {
+				mockPeriodicUpdater := &PeriodicUpdater{}
+				service.periodicUpdater = mockPeriodicUpdater
+
+				// Call onTokenListChanged
+				service.onTokenListChanged()
+
+				// We can't easily mock the PeriodicUpdater, but we can ensure no panic occurs
+				// In a real implementation, you might want to make PeriodicUpdater an interface
+			} else {
+				// Should not panic with nil tokens service
+				assert.NotPanics(t, func() {
+					service.onTokenListChanged()
+				})
+			}
+		})
+	}
 }
 
 func TestService_parseTokensData(t *testing.T) {
@@ -220,7 +377,8 @@ func TestService_cacheTokensByID(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
-			service := NewService(mockCache, createTestConfig())
+			mockTokensService := createMockTokensService(ctrl)
+			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
 			if len(tt.tokensData) > 0 {
 				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(tt.cacheSetError)
@@ -307,7 +465,8 @@ func TestService_Markets(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
 			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-			service := NewService(mockCache, createTestConfig())
+			mockTokensService := createMockTokensService(ctrl)
+			service := NewService(mockCache, createTestConfig(), mockTokensService)
 			service.apiClient = mockAPIClient
 
 			if tt.expectCall {
@@ -393,7 +552,8 @@ func TestService_MarketsByIds(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
 			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-			service := NewService(mockCache, createTestConfig())
+			mockTokensService := createMockTokensService(ctrl)
+			service := NewService(mockCache, createTestConfig(), mockTokensService)
 			service.apiClient = mockAPIClient
 
 			// Setup cache mock
@@ -470,7 +630,8 @@ func TestService_TopMarkets(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockCache(ctrl)
 			mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-			service := NewService(mockCache, createTestConfig())
+			mockTokensService := createMockTokensService(ctrl)
+			service := NewService(mockCache, createTestConfig(), mockTokensService)
 			service.apiClient = mockAPIClient
 
 			// Mock the paginated fetcher behavior through API client
@@ -514,7 +675,8 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 		PerPage:    intPtr(MARKETS_DEFAULT_CHUNK_SIZE),
 	}
 
-	service := NewService(mockCache, cfg)
+	mockTokensService := createMockTokensService(ctrl)
+	service := NewService(mockCache, cfg, mockTokensService)
 	service.apiClient = mockAPIClient
 
 	// Test that default parameters are applied

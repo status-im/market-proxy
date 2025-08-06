@@ -152,7 +152,7 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 				IncludeLastUpdatedAt: true,
 			}
 
-			priceResponse, _, err := u.priceFetcher.SimplePrices(params)
+			priceResponse, _, err := u.priceFetcher.SimplePrices(ctx, params)
 			if err != nil {
 				log.Printf("Error fetching prices from price fetcher: %v", err)
 			} else if len(priceResponse) > 0 {

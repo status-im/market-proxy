@@ -27,9 +27,12 @@ type Service struct {
 	apiClient           APIClient
 	subscriptionManager *events.SubscriptionManager
 	periodicUpdater     *PeriodicUpdater
+	tokensService       interfaces.CoingeckoTokensService
+	tokenUpdateCh       chan struct{}
+	cancelFunc          context.CancelFunc
 }
 
-func NewService(cache cache.Cache, config *cfg.Config) *Service {
+func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.CoingeckoTokensService) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
 
@@ -39,6 +42,7 @@ func NewService(cache cache.Cache, config *cfg.Config) *Service {
 		metricsWriter:       metricsWriter,
 		apiClient:           apiClient,
 		subscriptionManager: events.NewSubscriptionManager(),
+		tokensService:       tokensService,
 	}
 
 	// Create periodic updater
@@ -62,13 +66,65 @@ func NewService(cache cache.Cache, config *cfg.Config) *Service {
 		service.subscriptionManager.Emit(ctx)
 	})
 
+	// Set onUpdateMissingExtraIds callback to cache missing tokens by ID
+	service.periodicUpdater.SetOnUpdateMissingExtraIdsCallback(func(ctx context.Context, tokensData [][]byte) {
+		// Cache missing tokens by their IDs
+		_, err := service.cacheTokensByID(tokensData)
+		if err != nil {
+			log.Printf("Failed to cache missing extra IDs: %v", err)
+		} else {
+			log.Printf("Successfully cached %d missing extra IDs", len(tokensData))
+		}
+		service.subscriptionManager.Emit(ctx)
+	})
+
 	return service
+}
+
+// onTokenListChanged is called when token list is updated
+func (s *Service) onTokenListChanged() {
+	if s.tokensService == nil {
+		return
+	}
+
+	tokenIDs := s.tokensService.GetTokenIds()
+
+	log.Printf("Token list changed, updating periodic updater with %d extra IDs", len(tokenIDs))
+
+	if s.periodicUpdater != nil {
+		s.periodicUpdater.SetExtraIds(tokenIDs)
+	}
+}
+
+// handleTokenUpdates handles token update notifications
+func (s *Service) handleTokenUpdates(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.tokenUpdateCh:
+			s.onTokenListChanged()
+		}
+	}
 }
 
 // Start implements core.Interface
 func (s *Service) Start(ctx context.Context) error {
 	if s.cache == nil {
 		return fmt.Errorf("cache dependency not provided")
+	}
+
+	// Subscribe to token list updates
+	if s.tokensService != nil {
+		s.tokenUpdateCh = s.tokensService.SubscribeOnTokensUpdate()
+
+		// Create cancelable context for the goroutine
+		goroutineCtx, cancel := context.WithCancel(ctx)
+		s.cancelFunc = cancel
+		go s.handleTokenUpdates(goroutineCtx)
+
+		// Initial call to set extra IDs
+		s.onTokenListChanged()
 	}
 
 	// Start periodic updater
@@ -83,6 +139,18 @@ func (s *Service) Start(ctx context.Context) error {
 
 // Stop implements core.Interface
 func (s *Service) Stop() {
+	// Cancel the goroutine first
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+		s.cancelFunc = nil
+	}
+
+	// Unsubscribe from token updates
+	if s.tokensService != nil && s.tokenUpdateCh != nil {
+		s.tokensService.Unsubscribe(s.tokenUpdateCh)
+		s.tokenUpdateCh = nil
+	}
+
 	// Stop periodic updater
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.Stop()

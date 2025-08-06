@@ -7,6 +7,9 @@ type CoingeckoTokensService interface {
 	// GetTokens returns cached tokens
 	GetTokens() []Token
 
+	// GetTokenIds returns cached token IDs
+	GetTokenIds() []string
+
 	// SubscribeOnTokensUpdate subscribes to tokens update notifications
 	SubscribeOnTokensUpdate() chan struct{}
 

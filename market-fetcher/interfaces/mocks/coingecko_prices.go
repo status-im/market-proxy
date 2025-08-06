@@ -10,6 +10,7 @@
 package mock_interfaces
 
 import (
+	context "context"
 	reflect "reflect"
 
 	interfaces "github.com/status-im/market-proxy/interfaces"
@@ -40,9 +41,9 @@ func (m *MockCoingeckoPricesService) EXPECT() *MockCoingeckoPricesServiceMockRec
 }
 
 // SimplePrices mocks base method.
-func (m *MockCoingeckoPricesService) SimplePrices(arg0 interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+func (m *MockCoingeckoPricesService) SimplePrices(arg0 context.Context, arg1 interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SimplePrices", arg0)
+	ret := m.ctrl.Call(m, "SimplePrices", arg0, arg1)
 	ret0, _ := ret[0].(interfaces.SimplePriceResponse)
 	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
@@ -50,9 +51,9 @@ func (m *MockCoingeckoPricesService) SimplePrices(arg0 interfaces.PriceParams) (
 }
 
 // SimplePrices indicates an expected call of SimplePrices.
-func (mr *MockCoingeckoPricesServiceMockRecorder) SimplePrices(arg0 any) *gomock.Call {
+func (mr *MockCoingeckoPricesServiceMockRecorder) SimplePrices(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimplePrices", reflect.TypeOf((*MockCoingeckoPricesService)(nil).SimplePrices), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimplePrices", reflect.TypeOf((*MockCoingeckoPricesService)(nil).SimplePrices), arg0, arg1)
 }
 
 // SubscribeTopPricesUpdate mocks base method.
@@ -70,9 +71,9 @@ func (mr *MockCoingeckoPricesServiceMockRecorder) SubscribeTopPricesUpdate() *go
 }
 
 // TopPrices mocks base method.
-func (m *MockCoingeckoPricesService) TopPrices(arg0, arg1 []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+func (m *MockCoingeckoPricesService) TopPrices(arg0 context.Context, arg1, arg2 []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopPrices", arg0, arg1)
+	ret := m.ctrl.Call(m, "TopPrices", arg0, arg1, arg2)
 	ret0, _ := ret[0].(interfaces.SimplePriceResponse)
 	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
@@ -80,9 +81,9 @@ func (m *MockCoingeckoPricesService) TopPrices(arg0, arg1 []string) (interfaces.
 }
 
 // TopPrices indicates an expected call of TopPrices.
-func (mr *MockCoingeckoPricesServiceMockRecorder) TopPrices(arg0, arg1 any) *gomock.Call {
+func (mr *MockCoingeckoPricesServiceMockRecorder) TopPrices(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopPrices", reflect.TypeOf((*MockCoingeckoPricesService)(nil).TopPrices), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopPrices", reflect.TypeOf((*MockCoingeckoPricesService)(nil).TopPrices), arg0, arg1, arg2)
 }
 
 // Unsubscribe mocks base method.

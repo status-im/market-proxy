@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/status-im/market-proxy/interfaces"
+	interface_mocks "github.com/status-im/market-proxy/interfaces/mocks"
 
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	"github.com/status-im/market-proxy/config"
@@ -22,7 +23,11 @@ func TestService_getParamsOverride(t *testing.T) {
 		defer ctrl.Finish()
 
 		mockCache := cache_mocks.NewMockCache(ctrl)
-		service := NewService(mockCache, createTestConfig())
+		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		service := NewService(mockCache, createTestConfig(), mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
@@ -53,7 +58,11 @@ func TestService_getParamsOverride(t *testing.T) {
 		}
 
 		mockCache := cache_mocks.NewMockCache(ctrl)
-		service := NewService(mockCache, cfg)
+		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		service := NewService(mockCache, cfg, mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
@@ -86,7 +95,11 @@ func TestService_getParamsOverride(t *testing.T) {
 		}
 
 		mockCache := cache_mocks.NewMockCache(ctrl)
-		service := NewService(mockCache, cfg)
+		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		service := NewService(mockCache, cfg, mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",

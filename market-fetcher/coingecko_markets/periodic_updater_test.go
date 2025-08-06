@@ -224,7 +224,7 @@ func TestPeriodicUpdater_GetTopTokenIDs(t *testing.T) {
 
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: mockData}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		result := updater.GetTopTokenIDs()
@@ -244,7 +244,7 @@ func TestPeriodicUpdater_GetTopTokenIDs(t *testing.T) {
 
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: mockData}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		result := updater.GetTopTokenIDs()
@@ -266,7 +266,7 @@ func TestPeriodicUpdater_GetTopTokenIDs(t *testing.T) {
 
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: mockData}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		result := updater.GetTopTokenIDs()
@@ -460,7 +460,7 @@ func TestPeriodicUpdater_Healthy(t *testing.T) {
 
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: mockData}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		result := updater.Healthy()
@@ -487,7 +487,7 @@ func TestPeriodicUpdater_Healthy(t *testing.T) {
 
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: []CoinGeckoData{}}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: []CoinGeckoData{}, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		result := updater.Healthy()
@@ -633,7 +633,7 @@ func TestPeriodicUpdater_ConcurrentAccess(t *testing.T) {
 		}
 		updater.cache.Lock()
 		// Setup tier cache
-		updater.cache.tiers["test"] = &APIResponse{Data: mockData}
+		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
 		updater.cache.Unlock()
 
 		// Start multiple readers
@@ -661,7 +661,7 @@ func TestPeriodicUpdater_ConcurrentAccess(t *testing.T) {
 					}
 					updater.cache.Lock()
 					// Setup tier cache
-					updater.cache.tiers["test"] = &APIResponse{Data: newData}
+					updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: newData, Timestamp: time.Now()}
 					updater.cache.Unlock()
 				}
 			}(i)

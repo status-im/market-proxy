@@ -39,6 +39,20 @@ func (m *MockCoingeckoTokensService) EXPECT() *MockCoingeckoTokensServiceMockRec
 	return m.recorder
 }
 
+// GetTokenIds mocks base method.
+func (m *MockCoingeckoTokensService) GetTokenIds() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTokenIds")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// GetTokenIds indicates an expected call of GetTokenIds.
+func (mr *MockCoingeckoTokensServiceMockRecorder) GetTokenIds() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTokenIds", reflect.TypeOf((*MockCoingeckoTokensService)(nil).GetTokenIds))
+}
+
 // GetTokens mocks base method.
 func (m *MockCoingeckoTokensService) GetTokens() []interfaces.Token {
 	m.ctrl.T.Helper()

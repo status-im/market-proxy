@@ -19,7 +19,8 @@ type Service struct {
 	subscriptionManager *events.SubscriptionManager
 	cache               struct {
 		sync.RWMutex
-		tokens []interfaces.Token
+		tokens   []interfaces.Token
+		tokenIds []string
 	}
 	periodicUpdater *PeriodicUpdater
 }
@@ -54,9 +55,18 @@ func NewService(config *config.Config) *Service {
 
 // onTokensUpdated is the callback called when tokens are updated
 func (s *Service) onTokensUpdated(ctx context.Context, tokens []interfaces.Token) error {
-	// Update cache
+	// Extract token IDs
+	tokenIds := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		if token.ID != "" {
+			tokenIds = append(tokenIds, token.ID)
+		}
+	}
+
+	// Update cache with both tokens and precomputed IDs
 	s.cache.Lock()
 	s.cache.tokens = tokens
+	s.cache.tokenIds = tokenIds
 	s.cache.Unlock()
 
 	// Emit update notification
@@ -83,6 +93,18 @@ func (s *Service) GetTokens() []interfaces.Token {
 	copy(tokensCopy, s.cache.tokens)
 
 	return tokensCopy
+}
+
+// GetTokenIds returns cached token IDs
+func (s *Service) GetTokenIds() []string {
+	s.cache.RLock()
+	defer s.cache.RUnlock()
+
+	// Return copy of precomputed token IDs to avoid race conditions
+	tokenIdsCopy := make([]string, len(s.cache.tokenIds))
+	copy(tokenIdsCopy, s.cache.tokenIds)
+
+	return tokenIdsCopy
 }
 
 // Healthy checks if service is initialized and has data

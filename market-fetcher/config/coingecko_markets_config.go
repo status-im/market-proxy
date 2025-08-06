@@ -18,10 +18,11 @@ type MarketParamsNormalize struct {
 
 // MarketTier defines a tier configuration for token pages
 type MarketTier struct {
-	Name           string        `yaml:"name"`            // Name of the tier (e.g., "tier1", "tier2")
-	PageFrom       int           `yaml:"page_from"`       // Start of token page (1-based)
-	PageTo         int           `yaml:"page_to"`         // End of token page (inclusive)
-	UpdateInterval time.Duration `yaml:"update_interval"` // Update interval for this tier
+	Name              string        `yaml:"name"`                // Name of the tier (e.g., "tier1", "tier2")
+	PageFrom          int           `yaml:"page_from"`           // Start of token page (1-based)
+	PageTo            int           `yaml:"page_to"`             // End of token page (inclusive)
+	UpdateInterval    time.Duration `yaml:"update_interval"`     // Update interval for this tier
+	FetchCoinslistIds bool          `yaml:"fetch_coinslist_ids"` // Whether to fetch missing coinslist IDs for supported platforms after main fetch
 }
 
 type CoingeckoMarketsFetcher struct {

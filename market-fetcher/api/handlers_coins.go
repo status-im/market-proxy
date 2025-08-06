@@ -132,7 +132,7 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, cacheStatus, err := s.pricesService.SimplePrices(params)
+	response, cacheStatus, err := s.pricesService.SimplePrices(r.Context(), params)
 	if err != nil {
 		http.Error(w, "Failed to fetch prices: "+err.Error(), http.StatusInternalServerError)
 		return
