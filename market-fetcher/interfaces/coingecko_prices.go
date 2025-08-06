@@ -1,5 +1,7 @@
 package interfaces
 
+import "context"
+
 //go:generate mockgen -destination=mocks/coingecko_prices.go . CoingeckoPricesService
 
 // PriceParams represents parameters for price requests
@@ -27,11 +29,11 @@ type SimplePriceResponse map[string]interface{}
 // CoingeckoPricesService interface for fetching prices of top tokens
 type CoingeckoPricesService interface {
 	// SimplePrices returns cached prices using PriceParams structure
-	SimplePrices(params PriceParams) (SimplePriceResponse, CacheStatus, error)
+	SimplePrices(ctx context.Context, params PriceParams) (SimplePriceResponse, CacheStatus, error)
 
 	// TopPrices fetches prices for top tokens with specified currencies
 	// Similar to TopMarkets in markets service, provides clean interface for token price fetching
-	TopPrices(tokenIDs []string, currencies []string) (SimplePriceResponse, CacheStatus, error)
+	TopPrices(ctx context.Context, tokenIDs []string, currencies []string) (SimplePriceResponse, CacheStatus, error)
 
 	// SubscribeTopMarketsUpdate subscribes to markets update notifications
 	SubscribeTopPricesUpdate() chan struct{}

@@ -70,7 +70,7 @@ func (s *Service) Stop() {
 
 // SimplePrices fetches prices for the given parameters using cache
 // Returns raw CoinGecko JSON response with cache status
-func (s *Service) SimplePrices(params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
+func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
 	cacheStatus = interfaces.CacheStatusFull
 	if len(params.IDs) == 0 {
 		return interfaces.SimplePriceResponse{}, cacheStatus, nil
@@ -87,7 +87,7 @@ func (s *Service) SimplePrices(params interfaces.PriceParams) (resp interfaces.S
 		} else {
 			cacheStatus = interfaces.CacheStatusMiss
 		}
-		return s.loadMissingPrices(missingKeys, params)
+		return s.loadMissingPrices(ctx, missingKeys, params)
 	}
 
 	// Get data from cache for all keys
@@ -119,7 +119,7 @@ func (s *Service) SimplePrices(params interfaces.PriceParams) (resp interfaces.S
 }
 
 // loadMissingPrices loads price data for missing cache keys using ChunksFetcher
-func (s *Service) loadMissingPrices(missingKeys []string, params interfaces.PriceParams) (map[string][]byte, error) {
+func (s *Service) loadMissingPrices(ctx context.Context, missingKeys []string, params interfaces.PriceParams) (map[string][]byte, error) {
 	log.Printf("Loading missing price data for %d cache keys", len(missingKeys))
 
 	// Extract token IDs from missing cache keys
@@ -141,7 +141,7 @@ func (s *Service) loadMissingPrices(missingKeys []string, params interfaces.Pric
 		Include24hrChange:    true,
 		IncludeLastUpdatedAt: true,
 	}
-	tokenData, err := s.fetcher.FetchPrices(fetchParams)
+	tokenData, err := s.fetcher.FetchPrices(ctx, fetchParams)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices: %v", err)
 		return make(map[string][]byte), nil // Return empty data instead of error
@@ -201,7 +201,7 @@ func (s *Service) getConfigCurrencies() []string {
 
 // TopPrices fetches prices for top tokens with specified currencies
 // Similar to TopMarkets in markets service, provides clean interface for token price fetching
-func (s *Service) TopPrices(tokenIDs []string, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+func (s *Service) TopPrices(ctx context.Context, tokenIDs []string, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	log.Printf("TopPrices called for %d tokens with %d currencies", len(tokenIDs), len(currencies))
 	params := interfaces.PriceParams{
 		IDs:                  tokenIDs,
@@ -212,7 +212,7 @@ func (s *Service) TopPrices(tokenIDs []string, currencies []string) (interfaces.
 		IncludeLastUpdatedAt: true,
 	}
 
-	return s.SimplePrices(params)
+	return s.SimplePrices(ctx, params)
 }
 
 // Healthy checks if the service is operational

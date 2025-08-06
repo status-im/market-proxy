@@ -56,7 +56,7 @@ func TestService_Basic(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test SimplePrices with empty IDs - no API calls should be made
-	response, _, err := priceService.SimplePrices(cg.PriceParams{
+	response, _, err := priceService.SimplePrices(context.Background(), cg.PriceParams{
 		IDs:        []string{},
 		Currencies: []string{"usd"},
 	})
@@ -104,7 +104,7 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 			return loader(keys)
 		})
 
-	response, _, err := priceService.SimplePrices(params)
+	response, _, err := priceService.SimplePrices(context.Background(), params)
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 }
@@ -239,14 +239,14 @@ func TestService_LoadMissingPrices(t *testing.T) {
 	mockAPIClient.EXPECT().FetchPrices(gomock.Any()).Return(mockAPIData, nil)
 
 	// Call loadMissingPrices
-	result, err := priceService.loadMissingPrices(missingKeys, params)
+	result, err := priceService.loadMissingPrices(context.Background(), missingKeys, params)
 
 	// Should not return error
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 
 	// Test with empty missing keys
-	emptyResult, err := priceService.loadMissingPrices([]string{}, params)
+	emptyResult, err := priceService.loadMissingPrices(context.Background(), []string{}, params)
 	assert.NoError(t, err)
 	assert.NotNil(t, emptyResult)
 	assert.Len(t, emptyResult, 0)
