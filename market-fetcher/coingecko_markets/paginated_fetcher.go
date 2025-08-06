@@ -17,14 +17,15 @@ const (
 // PaginatedFetcher handles fetching data with pagination support
 type PaginatedFetcher struct {
 	apiClient    APIClient
-	maxLimit     int
-	totalLimit   int
+	pageFrom     int
+	pageTo       int
+	perPage      int
 	requestDelay time.Duration            // Delay between requests
 	params       interfaces.MarketsParams // Markets parameters
 }
 
 // NewPaginatedFetcher creates a new paginated fetcher
-func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int, params interfaces.MarketsParams) *PaginatedFetcher {
+func NewPaginatedFetcher(apiClient APIClient, pageFrom int, pageTo int, requestDelayMs int, params interfaces.MarketsParams) *PaginatedFetcher {
 	// Convert delay to time.Duration - allowing 0 as valid value
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {
@@ -47,8 +48,9 @@ func NewPaginatedFetcher(apiClient APIClient, totalLimit int, requestDelayMs int
 
 	return &PaginatedFetcher{
 		apiClient:    apiClient,
-		maxLimit:     params.PerPage,
-		totalLimit:   totalLimit,
+		pageFrom:     pageFrom,
+		pageTo:       pageTo,
+		perPage:      params.PerPage,
 		requestDelay: requestDelay,
 		params:       params,
 	}
@@ -60,70 +62,57 @@ func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
 
 	// Track metrics
 	startTime := time.Now()
-	allItems := make([][]byte, 0, pf.totalLimit)
+	allItems := make([][]byte, 0, params.estimatedItems)
 	completedPages := 0
 
-	// Fetch pages sequentially
-	for page := 1; page <= params.totalPages; page++ {
+	// Fetch pages sequentially from pageFrom to pageTo
+	for page := pf.pageFrom; page <= pf.pageTo; page++ {
 		pageItems, shouldContinue, err := pf.processSinglePage(page, params, len(allItems), &completedPages)
-
-		// Handle any errors during page processing
 		if err != nil {
 			return pf.handlePageError(err, allItems)
 		}
-
-		// Add items from this page
 		allItems = append(allItems, pageItems...)
 
-		// Break if we shouldn't continue
 		if !shouldContinue {
 			break
 		}
 
-		// Handle delay between pages if needed
-		pf.applyDelayIfNeeded(page, params.totalPages)
+		pf.applyDelayIfNeeded(page, pf.pageTo)
 	}
 
-	// Trim excess items if needed
-	if len(allItems) > pf.totalLimit {
-		allItems = allItems[:pf.totalLimit]
-	}
-
-	// Log summary
 	pf.logSummary(startTime, allItems, completedPages)
-
-	// Return results
 	return allItems, nil
 }
 
 // fetchParams contains parameters needed for pagination
 type fetchParams struct {
-	totalPages int
-	perPage    int
-	totalLimit int
+	pageFrom       int
+	pageTo         int
+	perPage        int
+	estimatedItems int
 }
 
 // prepareFetchParams calculates pagination parameters
 func (pf *PaginatedFetcher) prepareFetchParams() *fetchParams {
-	// Calculate total pages (will be 1 for small requests)
-	totalPages := (pf.totalLimit + pf.maxLimit - 1) / pf.maxLimit // Ceiling division
-	log.Printf("MarketsFetcher: Fetching %d items in %d pages", pf.totalLimit, totalPages)
+	// Calculate estimated items based on page range
+	totalPages := pf.pageTo - pf.pageFrom + 1
+	estimatedItems := totalPages * pf.perPage
+	log.Printf("MarketsFetcher: Fetching pages %d-%d (estimated %d items)", pf.pageFrom, pf.pageTo, estimatedItems)
 
 	return &fetchParams{
-		totalPages: totalPages,
-		perPage:    pf.maxLimit,
-		totalLimit: pf.totalLimit,
+		pageFrom:       pf.pageFrom,
+		pageTo:         pf.pageTo,
+		perPage:        pf.perPage,
+		estimatedItems: estimatedItems,
 	}
 }
 
 // processSinglePage processes a single page of data
 // Returns: page items, should continue fetching flag, error
 func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, currentItemsCount int, completedPages *int) ([][]byte, bool, error) {
-	// Calculate limit for this page
-	pageLimit := pf.calculatePageLimit(page, params)
-
-	// Log page fetch attempt
-	log.Printf("MarketsFetcher: Fetching page %d/%d with limit %d", page, params.totalPages, pageLimit)
+	pageLimit := pf.perPage
+	totalPages := params.pageTo - params.pageFrom + 1
+	log.Printf("MarketsFetcher: Fetching page %d (page %d/%d) with limit %d", page, page-params.pageFrom+1, totalPages, pageLimit)
 	pageStartTime := time.Now()
 
 	// Fetch the page
@@ -132,37 +121,18 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, cur
 		return nil, false, err
 	}
 
-	// Process successful response
 	pageTime := time.Since(pageStartTime)
 
-	// No items in response
 	if len(pageResponse) == 0 {
 		log.Printf("MarketsFetcher: Got empty page %d, stopping pagination", page)
 		return [][]byte{}, false, nil
 	}
-
-	// Track successful page
 	(*completedPages)++
 
-	log.Printf("MarketsFetcher: Completed page %d/%d with %d items in %.2fs",
-		page, params.totalPages, len(pageResponse), pageTime.Seconds())
-
-	// Check if we've reached our limit
-	if currentItemsCount+len(pageResponse) >= pf.totalLimit {
-		log.Printf("MarketsFetcher: Reached target limit of %d items", pf.totalLimit)
-		return pageResponse, false, nil
-	}
+	log.Printf("MarketsFetcher: Completed page %d with %d items in %.2fs",
+		page, len(pageResponse), pageTime.Seconds())
 
 	return pageResponse, true, nil
-}
-
-// calculatePageLimit calculates the limit for a specific page
-func (pf *PaginatedFetcher) calculatePageLimit(page int, params *fetchParams) int {
-	if page == params.totalPages {
-		// Last page might need fewer items
-		return params.totalLimit - (page-1)*params.perPage
-	}
-	return params.perPage
 }
 
 // handlePageError handles errors during page processing
@@ -195,8 +165,8 @@ func (pf *PaginatedFetcher) applyDelayIfNeeded(currentPage, totalPages int) {
 func (pf *PaginatedFetcher) logSummary(startTime time.Time, items [][]byte, completedPages int) {
 	totalTime := time.Since(startTime)
 	itemsPerSecond := float64(len(items)) / totalTime.Seconds()
-	log.Printf("MarketsFetcher: Fetched %d/%d items in %d pages (%.2f items/sec)",
-		len(items), pf.totalLimit, completedPages, itemsPerSecond)
+	log.Printf("MarketsFetcher: Fetched %d items from pages %d-%d in %d pages (%.2f items/sec)",
+		len(items), pf.pageFrom, pf.pageTo, completedPages, itemsPerSecond)
 }
 
 // fetchSinglePage fetches a single page of data using the API client

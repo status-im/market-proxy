@@ -16,21 +16,19 @@ type MarketParamsNormalize struct {
 	Category              *string `yaml:"category,omitempty"`
 }
 
-// MarketTier defines a tier configuration for token ranges
+// MarketTier defines a tier configuration for token pages
 type MarketTier struct {
 	Name           string        `yaml:"name"`            // Name of the tier (e.g., "tier1", "tier2")
-	RangeFrom      int           `yaml:"range_from"`      // Start of token range (1-based)
-	RangeTo        int           `yaml:"range_to"`        // End of token range (inclusive)
+	PageFrom       int           `yaml:"page_from"`       // Start of token page (1-based)
+	PageTo         int           `yaml:"page_to"`         // End of token page (inclusive)
 	UpdateInterval time.Duration `yaml:"update_interval"` // Update interval for this tier
-	TTL            time.Duration `yaml:"ttl"`             // TTL for this tier's data
 }
 
 type CoingeckoMarketsFetcher struct {
 	RequestDelay          time.Duration          `yaml:"request_delay"`           // Delay between requests
 	MarketParamsNormalize *MarketParamsNormalize `yaml:"market_params_normalize"` // Parameters normalization config
-	Currency              string                 `yaml:"currency"`                // Currency for market data
 	Tiers                 []MarketTier           `yaml:"tiers"`                   // Tier configurations
-	DefaultTTL            time.Duration          `yaml:"default_ttl"`             // Default TTL for non-tier operations
+	TTL                   time.Duration          `yaml:"ttl"`                     // Default TTL for non-tier operations
 }
 
 // Validate validates the CoingeckoMarketsFetcher configuration
@@ -48,11 +46,11 @@ func (c *CoingeckoMarketsFetcher) validateTiers() error {
 		return fmt.Errorf("at least one tier must be configured")
 	}
 
-	// Create a copy of tiers and sort by RangeFrom for easier validation
+	// Create a copy of tiers and sort by PageFrom for easier validation
 	tiers := make([]MarketTier, len(c.Tiers))
 	copy(tiers, c.Tiers)
 	sort.Slice(tiers, func(i, j int) bool {
-		return tiers[i].RangeFrom < tiers[j].RangeFrom
+		return tiers[i].PageFrom < tiers[j].PageFrom
 	})
 
 	for i, tier := range tiers {
@@ -60,26 +58,23 @@ func (c *CoingeckoMarketsFetcher) validateTiers() error {
 		if tier.Name == "" {
 			return fmt.Errorf("tier at index %d: name cannot be empty", i)
 		}
-		if tier.RangeFrom <= 0 {
-			return fmt.Errorf("tier '%s': range_from must be greater than 0, got %d", tier.Name, tier.RangeFrom)
+		if tier.PageFrom <= 0 {
+			return fmt.Errorf("tier '%s': page_from must be greater than 0, got %d", tier.Name, tier.PageFrom)
 		}
-		if tier.RangeTo < tier.RangeFrom {
-			return fmt.Errorf("tier '%s': range_to (%d) must be >= range_from (%d)", tier.Name, tier.RangeTo, tier.RangeFrom)
+		if tier.PageTo < tier.PageFrom {
+			return fmt.Errorf("tier '%s': page_to (%d) must be >= page_from (%d)", tier.Name, tier.PageTo, tier.PageFrom)
 		}
 		if tier.UpdateInterval <= 0 {
 			return fmt.Errorf("tier '%s': update_interval must be greater than 0", tier.Name)
-		}
-		if tier.TTL <= 0 {
-			return fmt.Errorf("tier '%s': ttl must be greater than 0", tier.Name)
 		}
 
 		// Check for overlaps with previous tier
 		if i > 0 {
 			prevTier := tiers[i-1]
-			if tier.RangeFrom <= prevTier.RangeTo {
-				return fmt.Errorf("tier '%s' range [%d-%d] overlaps with tier '%s' range [%d-%d]",
-					tier.Name, tier.RangeFrom, tier.RangeTo,
-					prevTier.Name, prevTier.RangeFrom, prevTier.RangeTo)
+			if tier.PageFrom <= prevTier.PageTo {
+				return fmt.Errorf("tier '%s' page [%d-%d] overlaps with tier '%s' page [%d-%d]",
+					tier.Name, tier.PageFrom, tier.PageTo,
+					prevTier.Name, prevTier.PageFrom, prevTier.PageTo)
 			}
 		}
 	}
@@ -88,8 +83,8 @@ func (c *CoingeckoMarketsFetcher) validateTiers() error {
 }
 
 func (c *CoingeckoMarketsFetcher) GetTTL() time.Duration {
-	if c.DefaultTTL > 0 {
-		return c.DefaultTTL
+	if c.TTL > 0 {
+		return c.TTL
 	}
 
 	return 30 * time.Minute

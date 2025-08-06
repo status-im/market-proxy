@@ -42,10 +42,15 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	}
 
 	// Create periodic updater
-	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, service)
+	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, apiClient)
 
-	// Set onUpdate callback to emit events to subscription manager
-	service.periodicUpdater.SetOnUpdateCallback(func(ctx context.Context) {
+	// Set onUpdate callback to cache tokens and emit events to subscription manager
+	service.periodicUpdater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		// Cache tokens by their IDs
+		_, err := service.cacheTokensByID(tokensData)
+		if err != nil {
+			log.Printf("Failed to cache periodic update data: %v", err)
+		}
 		service.subscriptionManager.Emit(ctx)
 	})
 
@@ -124,7 +129,7 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 
 	// Cache tokens directly
 	if len(cacheData) > 0 {
-		err := s.cache.Set(cacheData, s.config.CoingeckoMarkets.TTL)
+		err := s.cache.Set(cacheData, s.config.CoingeckoMarkets.GetTTL())
 		if err != nil {
 			log.Printf("Failed to cache tokens data: %v", err)
 			return nil, fmt.Errorf("failed to cache tokens data: %w", err)
@@ -233,8 +238,13 @@ func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResp
 	// Apply parameters normalization from config
 	params = s.getParamsOverride(params)
 
+	// Calculate page range based on limit
+	perPage := params.PerPage
+	pageFrom := 1
+	pageTo := (limit + perPage - 1) / perPage // Ceiling division
+
 	// Create PaginatedFetcher with parameters
-	fetcher := NewPaginatedFetcher(s.apiClient, limit, requestDelayMs, params)
+	fetcher := NewPaginatedFetcher(s.apiClient, pageFrom, pageTo, requestDelayMs, params)
 
 	// Use PaginatedFetcher to get markets data as [][]byte
 	tokensData, err := fetcher.FetchData()

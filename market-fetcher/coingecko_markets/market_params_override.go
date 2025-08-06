@@ -3,6 +3,7 @@ package coingecko_markets
 import (
 	"strings"
 
+	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/interfaces"
 )
 
@@ -10,12 +11,18 @@ import (
 // This function applies parameter overrides from the configuration to ensure
 // consistent caching behavior regardless of user input parameters.
 func (s *Service) getParamsOverride(params interfaces.MarketsParams) interfaces.MarketsParams {
+	return ApplyParamsOverride(params, &s.config.CoingeckoMarkets)
+}
+
+// ApplyParamsOverride normalizes MarketParams according to CoingeckoMarketsFetcher configuration
+// This is a standalone function that can be used from periodic_updater and other components
+func ApplyParamsOverride(params interfaces.MarketsParams, cfg *config.CoingeckoMarketsFetcher) interfaces.MarketsParams {
 	// If no normalization config is provided, return params as is
-	if s.config.CoingeckoMarkets.MarketParamsNormalize == nil {
+	if cfg.MarketParamsNormalize == nil {
 		return params
 	}
 
-	normalize := s.config.CoingeckoMarkets.MarketParamsNormalize
+	normalize := cfg.MarketParamsNormalize
 	normalizedParams := params // Create a copy
 
 	// Override vs_currency if configured
