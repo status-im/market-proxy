@@ -223,7 +223,7 @@ func TestChunksFetcher_FetchMarkets(t *testing.T) {
 			// Execute test
 			ctx := context.Background()
 			startTime := time.Now()
-			result, err := fetcher.FetchMarkets(ctx, tt.params)
+			result, err := fetcher.FetchMarkets(ctx, tt.params, nil)
 			duration := time.Since(startTime)
 
 			// Verify results
@@ -282,7 +282,7 @@ func TestChunksFetcher_FetchMarkets_ParameterPassing(t *testing.T) {
 		},
 	).Times(2) // 3 IDs with chunk size 2 = 2 chunks
 
-	result, err := fetcher.FetchMarkets(context.Background(), originalParams)
+	result, err := fetcher.FetchMarkets(context.Background(), originalParams, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result)) // 2 chunks = 2 results
@@ -347,7 +347,7 @@ func TestChunksFetcher_ChunkBoundaryCalculation(t *testing.T) {
 				nil,
 			).Times(tt.expectedCall)
 
-			_, err := fetcher.FetchMarkets(context.Background(), params)
+			_, err := fetcher.FetchMarkets(context.Background(), params, nil)
 			assert.NoError(t, err)
 		})
 	}

@@ -258,7 +258,16 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Pr
 	}
 
 	fetcher := NewChunksFetcher(u.apiClient, chunkSize, requestDelayMs)
-	pricesData, err := fetcher.FetchPrices(ctx, fetchParams)
+
+	// Create onChunk callback to update cache with partial data
+	onChunkCallback := func(chunkData map[string][]byte) {
+		if u.onTopPricesUpdated != nil {
+			// Execute callback asynchronously to avoid blocking
+			go u.onTopPricesUpdated(ctx, tier, chunkData)
+		}
+	}
+
+	pricesData, err := fetcher.FetchPrices(ctx, fetchParams, onChunkCallback)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices data for tier '%s': %v", tier.Name, err)
 		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
@@ -282,7 +291,7 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Pr
 			log.Printf("Failed to fetch missing extra IDs for tier '%s': %v", tier.Name, err)
 		} else if len(missingPricesData) > 0 && u.onMissingExtraIdsUpdated != nil {
 			// Signal update through callback with missing prices data
-			u.onMissingExtraIdsUpdated(ctx, missingPricesData)
+			go u.onMissingExtraIdsUpdated(ctx, missingPricesData)
 		}
 	}
 
@@ -295,7 +304,7 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Pr
 
 	// Signal update through callback with prices data and tier information
 	if u.onTopPricesUpdated != nil {
-		u.onTopPricesUpdated(ctx, tier, pricesData)
+		go u.onTopPricesUpdated(ctx, tier, pricesData)
 	}
 
 	return nil
@@ -348,8 +357,16 @@ func (u *PeriodicUpdater) fetchMissingExtraIds(ctx context.Context, tier config.
 
 	chunksFetcher := NewChunksFetcher(u.apiClient, chunkSize, requestDelayMs)
 
+	// Create onChunk callback to update missing extra IDs immediately
+	onChunkCallback := func(chunkData map[string][]byte) {
+		if u.onMissingExtraIdsUpdated != nil {
+			// Execute callback asynchronously to avoid blocking
+			go u.onMissingExtraIdsUpdated(ctx, chunkData)
+		}
+	}
+
 	// Fetch missing IDs data using chunks fetcher
-	pricesData, err := chunksFetcher.FetchPrices(ctx, fetchParams)
+	pricesData, err := chunksFetcher.FetchPrices(ctx, fetchParams, onChunkCallback)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch missing extra IDs: %w", err)
 	}

@@ -63,7 +63,8 @@ func NewPaginatedFetcher(apiClient APIClient, pageFrom int, pageTo int, requestD
 }
 
 // FetchPages fetches data with pagination and returns page-data pairs
-func (pf *PaginatedFetcher) FetchPages() ([]PageData, error) {
+// onPage callback is called for each successfully fetched page with the page data
+func (pf *PaginatedFetcher) FetchPages(onPage func(PageData)) ([]PageData, error) {
 	params := pf.prepareFetchParams()
 
 	// Track metrics
@@ -79,10 +80,15 @@ func (pf *PaginatedFetcher) FetchPages() ([]PageData, error) {
 		}
 
 		if len(pageItems) > 0 {
-			allPages = append(allPages, PageData{
+			pageData := PageData{
 				Page: page,
 				Data: pageItems,
-			})
+			}
+			allPages = append(allPages, pageData)
+
+			if onPage != nil {
+				onPage(pageData)
+			}
 		}
 
 		if !shouldContinue {
@@ -99,7 +105,7 @@ func (pf *PaginatedFetcher) FetchPages() ([]PageData, error) {
 // FetchData fetches data with pagination
 func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
 	// Use FetchPages and flatten the results
-	pagesData, err := pf.FetchPages()
+	pagesData, err := pf.FetchPages(nil)
 	if err != nil {
 		return nil, err
 	}

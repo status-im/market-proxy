@@ -43,7 +43,8 @@ func NewChunksFetcher(apiClient APIClient, chunkSize int, requestDelayMs int) *C
 }
 
 // FetchMarkets fetches markets data for all token IDs in chunks
-func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.MarketsParams) ([][]byte, error) {
+// onChunk callback is called for each successfully fetched chunk with the chunk data
+func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.MarketsParams, onChunk func([][]byte)) ([][]byte, error) {
 	if len(params.IDs) == 0 {
 		return [][]byte{}, nil
 	}
@@ -77,6 +78,11 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 
 		duration := time.Since(chunkStartTime)
 		log.Printf("CoingeckoMarketsChunksFetcher: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
+
+		// Call onChunk callback if provided
+		if onChunk != nil {
+			onChunk(chunkData)
+		}
 
 		return chunkData, nil
 	}

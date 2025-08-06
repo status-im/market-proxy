@@ -66,7 +66,7 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 		IDs:        []string{"token1", "token2", "token3"},
 		Currencies: []string{"usd"},
 	}
-	tokenData, err := fetcher.FetchPrices(context.Background(), params)
+	tokenData, err := fetcher.FetchPrices(context.Background(), params, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, tokenData)
@@ -91,7 +91,7 @@ func TestChunksFetcher_FetchPrices_Error(t *testing.T) {
 		IDs:        []string{"token1", "token2"},
 		Currencies: []string{"usd"},
 	}
-	tokenData, err := fetcher.FetchPrices(context.Background(), params)
+	tokenData, err := fetcher.FetchPrices(context.Background(), params, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, tokenData)
@@ -106,7 +106,7 @@ func TestChunksFetcher_FetchPrices_EmptyInput(t *testing.T) {
 		IDs:        []string{},
 		Currencies: []string{"usd"},
 	}
-	tokenData, err := fetcher.FetchPrices(context.Background(), params)
+	tokenData, err := fetcher.FetchPrices(context.Background(), params, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, tokenData)
@@ -153,7 +153,7 @@ func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
 		IDs:        []string{"token1", "token2", "token3"},
 		Currencies: []string{"usd"},
 	}
-	tokenData, err := fetcher.FetchPrices(context.Background(), params)
+	tokenData, err := fetcher.FetchPrices(context.Background(), params, nil)
 	duration := time.Since(start)
 
 	assert.NoError(t, err)

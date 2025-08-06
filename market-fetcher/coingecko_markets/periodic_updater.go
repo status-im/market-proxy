@@ -27,6 +27,7 @@ type PeriodicUpdater struct {
 	metricsWriter           *metrics.MetricsWriter
 	onUpdateTierPages       func(ctx context.Context, tier config.MarketTier, pagesData []PageData)
 	onUpdateMissingExtraIds func(ctx context.Context, tokensData [][]byte)
+	onInitialLoadCompleted  func(ctx context.Context)
 
 	// Cache for markets data per tier with timestamps
 	cache struct {
@@ -38,6 +39,13 @@ type PeriodicUpdater struct {
 	extraIds struct {
 		sync.RWMutex
 		ids []string
+	}
+
+	// Track initial load completion per tier
+	initialLoad struct {
+		sync.RWMutex
+		completedTiers map[string]bool
+		allCompleted   bool
 	}
 }
 
@@ -51,6 +59,9 @@ func NewPeriodicUpdater(cfg *config.CoingeckoMarketsFetcher, apiClient APIClient
 
 	// Initialize tier cache
 	updater.cache.tiers = make(map[string]*TierDataWithTimestamp)
+
+	// Initialize initial load tracking
+	updater.initialLoad.completedTiers = make(map[string]bool)
 
 	return updater
 }
@@ -196,14 +207,22 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 
 	fetcher := NewPaginatedFetcher(u.apiClient, tier.PageFrom, tier.PageTo, requestDelayMs, params)
 
-	pagesData, err := fetcher.FetchPages()
+	// Create onPage callback to update cache with partial data
+	onPageCallback := func(pageData PageData) {
+		if u.onUpdateTierPages != nil {
+			// Execute callback asynchronously to avoid blocking
+			go u.onUpdateTierPages(ctx, tier, []PageData{pageData})
+		}
+	}
+
+	pagesData, err := fetcher.FetchPages(onPageCallback)
 	if err != nil {
 		log.Printf("PaginatedFetcher failed to fetch top markets data for tier '%s': %v", tier.Name, err)
 		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 		return err
 	}
 
-	// Flatten pages data for cache storage
+	// Flatten pages data for further processing
 	var tokensData [][]byte
 	for _, pageData := range pagesData {
 		tokensData = append(tokensData, pageData.Data...)
@@ -212,12 +231,12 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 	// Convert raw markets data directly to CoinGeckoData using utility method
 	convertedData := ConvertMarketsResponseToCoinGeckoData(tokensData)
 
+	// Final cache update - replace with complete data to ensure consistency
 	localData := &TierDataWithTimestamp{
 		Data:      convertedData,
 		Timestamp: time.Now(),
 	}
 
-	// Update cache for this tier
 	u.cache.Lock()
 	u.cache.tiers[tier.Name] = localData
 	u.cache.Unlock()
@@ -229,7 +248,7 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 			log.Printf("Failed to fetch missing extra IDs for tier '%s': %v", tier.Name, err)
 		} else if len(missingTokensData) > 0 && u.onUpdateMissingExtraIds != nil {
 			// Signal update through callback with missing tokens data
-			u.onUpdateMissingExtraIds(ctx, missingTokensData)
+			go u.onUpdateMissingExtraIds(ctx, missingTokensData)
 		}
 	}
 
@@ -242,7 +261,7 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 
 	// Signal update through callback with pages data and tier information
 	if u.onUpdateTierPages != nil {
-		u.onUpdateTierPages(ctx, tier, pagesData)
+		go u.onUpdateTierPages(ctx, tier, pagesData)
 	}
 
 	return nil
@@ -289,8 +308,16 @@ func (u *PeriodicUpdater) fetchMissingExtraIds(ctx context.Context, tier config.
 
 	chunksFetcher := NewChunksFetcher(u.apiClient, chunkSize, requestDelayMs)
 
+	// Create onChunk callback to update missing extra IDs immediately
+	onChunkCallback := func(chunkData [][]byte) {
+		if u.onUpdateMissingExtraIds != nil {
+			// Execute callback asynchronously to avoid blocking
+			go u.onUpdateMissingExtraIds(ctx, chunkData)
+		}
+	}
+
 	// Fetch missing IDs data using chunks fetcher
-	tokensData, err := chunksFetcher.FetchMarkets(ctx, params)
+	tokensData, err := chunksFetcher.FetchMarkets(ctx, params, onChunkCallback)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch missing extra IDs: %w", err)
 	}
