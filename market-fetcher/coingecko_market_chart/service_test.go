@@ -81,7 +81,7 @@ func TestService_Basic(t *testing.T) {
 	// Create test config
 	cfg := &config.Config{
 		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
-			DefaultTTL: 30 * time.Second,
+			TTL: 30 * time.Second,
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestService_StartWithoutCache(t *testing.T) {
 	// Create test config
 	cfg := &config.Config{
 		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
-			DefaultTTL: 30 * time.Second,
+			TTL: 30 * time.Second,
 		},
 	}
 

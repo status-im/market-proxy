@@ -36,8 +36,8 @@ coingecko_markets:
     category: ""           # no category filtering
   tiers:                   # required tier configuration
     - name: "test"         # test tier
-      range_from: 1        # tokens 1-500 for tests
-      range_to: 500
+      page_from: 1        # tokens 1-500 for tests
+      page_to: 500
       update_interval: 1s  # fast updates for tests
       ttl: 5s              # short TTL for tests
 

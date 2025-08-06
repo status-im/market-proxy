@@ -21,11 +21,11 @@ type TierScheduler struct {
 
 // PeriodicUpdater handles periodic updates of markets data
 type PeriodicUpdater struct {
-	config        *config.CoingeckoMarketsFetcher
-	schedulers    []*TierScheduler // Multiple schedulers for different tiers
-	apiClient     APIClient
-	metricsWriter *metrics.MetricsWriter
-	onUpdate      func(ctx context.Context, tokensData [][]byte)
+	config            *config.CoingeckoMarketsFetcher
+	schedulers        []*TierScheduler // Multiple schedulers for different tiers
+	apiClient         APIClient
+	metricsWriter     *metrics.MetricsWriter
+	onUpdateTierPages func(ctx context.Context, tier config.MarketTier, pagesData []PageData)
 
 	// Cache for markets data per tier
 	cache struct {
@@ -48,9 +48,9 @@ func NewPeriodicUpdater(cfg *config.CoingeckoMarketsFetcher, apiClient APIClient
 	return updater
 }
 
-// SetOnUpdateCallback sets a callback function that will be called when data is updated
-func (u *PeriodicUpdater) SetOnUpdateCallback(onUpdate func(ctx context.Context, tokensData [][]byte)) {
-	u.onUpdate = onUpdate
+// SetOnUpdateTierPagesCallback sets a callback function that will be called when tier data is updated
+func (u *PeriodicUpdater) SetOnUpdateTierPagesCallback(onUpdateTierPages func(ctx context.Context, tier config.MarketTier, pagesData []PageData)) {
+	u.onUpdateTierPages = onUpdateTierPages
 }
 
 // GetCacheData returns the current cached markets data
@@ -151,32 +151,30 @@ func (u *PeriodicUpdater) Stop() {
 
 // fetchAndUpdateTier fetches markets data for a specific tier and updates cache
 func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.MarketTier) error {
-	// Record start time for metrics
 	startTime := time.Now()
 
-	// Get request delay from config
 	requestDelay := u.config.RequestDelay
 	requestDelayMs := int(requestDelay.Milliseconds())
 	if requestDelayMs < 0 {
 		requestDelayMs = MARKETS_DEFAULT_REQUEST_DELAY
 	}
 
-	// Create parameters for top markets request
 	params := interfaces.MarketsParams{}
-
-	// Apply parameters normalization from config
 	params = ApplyParamsOverride(params, u.config)
 
-	// Create PaginatedFetcher with parameters
 	fetcher := NewPaginatedFetcher(u.apiClient, tier.PageFrom, tier.PageTo, requestDelayMs, params)
 
-	// Use PaginatedFetcher to get markets data as [][]byte
-	tokensData, err := fetcher.FetchData()
+	pagesData, err := fetcher.FetchPages()
 	if err != nil {
 		log.Printf("PaginatedFetcher failed to fetch top markets data for tier '%s': %v", tier.Name, err)
-		// Record metrics even on error
 		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 		return err
+	}
+
+	// Flatten pages data for cache storage
+	var tokensData [][]byte
+	for _, pageData := range pagesData {
+		tokensData = append(tokensData, pageData.Data...)
 	}
 
 	// Convert raw markets data directly to CoinGeckoData using utility method
@@ -198,9 +196,9 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 	log.Printf("Updated tier '%s' cache with %d tokens (page: %d-%d)",
 		tier.Name, len(convertedData), tier.PageFrom, tier.PageTo)
 
-	// Signal update through callback with raw token data
-	if u.onUpdate != nil {
-		u.onUpdate(ctx, tokensData)
+	// Signal update through callback with pages data and tier information
+	if u.onUpdateTierPages != nil {
+		u.onUpdateTierPages(ctx, tier, pagesData)
 	}
 
 	return nil

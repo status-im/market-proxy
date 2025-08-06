@@ -99,7 +99,7 @@ func TestNewPeriodicUpdater(t *testing.T) {
 		assert.Equal(t, cfg, updater.config)
 		assert.Equal(t, mockAPIClient, updater.apiClient)
 		assert.Empty(t, updater.schedulers)
-		assert.Nil(t, updater.onUpdate)
+		assert.Nil(t, updater.onUpdateTierPages)
 		assert.Nil(t, updater.GetCacheData())
 	})
 
@@ -114,7 +114,7 @@ func TestNewPeriodicUpdater(t *testing.T) {
 	})
 }
 
-func TestPeriodicUpdater_SetOnUpdateCallback(t *testing.T) {
+func TestPeriodicUpdater_SetOnUpdateTierPagesCallback(t *testing.T) {
 	t.Run("Sets callback function", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -124,17 +124,19 @@ func TestPeriodicUpdater_SetOnUpdateCallback(t *testing.T) {
 		updater := NewPeriodicUpdater(cfg, mockAPIClient)
 
 		callbackCalled := false
-		callback := func(ctx context.Context, tokensData [][]byte) {
+		callback := func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			callbackCalled = true
 		}
 
-		updater.SetOnUpdateCallback(callback)
+		updater.SetOnUpdateTierPagesCallback(callback)
 
-		assert.NotNil(t, updater.onUpdate)
+		assert.NotNil(t, updater.onUpdateTierPages)
 
 		// Test callback is called
 		ctx := context.Background()
-		updater.onUpdate(ctx, [][]byte{})
+		testTier := config.MarketTier{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}
+		testPages := []PageData{{Page: 1, Data: [][]byte{}}}
+		updater.onUpdateTierPages(ctx, testTier, testPages)
 		assert.True(t, callbackCalled)
 	})
 
@@ -146,18 +148,20 @@ func TestPeriodicUpdater_SetOnUpdateCallback(t *testing.T) {
 		secondCallbackCalled := false
 
 		// Set first callback
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			firstCallbackCalled = true
 		})
 
 		// Set second callback (should overwrite first)
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			secondCallbackCalled = true
 		})
 
 		// Call the callback
 		ctx := context.Background()
-		updater.onUpdate(ctx, [][]byte{})
+		testTier := config.MarketTier{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}
+		testPages := []PageData{{Page: 1, Data: [][]byte{}}}
+		updater.onUpdateTierPages(ctx, testTier, testPages)
 
 		assert.False(t, firstCallbackCalled)
 		assert.True(t, secondCallbackCalled)
@@ -168,12 +172,12 @@ func TestPeriodicUpdater_SetOnUpdateCallback(t *testing.T) {
 		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
 
 		// Set a callback first
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {})
-		assert.NotNil(t, updater.onUpdate)
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {})
+		assert.NotNil(t, updater.onUpdateTierPages)
 
 		// Set to nil
-		updater.SetOnUpdateCallback(nil)
-		assert.Nil(t, updater.onUpdate)
+		updater.SetOnUpdateTierPagesCallback(nil)
+		assert.Nil(t, updater.onUpdateTierPages)
 	})
 }
 
@@ -293,7 +297,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 		callbackCalled := false
 		var callbackCtx context.Context
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			callbackCalled = true
 			callbackCtx = ctx
 		})
@@ -384,7 +388,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 		setupMockFetchPage(mockFetcher, interfaces.MarketsResponse(nil), expectedError)
 
 		callbackCalled := false
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			callbackCalled = true
 		})
 
@@ -410,7 +414,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 		setupMockFetchPage(mockFetcher, emptyData, nil)
 
 		callbackCalled := false
-		updater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
+		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
 			callbackCalled = true
 		})
 

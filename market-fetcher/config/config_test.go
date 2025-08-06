@@ -46,8 +46,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 coingecko_coinslist:
@@ -98,8 +98,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 `,
@@ -114,8 +114,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 `,
@@ -137,8 +137,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 `,
@@ -159,8 +159,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 coingecko_coinslist:
@@ -199,8 +199,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 coingecko_coinslist:
@@ -335,8 +335,8 @@ coingecko_leaderboard:
 coingecko_markets:
   tiers:
     - name: "test"
-      range_from: 1
-      range_to: 100
+      page_from: 1
+      page_to: 100
       update_interval: 1m
       ttl: 5m
 coingecko_coinslist:

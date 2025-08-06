@@ -8,6 +8,12 @@ import (
 	"github.com/status-im/market-proxy/interfaces"
 )
 
+// PageData represents data for a single page - moved here since it's used by PaginatedFetcher
+type PageData struct {
+	Page int
+	Data [][]byte
+}
+
 const (
 	// Default request delay in milliseconds
 	DEFAULT_REQUEST_DELAY = 2000
@@ -56,22 +62,28 @@ func NewPaginatedFetcher(apiClient APIClient, pageFrom int, pageTo int, requestD
 	}
 }
 
-// FetchData fetches data with pagination
-func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
+// FetchPages fetches data with pagination and returns page-data pairs
+func (pf *PaginatedFetcher) FetchPages() ([]PageData, error) {
 	params := pf.prepareFetchParams()
 
 	// Track metrics
 	startTime := time.Now()
-	allItems := make([][]byte, 0, params.estimatedItems)
+	allPages := make([]PageData, 0, params.pageTo-params.pageFrom+1)
 	completedPages := 0
 
 	// Fetch pages sequentially from pageFrom to pageTo
 	for page := pf.pageFrom; page <= pf.pageTo; page++ {
-		pageItems, shouldContinue, err := pf.processSinglePage(page, params, len(allItems), &completedPages)
+		pageItems, shouldContinue, err := pf.processSinglePage(page, params, 0, &completedPages)
 		if err != nil {
-			return pf.handlePageError(err, allItems)
+			return pf.handlePagesError(err, allPages)
 		}
-		allItems = append(allItems, pageItems...)
+
+		if len(pageItems) > 0 {
+			allPages = append(allPages, PageData{
+				Page: page,
+				Data: pageItems,
+			})
+		}
 
 		if !shouldContinue {
 			break
@@ -80,7 +92,24 @@ func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
 		pf.applyDelayIfNeeded(page, pf.pageTo)
 	}
 
-	pf.logSummary(startTime, allItems, completedPages)
+	pf.logPagesSummary(startTime, allPages, completedPages)
+	return allPages, nil
+}
+
+// FetchData fetches data with pagination
+func (pf *PaginatedFetcher) FetchData() ([][]byte, error) {
+	// Use FetchPages and flatten the results
+	pagesData, err := pf.FetchPages()
+	if err != nil {
+		return nil, err
+	}
+
+	// Flatten pages data into a single slice
+	var allItems [][]byte
+	for _, pageData := range pagesData {
+		allItems = append(allItems, pageData.Data...)
+	}
+
 	return allItems, nil
 }
 
@@ -147,6 +176,36 @@ func (pf *PaginatedFetcher) handlePageError(err error, allItems [][]byte) ([][]b
 
 	// If no data at all, return the error
 	return nil, fmt.Errorf("failed to fetch data: %v", err)
+}
+
+// handlePagesError handles errors during pages processing
+func (pf *PaginatedFetcher) handlePagesError(err error, allPages []PageData) ([]PageData, error) {
+	log.Printf("MarketsFetcher: Error fetching page: %v", err)
+
+	// If we have some data already, return what we have
+	if len(allPages) > 0 {
+		totalItems := 0
+		for _, page := range allPages {
+			totalItems += len(page.Data)
+		}
+		log.Printf("MarketsFetcher: Returning partial data (%d pages, %d items)", len(allPages), totalItems)
+		return allPages, nil
+	}
+
+	// If no data at all, return the error
+	return nil, fmt.Errorf("failed to fetch data: %v", err)
+}
+
+// logPagesSummary logs a summary of the pages fetch operation
+func (pf *PaginatedFetcher) logPagesSummary(startTime time.Time, pages []PageData, completedPages int) {
+	totalTime := time.Since(startTime)
+	totalItems := 0
+	for _, page := range pages {
+		totalItems += len(page.Data)
+	}
+	itemsPerSecond := float64(totalItems) / totalTime.Seconds()
+	log.Printf("MarketsFetcher: Fetched %d items from pages %d-%d in %d pages (%.2f items/sec)",
+		totalItems, pf.pageFrom, pf.pageTo, completedPages, itemsPerSecond)
 }
 
 // applyDelayIfNeeded applies delay between page requests if configured

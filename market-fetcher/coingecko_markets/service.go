@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"github.com/status-im/market-proxy/cache"
-	"github.com/status-im/market-proxy/config"
+	cfg "github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
@@ -22,14 +22,14 @@ const (
 // Service provides markets data fetching functionality with caching
 type Service struct {
 	cache               cache.Cache
-	config              *config.Config
+	config              *cfg.Config
 	metricsWriter       *metrics.MetricsWriter
 	apiClient           APIClient
 	subscriptionManager *events.SubscriptionManager
 	periodicUpdater     *PeriodicUpdater
 }
 
-func NewService(cache cache.Cache, config *config.Config) *Service {
+func NewService(cache cache.Cache, config *cfg.Config) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
 
@@ -44,12 +44,20 @@ func NewService(cache cache.Cache, config *config.Config) *Service {
 	// Create periodic updater
 	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, apiClient)
 
-	// Set onUpdate callback to cache tokens and emit events to subscription manager
-	service.periodicUpdater.SetOnUpdateCallback(func(ctx context.Context, tokensData [][]byte) {
-		// Cache tokens by their IDs
-		_, err := service.cacheTokensByID(tokensData)
+	// Set onUpdateTierPages callback to cache tokens and emit events to subscription manager
+	service.periodicUpdater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier cfg.MarketTier, pagesData []PageData) {
+		// Cache by individual ids
+		for _, pageData := range pagesData {
+			_, err := service.cacheTokensByID(pageData.Data)
+			if err != nil {
+				log.Printf("Failed to cache markets data by id: %v", err)
+			}
+		}
+
+		// Cache pages
+		_, err := service.cacheTokensPage(tier, pagesData)
 		if err != nil {
-			log.Printf("Failed to cache periodic update data: %v", err)
+			log.Printf("Failed to cache page data: %v", err)
 		}
 		service.subscriptionManager.Emit(ctx)
 	})
@@ -82,47 +90,10 @@ func (s *Service) Stop() {
 	// Cache will handle its own cleanup
 }
 
-// parseTokensData parses tokens data and extracts market data with cache keys
-func (s *Service) parseTokensData(tokensData [][]byte) ([]interface{}, map[string][]byte, error) {
-	marketData := make([]interface{}, 0, len(tokensData))
-	cacheData := make(map[string][]byte)
-
-	for _, tokenBytes := range tokensData {
-		var tokenData interface{}
-		if err := json.Unmarshal(tokenBytes, &tokenData); err != nil {
-			log.Printf("Failed to unmarshal token data: %v", err)
-			continue
-		}
-
-		// Extract ID and create cache key directly
-		if tokenMap, ok := tokenData.(map[string]interface{}); ok {
-			if id, exists := tokenMap[ID_FIELD]; exists {
-				if tokenID, ok := id.(string); ok && tokenID != "" {
-					cacheKey := getCacheKey(tokenID)
-					cacheData[cacheKey] = tokenBytes
-				} else {
-					log.Printf("Invalid id type in market data: %T", id)
-					continue
-				}
-			} else {
-				log.Printf("Missing '%s' field in market data", ID_FIELD)
-				continue
-			}
-		} else {
-			log.Printf("Invalid market data format: %T", tokenData)
-			continue
-		}
-
-		marketData = append(marketData, tokenData)
-	}
-
-	return marketData, cacheData, nil
-}
-
 // cacheTokensByID parses tokens data and caches each token by its CoinGecko ID
 func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 	// Parse tokens data
-	marketData, cacheData, err := s.parseTokensData(tokensData)
+	marketData, cacheData, err := parseTokensData(tokensData)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +109,27 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 	}
 
 	return marketData, nil
+}
+
+// cacheTokensPage caches page data for page-based requests
+func (s *Service) cacheTokensPage(tier cfg.MarketTier, pagesData []PageData) (map[int]interface{}, error) {
+	// Parse pages data
+	pageMapping, cacheData, err := parsePagesData(pagesData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache pages data
+	if len(cacheData) > 0 {
+		err := s.cache.Set(cacheData, s.config.CoingeckoMarkets.GetTTL())
+		if err != nil {
+			log.Printf("Failed to cache page data: %v", err)
+			return nil, fmt.Errorf("failed to cache page data: %w", err)
+		}
+		log.Printf("Successfully cached %d pages for tier '%s'", len(cacheData), tier.Name)
+	}
+
+	return pageMapping, nil
 }
 
 // Markets fetches markets data using cache with specified parameters
