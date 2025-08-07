@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import MainPage from './components/MainPage';
 import Leaderboard from './components/Leaderboard';
 import RequestReplay from './components/RequestReplay';
+import EndpointTester from './components/EndpointTester';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('main');
@@ -21,6 +22,8 @@ function App() {
         return <Leaderboard onBack={handleBack} />;
       case 'requests-replay':
         return <RequestReplay onBack={handleBack} />;
+      case 'endpoint-tester':
+        return <EndpointTester onBack={handleBack} />;
       default:
         return <MainPage onNavigate={handleNavigate} />;
     }

@@ -113,6 +113,14 @@ const MainPage = ({ onNavigate }) => {
       icon: '🔄',
       color: '#8b5cf6',
       status: 'available'
+    },
+    {
+      id: 'endpoint-tester',
+      title: 'Endpoint Tester',
+      description: 'Comprehensive testing tool for all proxy endpoints with detailed analytics and progress tracking',
+      icon: '🧪',
+      color: '#10b981',
+      status: 'available'
     }
   ];
 
