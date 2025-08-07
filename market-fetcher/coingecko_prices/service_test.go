@@ -368,3 +368,294 @@ func TestService_TTLCachingWithDifferentKeys(t *testing.T) {
 	assert.Equal(t, []string{"simple_price:bitcoin", "simple_price:ethereum"}, requestedKeys[2])
 	assert.Len(t, dataBothExpired, 2)
 }
+
+// TestService_SimplePricesAndTopPricesReturnSameFormat verifies that SimplePrices and TopPrices
+// return data in exactly the same format when given equivalent parameters
+func TestService_SimplePricesAndTopPricesReturnSameFormat(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create test data that will be returned from cache
+	samplePriceDataBitcoin := []byte(`{
+		"usd": 50000.0,
+		"eur": 42000.0,
+		"usd_market_cap": 950000000000.0,
+		"eur_market_cap": 798000000000.0,
+		"usd_24h_vol": 25000000000.0,
+		"eur_24h_vol": 21000000000.0,
+		"usd_24h_change": 2.5,
+		"eur_24h_change": 1.8,
+		"last_updated_at": 1749059921
+	}`)
+
+	samplePriceDataEthereum := []byte(`{
+		"usd": 3000.0,
+		"eur": 2520.0,
+		"usd_market_cap": 360000000000.0,
+		"eur_market_cap": 302400000000.0,
+		"usd_24h_vol": 15000000000.0,
+		"eur_24h_vol": 12600000000.0,
+		"usd_24h_change": -1.2,
+		"eur_24h_change": -1.5,
+		"last_updated_at": 1749059921
+	}`)
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
+
+	// Setup cache to return test data for both bitcoin and ethereum
+	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
+	cachedData := map[string][]byte{
+		"price:id:bitcoin":  samplePriceDataBitcoin,
+		"price:id:ethereum": samplePriceDataEthereum,
+	}
+
+	// Mock cache will be called once for SimplePrices and once for TopPrices (via SimplePrices)
+	mockCache.EXPECT().Get(expectedCacheKeys).Return(cachedData, []string{}, nil).Times(2)
+	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Create mock markets service that returns the same IDs that we'll use in SimplePrices
+	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
+
+	// For TopPrices call - return exactly the same IDs that we're testing with SimplePrices
+	mockMarketsService.EXPECT().TopMarketIds(2).Return([]string{"bitcoin", "ethereum"}, nil)
+
+	// Create test config
+	cfg := createTestConfig()
+
+	// Create mock tokens service
+	mockTokensService := createMockTokensService(ctrl)
+
+	// Create price service
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+
+	// Start the service
+	err := priceService.Start(context.Background())
+	assert.NoError(t, err)
+	defer priceService.Stop()
+
+	// Test parameters for SimplePrices
+	simplePricesParams := cg.PriceParams{
+		IDs:                  []string{"bitcoin", "ethereum"},
+		Currencies:           []string{"usd", "eur"},
+		IncludeMarketCap:     true,
+		Include24hrVol:       true,
+		Include24hrChange:    true,
+		IncludeLastUpdatedAt: true,
+	}
+
+	// Call SimplePrices
+	simplePricesResponse, simpleCacheStatus, err := priceService.SimplePrices(context.Background(), simplePricesParams)
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusFull, simpleCacheStatus)
+
+	// Call TopPrices with equivalent parameters
+	topPricesResponse, topCacheStatus, err := priceService.TopPrices(context.Background(), 2, []string{"usd", "eur"})
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusFull, topCacheStatus)
+
+	// Verify both responses have the same structure and data
+	assert.Equal(t, len(simplePricesResponse), len(topPricesResponse), "Both responses should have the same number of tokens")
+	assert.Equal(t, 2, len(simplePricesResponse), "Should have 2 tokens")
+	assert.Equal(t, 2, len(topPricesResponse), "Should have 2 tokens")
+
+	// Verify both responses contain the same tokens
+	for tokenID := range simplePricesResponse {
+		assert.Contains(t, topPricesResponse, tokenID, "TopPrices should contain the same token IDs as SimplePrices")
+	}
+
+	// Verify the data structure is identical for each token
+	for tokenID, simpleData := range simplePricesResponse {
+		topData, exists := topPricesResponse[tokenID]
+		assert.True(t, exists, "Token %s should exist in both responses", tokenID)
+
+		// Convert to maps for detailed comparison
+		simpleMap, ok1 := simpleData.(map[string]interface{})
+		topMap, ok2 := topData.(map[string]interface{})
+		assert.True(t, ok1, "SimplePrices data should be map[string]interface{} for token %s", tokenID)
+		assert.True(t, ok2, "TopPrices data should be map[string]interface{} for token %s", tokenID)
+
+		// Verify both maps have the same keys
+		assert.Equal(t, len(simpleMap), len(topMap), "Both responses should have the same number of fields for token %s", tokenID)
+
+		for key, simpleValue := range simpleMap {
+			topValue, keyExists := topMap[key]
+			assert.True(t, keyExists, "Key %s should exist in both responses for token %s", key, tokenID)
+			assert.Equal(t, simpleValue, topValue, "Value for key %s should be identical in both responses for token %s", key, tokenID)
+		}
+	}
+
+	// Verify specific expected fields are present in both responses
+	expectedFields := []string{"usd", "eur", "usd_market_cap", "eur_market_cap", "usd_24h_vol", "eur_24h_vol", "usd_24h_change", "eur_24h_change", "last_updated_at"}
+
+	for _, tokenID := range []string{"bitcoin", "ethereum"} {
+		simpleMap := simplePricesResponse[tokenID].(map[string]interface{})
+		topMap := topPricesResponse[tokenID].(map[string]interface{})
+
+		for _, field := range expectedFields {
+			assert.Contains(t, simpleMap, field, "SimplePrices should contain field %s for token %s", field, tokenID)
+			assert.Contains(t, topMap, field, "TopPrices should contain field %s for token %s", field, tokenID)
+		}
+	}
+}
+
+// TestService_SimplePricesAndTopPricesFormatConsistencyWithPartialData tests format consistency
+// when some tokens are missing from cache (partial cache status)
+func TestService_SimplePricesAndTopPricesFormatConsistencyWithPartialData(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create test data for only one token (bitcoin)
+	samplePriceDataBitcoin := []byte(`{
+		"usd": 50000.0,
+		"eur": 42000.0,
+		"usd_market_cap": 950000000000.0,
+		"eur_market_cap": 798000000000.0
+	}`)
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
+
+	// Setup cache to return test data for only bitcoin (ethereum missing)
+	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
+	cachedData := map[string][]byte{
+		"price:id:bitcoin": samplePriceDataBitcoin,
+		// ethereum is missing from cache
+	}
+	missingKeys := []string{"price:id:ethereum"}
+
+	mockCache.EXPECT().Get(expectedCacheKeys).Return(cachedData, missingKeys, nil).Times(2)
+	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Create mock markets service
+	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
+	mockMarketsService.EXPECT().TopMarketIds(2).Return([]string{"bitcoin", "ethereum"}, nil)
+
+	// Create test config
+	cfg := createTestConfig()
+
+	// Create mock tokens service
+	mockTokensService := createMockTokensService(ctrl)
+
+	// Create price service
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+
+	// Start the service
+	err := priceService.Start(context.Background())
+	assert.NoError(t, err)
+	defer priceService.Stop()
+
+	// Test parameters - only basic currencies to keep response simpler
+	simplePricesParams := cg.PriceParams{
+		IDs:              []string{"bitcoin", "ethereum"},
+		Currencies:       []string{"usd", "eur"},
+		IncludeMarketCap: true,
+	}
+
+	// Call SimplePrices
+	simplePricesResponse, simpleCacheStatus, err := priceService.SimplePrices(context.Background(), simplePricesParams)
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusPartial, simpleCacheStatus)
+
+	// Call TopPrices with equivalent parameters
+	topPricesResponse, topCacheStatus, err := priceService.TopPrices(context.Background(), 2, []string{"usd", "eur"})
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusPartial, topCacheStatus)
+
+	// Both should return partial data (only bitcoin)
+	assert.Equal(t, 1, len(simplePricesResponse), "SimplePrices should return 1 token (only cached one)")
+	assert.Equal(t, 1, len(topPricesResponse), "TopPrices should return 1 token (only cached one)")
+
+	// Both should contain bitcoin
+	assert.Contains(t, simplePricesResponse, "bitcoin")
+	assert.Contains(t, topPricesResponse, "bitcoin")
+
+	// Both should NOT contain ethereum (missing from cache)
+	assert.NotContains(t, simplePricesResponse, "ethereum")
+	assert.NotContains(t, topPricesResponse, "ethereum")
+
+	// Verify the bitcoin data is identical in structure and content
+	simpleBitcoinData := simplePricesResponse["bitcoin"].(map[string]interface{})
+	topBitcoinData := topPricesResponse["bitcoin"].(map[string]interface{})
+
+	assert.Equal(t, len(simpleBitcoinData), len(topBitcoinData), "Bitcoin data should have same number of fields in both responses")
+
+	for key, simpleValue := range simpleBitcoinData {
+		topValue, exists := topBitcoinData[key]
+		assert.True(t, exists, "Key %s should exist in both responses for bitcoin", key)
+		assert.Equal(t, simpleValue, topValue, "Value for key %s should be identical for bitcoin", key)
+	}
+}
+
+// TestService_SimplePricesAndTopPricesFormatConsistencyWithEmptyResponse tests format consistency
+// when no tokens are found in cache (cache miss)
+func TestService_SimplePricesAndTopPricesFormatConsistencyWithEmptyResponse(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create mock cache service
+	mockCache := cache_mocks.NewMockCache(ctrl)
+
+	// Setup cache to return no data (complete cache miss)
+	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
+	cachedData := map[string][]byte{} // no data
+	missingKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
+
+	mockCache.EXPECT().Get(expectedCacheKeys).Return(cachedData, missingKeys, nil).Times(2)
+	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	// Create mock markets service
+	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
+	mockMarketsService.EXPECT().TopMarketIds(2).Return([]string{"bitcoin", "ethereum"}, nil)
+
+	// Create test config
+	cfg := createTestConfig()
+
+	// Create mock tokens service
+	mockTokensService := createMockTokensService(ctrl)
+
+	// Create price service
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+
+	// Start the service
+	err := priceService.Start(context.Background())
+	assert.NoError(t, err)
+	defer priceService.Stop()
+
+	// Test parameters
+	simplePricesParams := cg.PriceParams{
+		IDs:        []string{"bitcoin", "ethereum"},
+		Currencies: []string{"usd", "eur"},
+	}
+
+	// Call SimplePrices
+	simplePricesResponse, simpleCacheStatus, err := priceService.SimplePrices(context.Background(), simplePricesParams)
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusMiss, simpleCacheStatus)
+
+	// Call TopPrices with equivalent parameters
+	topPricesResponse, topCacheStatus, err := priceService.TopPrices(context.Background(), 2, []string{"usd", "eur"})
+	assert.NoError(t, err)
+	assert.Equal(t, cg.CacheStatusMiss, topCacheStatus)
+
+	// Both should return empty responses
+	assert.Equal(t, 0, len(simplePricesResponse), "SimplePrices should return empty response on cache miss")
+	assert.Equal(t, 0, len(topPricesResponse), "TopPrices should return empty response on cache miss")
+
+	// Both should be non-nil but empty
+	assert.NotNil(t, simplePricesResponse)
+	assert.NotNil(t, topPricesResponse)
+
+	// Verify response types are identical
+	assert.IsType(t, cg.SimplePriceResponse{}, simplePricesResponse)
+	assert.IsType(t, cg.SimplePriceResponse{}, topPricesResponse)
+}

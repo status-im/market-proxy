@@ -2,6 +2,7 @@ package coingecko_markets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -600,7 +601,15 @@ func TestService_TopMarkets(t *testing.T) {
 			currency:      "usd",
 			topMarketsIDs: []string{"bitcoin", "ethereum"},
 			cachedData: map[string][]byte{
-				"markets_page:1": []byte(`[{"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":45000,"market_cap":850000000000},{"id":"ethereum","symbol":"eth","name":"Ethereum","current_price":3000,"market_cap":360000000000}]`),
+				"markets_page:1": func() []byte {
+					// Page data is stored as [][]byte, not []interface{}
+					pageData := [][]byte{
+						[]byte(`{"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":45000,"market_cap":850000000000}`),
+						[]byte(`{"id":"ethereum","symbol":"eth","name":"Ethereum","current_price":3000,"market_cap":360000000000}`),
+					}
+					bytes, _ := json.Marshal(pageData)
+					return bytes
+				}(),
 			},
 			expectedLen:   2,
 			expectedError: false,
@@ -806,5 +815,86 @@ func TestService_TopMarketIds(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, tokens[:3], result) // Should return first 3 tokens
+	})
+}
+
+func TestMarketsByPageAndMarketsByIdsReturnSameFormat(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create test data for 3 tokens
+	testData1 := []byte(`{"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":45000,"market_cap":850000000000}`)
+	testData2 := []byte(`{"id":"ethereum","symbol":"eth","name":"Ethereum","current_price":3000,"market_cap":360000000000}`)
+	testData3 := []byte(`{"id":"cardano","symbol":"ada","name":"Cardano","current_price":1.5,"market_cap":50000000000}`)
+
+	// Setup cache mock
+	mockCache := cache_mocks.NewMockCache(ctrl)
+	config := createTestConfig()
+
+	// Mock tokens service
+	mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(createMockSubscription()).AnyTimes()
+
+	service := NewService(mockCache, config, mockTokensService)
+
+	t.Run("should return same format for page and ids", func(t *testing.T) {
+		// Setup cache expectations for IDs
+		expectedIDCache := map[string][]byte{
+			"markets:bitcoin":  testData1,
+			"markets:ethereum": testData2,
+			"markets:cardano":  testData3,
+		}
+
+		// Setup cache expectations for page
+		pageData := [][]byte{testData1, testData2, testData3}
+		pageDataBytes, _ := json.Marshal(pageData)
+		expectedPageCache := map[string][]byte{
+			"markets_page:1": pageDataBytes,
+		}
+
+		// Test MarketsByIds
+		mockCache.EXPECT().Get([]string{"markets:bitcoin", "markets:ethereum", "markets:cardano"}).
+			Return(expectedIDCache, []string{}, nil)
+
+		idsParams := interfaces.MarketsParams{
+			IDs:      []string{"bitcoin", "ethereum", "cardano"},
+			Currency: "usd",
+		}
+
+		idsResponse, _, err := service.MarketsByIds(idsParams)
+		assert.NoError(t, err)
+		assert.Len(t, idsResponse, 3)
+
+		// Test MarketsByPage
+		mockCache.EXPECT().Get([]string{"markets_page:1"}).
+			Return(expectedPageCache, []string{}, nil)
+
+		pageParams := interfaces.MarketsParams{
+			Currency: "usd",
+		}
+
+		pageResponse, _, err := service.MarketsByPage(1, 1, pageParams)
+		assert.NoError(t, err)
+		assert.Len(t, pageResponse, 3)
+
+		// Verify both responses have the same structure
+		// Both should return []interface{} where each element is a map[string]interface{}
+		for i := 0; i < 3; i++ {
+			idsItem := idsResponse[i]
+			pageItem := pageResponse[i]
+
+			// Both should be map[string]interface{}
+			idsMap, idsOk := idsItem.(map[string]interface{})
+			pageMap, pageOk := pageItem.(map[string]interface{})
+
+			assert.True(t, idsOk, "MarketsByIds should return map[string]interface{}")
+			assert.True(t, pageOk, "MarketsByPage should return map[string]interface{}")
+
+			// Compare specific fields to ensure they're the same
+			assert.Equal(t, idsMap["id"], pageMap["id"], "IDs should match")
+			assert.Equal(t, idsMap["symbol"], pageMap["symbol"], "Symbols should match")
+			assert.Equal(t, idsMap["name"], pageMap["name"], "Names should match")
+			assert.Equal(t, idsMap["current_price"], pageMap["current_price"], "Prices should match")
+		}
 	})
 }

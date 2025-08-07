@@ -21,7 +21,7 @@ func createTestConfig(mockURL, mockWSURL string) (string, error) {
 coingecko_leaderboard:
   update_interval: 1s                 # shorter interval for tests
   top_markets_update_interval: 1s     # enable markets updates for tests
-  limit: 20                           # fewer tokens for tests
+  top_markets_limit: 20               # fewer tokens for tests 
   request_delay: 100ms                # short delay for tests
   currency: "usd"                     # must match the markets service currency
 

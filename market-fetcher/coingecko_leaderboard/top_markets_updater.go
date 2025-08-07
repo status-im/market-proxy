@@ -83,8 +83,11 @@ func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 		return err
 	}
 
+	marketsData := []interface{}(data)
+	convertedData := ConvertMarketsResponseToCoinData(marketsData)
+
 	localData := &APIResponse{
-		Data: ConvertMarketsResponseToCoinData(data),
+		Data: convertedData,
 	}
 
 	u.cache.Lock()

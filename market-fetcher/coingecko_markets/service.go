@@ -266,12 +266,20 @@ func (s *Service) MarketsByPage(pageFrom, pageTo int, params interfaces.MarketsP
 	for page := pageFrom; page <= pageTo; page++ {
 		pageCacheKey := createPageCacheKey(page)
 		if pageBytes, exists := cachedData[pageCacheKey]; exists {
-			var pageData []interface{}
-			if err := json.Unmarshal(pageBytes, &pageData); err != nil {
+			// Page data is stored as [][]byte, not []interface{}
+			var pageDataBytes [][]byte
+			if err := json.Unmarshal(pageBytes, &pageDataBytes); err != nil {
 				log.Printf("Failed to unmarshal page %d data: %v", page, err)
 				continue
 			}
-			allMarketData = append(allMarketData, pageData...)
+
+			// Convert each []byte token to interface{} to match MarketsByIds format
+			for _, tokenBytes := range pageDataBytes {
+				var tokenData interface{}
+				if err := json.Unmarshal(tokenBytes, &tokenData); err == nil {
+					allMarketData = append(allMarketData, tokenData)
+				}
+			}
 		}
 	}
 
