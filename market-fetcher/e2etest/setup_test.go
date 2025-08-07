@@ -3,6 +3,7 @@ package e2etest
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"testing"
@@ -37,8 +38,9 @@ func SetupTest(t *testing.T) *TestEnv {
 		t.Fatalf("Failed to load test config: %v", err)
 	}
 
-	// Use a specific port for testing
-	testPort := "8081"
+	// Use a random port for testing to avoid conflicts
+	rand.Seed(time.Now().UnixNano())
+	testPort := fmt.Sprintf("%d", 8080+rand.Intn(1000)) // Random port between 8080-9080
 	os.Setenv("PORT", testPort)
 
 	// Initialize services
