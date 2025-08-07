@@ -39,7 +39,6 @@ func SetupTest(t *testing.T) *TestEnv {
 	}
 
 	// Use a random port for testing to avoid conflicts
-	rand.Seed(time.Now().UnixNano())
 	testPort := fmt.Sprintf("%d", 8080+rand.Intn(1000)) // Random port between 8080-9080
 	os.Setenv("PORT", testPort)
 
