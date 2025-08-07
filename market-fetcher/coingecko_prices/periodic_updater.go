@@ -211,7 +211,7 @@ func (u *PeriodicUpdater) ForceUpdate(ctx context.Context) {
 
 // fetchAndUpdateTier fetches prices data for a specific tier and updates cache
 func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.PriceTier) error {
-	startTime := time.Now()
+	defer u.metricsWriter.TrackDataFetchCycle()()
 
 	// Get top market IDs for this tier
 	u.topMarketIds.RLock()
@@ -281,7 +281,6 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Pr
 	pricesData, err := fetcher.FetchPrices(ctx, fetchParams, onChunkCallback)
 	if err != nil {
 		log.Printf("ChunksFetcher failed to fetch prices data for tier '%s': %v", tier.Name, err)
-		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 		return err
 	}
 
@@ -307,7 +306,6 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Pr
 	}
 
 	// Record metrics after successful update
-	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 	u.metricsWriter.RecordCacheSize(len(pricesData))
 
 	log.Printf("Updated tier '%s' cache with %d tokens (token range: %d-%d)",

@@ -16,13 +16,11 @@ import (
 )
 
 // Helper function to create test config for prices updater
-func createTestPricesConfig() *config.Config {
-	return &config.Config{
-		CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-			TopPricesUpdateInterval: time.Second * 5,
-			TopPricesLimit:          10,
-			Currency:                "usd",
-		},
+func createTestPricesConfig() *config.CoingeckoLeaderboardFetcher {
+	return &config.CoingeckoLeaderboardFetcher{
+		TopPricesUpdateInterval: time.Second * 5,
+		TopPricesLimit:          10,
+		Currency:                "usd",
 	}
 }
 
@@ -204,7 +202,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		sampleResponse := createSamplePriceResponse()
 
 		// TopPrices method is called with limit and currencies
-		limit := cfg.CoingeckoLeaderboard.TopPricesLimit
+		limit := cfg.TopPricesLimit
 		currencies := []string{"usd"}
 		mockFetcher.EXPECT().TopPrices(gomock.Any(), limit, currencies).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 
@@ -227,7 +225,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 		// Mock empty price response
 		emptyResponse := interfaces.SimplePriceResponse{}
-		limit := cfg.CoingeckoLeaderboard.TopPricesLimit
+		limit := cfg.TopPricesLimit
 		currencies := []string{"usd"}
 		mockFetcher.EXPECT().TopPrices(gomock.Any(), limit, currencies).Return(emptyResponse, interfaces.CacheStatusMiss, nil)
 
@@ -245,11 +243,9 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		cfg := &config.Config{
-			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopPricesLimit: 2, // Limit to 2 tokens
-				Currency:       "usd",
-			},
+		cfg := &config.CoingeckoLeaderboardFetcher{
+			TopPricesLimit: 2, // Limit to 2 tokens
+			Currency:       "usd",
 		}
 		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
@@ -519,7 +515,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 
 		// 1. Setup mock for fetchAndUpdateTopPrices using TopPrices
 		sampleResponse := createSamplePriceResponse()
-		limit := cfg.CoingeckoLeaderboard.TopPricesLimit
+		limit := cfg.TopPricesLimit
 		currencies := []string{"usd"}
 		mockFetcher.EXPECT().TopPrices(gomock.Any(), limit, currencies).Return(sampleResponse, interfaces.CacheStatusMiss, nil)
 

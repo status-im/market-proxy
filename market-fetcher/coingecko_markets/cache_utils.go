@@ -14,11 +14,11 @@ func parseTokensData(tokensData [][]byte) ([]interface{}, map[string][]byte, err
 	for _, tokenBytes := range tokensData {
 		var tokenData interface{}
 		if err := json.Unmarshal(tokenBytes, &tokenData); err != nil {
-			// Skip malformed JSON data - this can happen with real API responses
+			// Skip malformed JSON data
 			continue
 		}
 
-		// Extract ID and create cache key directly
+		// Extract ID and create cache key
 		if tokenMap, ok := tokenData.(map[string]interface{}); ok {
 			if id, exists := tokenMap[ID_FIELD]; exists {
 				if tokenID, ok := id.(string); ok && tokenID != "" {
@@ -39,18 +39,13 @@ func parsePagesData(pagesData []PageData) (map[int]interface{}, map[string][]byt
 	cacheData := make(map[string][]byte)
 
 	for _, pageData := range pagesData {
-		// Create page cache key for full page data
 		cacheKey := createPageCacheKey(pageData.Page)
-
-		// Serialize page data
 		pageBytes, err := json.Marshal(pageData.Data)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to marshal page data for page %d: %w", pageData.Page, err)
 		}
 
 		cacheData[cacheKey] = pageBytes
-
-		// Add page data to mapping
 		pageMapping[pageData.Page] = pageData.Data
 
 		// Extract token IDs from page data and create page IDs cache entry

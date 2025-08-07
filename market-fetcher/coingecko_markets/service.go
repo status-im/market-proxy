@@ -47,16 +47,10 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 		topIdsManager:                  NewTopIdsManager(),
 	}
 
-	// Create periodic updater
 	service.periodicUpdater = NewPeriodicUpdater(&config.CoingeckoMarkets, apiClient)
 
-	// Set onUpdateTierPages callback to cache tokens and emit events to subscription manager
 	service.periodicUpdater.SetOnUpdateTierPagesCallback(service.handleTierPagesUpdate)
-
-	// Set onUpdateMissingExtraIds callback to cache missing tokens by ID
 	service.periodicUpdater.SetOnUpdateMissingExtraIdsCallback(service.handleMissingExtraIdsUpdate)
-
-	// Set onInitialLoadCompleted callback to emit initialization event
 	service.periodicUpdater.SetOnInitialLoadCompletedCallback(service.handleInitialLoadCompleted)
 
 	return service
@@ -78,7 +72,7 @@ func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier
 		log.Printf("Failed to cache page data: %v", err)
 	}
 
-	// Update top IDs manager with new pages data
+	// Update top IDs with new pages data
 	s.topIdsManager.UpdatePagesFromPageData(pagesData)
 
 	s.subscriptionManager.Emit(ctx)
@@ -86,7 +80,6 @@ func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier
 
 // handleMissingExtraIdsUpdate handles missing extra IDs update by caching tokens and emitting events
 func (s *Service) handleMissingExtraIdsUpdate(ctx context.Context, tokensData [][]byte) {
-	// Cache missing tokens by their IDs
 	_, err := s.cacheTokensByID(tokensData)
 	if err != nil {
 		log.Printf("Failed to cache missing extra IDs: %v", err)
@@ -102,7 +95,7 @@ func (s *Service) handleInitialLoadCompleted(ctx context.Context) {
 	s.initializedSubscriptionManager.Emit(ctx)
 }
 
-// onTokenListChanged is called when token list is updated
+// onTokenListChanged is called when token list is updated (coins/list)
 func (s *Service) onTokenListChanged() {
 	if s.tokensService == nil {
 		return
@@ -135,20 +128,16 @@ func (s *Service) Start(ctx context.Context) error {
 		return fmt.Errorf("cache dependency not provided")
 	}
 
-	// Subscribe to token list updates
 	if s.tokensService != nil {
 		s.tokenUpdateCh = s.tokensService.SubscribeOnTokensUpdate()
 
-		// Create cancelable context for the goroutine
 		goroutineCtx, cancel := context.WithCancel(ctx)
 		s.cancelFunc = cancel
 		go s.handleTokenUpdates(goroutineCtx)
-
-		// Initial call to set extra IDs
+		// initial update
 		s.onTokenListChanged()
 	}
 
-	// Start periodic updater
 	if s.periodicUpdater != nil {
 		if err := s.periodicUpdater.Start(ctx); err != nil {
 			return fmt.Errorf("failed to start periodic updater: %w", err)
@@ -160,40 +149,32 @@ func (s *Service) Start(ctx context.Context) error {
 
 // Stop implements core.Interface
 func (s *Service) Stop() {
-	// Cancel the goroutine first
 	if s.cancelFunc != nil {
 		s.cancelFunc()
 		s.cancelFunc = nil
 	}
 
-	// Unsubscribe from token updates
 	if s.tokensService != nil && s.tokenUpdateCh != nil {
 		s.tokensService.Unsubscribe(s.tokenUpdateCh)
 		s.tokenUpdateCh = nil
 	}
 
-	// Stop periodic updater
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.Stop()
 	}
 
-	// Clear top IDs manager
 	if s.topIdsManager != nil {
 		s.topIdsManager.Clear()
 	}
-
-	// Cache will handle its own cleanup
 }
 
 // cacheTokensByID parses tokens data and caches each token by its CoinGecko ID
 func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
-	// Parse tokens data
 	marketData, cacheData, err := parseTokensData(tokensData)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cache tokens directly
 	if len(cacheData) > 0 {
 		err := s.cache.Set(cacheData, s.config.CoingeckoMarkets.GetTTL())
 		if err != nil {
@@ -208,13 +189,11 @@ func (s *Service) cacheTokensByID(tokensData [][]byte) ([]interface{}, error) {
 
 // cacheTokensPage caches page data for page-based requests
 func (s *Service) cacheTokensPage(tier cfg.MarketTier, pagesData []PageData) (map[int]interface{}, error) {
-	// Parse pages data
 	pageMapping, cacheData, err := parsePagesData(pagesData)
 	if err != nil {
 		return nil, err
 	}
 
-	// Cache pages data
 	if len(cacheData) > 0 {
 		err := s.cache.Set(cacheData, s.config.CoingeckoMarkets.GetTTL())
 		if err != nil {
@@ -230,7 +209,6 @@ func (s *Service) cacheTokensPage(tier cfg.MarketTier, pagesData []PageData) (ma
 // Markets fetches markets data using cache with specified parameters
 // Returns full CoinGecko markets response in APIResponse format
 func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
-	// Check if specific IDs are requested
 	if len(params.IDs) > 0 {
 		return s.MarketsByIds(params)
 	}

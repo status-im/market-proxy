@@ -15,13 +15,11 @@ import (
 )
 
 // Helper function to create test config
-func createTestMarketsConfig() *config.Config {
-	return &config.Config{
-		CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-			TopPricesLimit:           10,
-			TopMarketsUpdateInterval: time.Second * 5,
-			Currency:                 "usd",
-		},
+func createTestMarketsConfig() *config.CoingeckoLeaderboardFetcher {
+	return &config.CoingeckoLeaderboardFetcher{
+		TopMarketsLimit:          10,
+		TopMarketsUpdateInterval: time.Second * 5,
+		Currency:                 "usd",
 	}
 }
 
@@ -142,102 +140,6 @@ func TestTopMarketsUpdater_SetOnUpdateCallback(t *testing.T) {
 	})
 }
 
-func TestTopMarketsUpdater_GetTopTokenIDs(t *testing.T) {
-	t.Run("Returns nil when no cache data", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns nil when cache data is nil", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		updater.cache.Lock()
-		updater.cache.data = nil
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns nil when cache data.Data is nil", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		updater.cache.Lock()
-		updater.cache.data = &APIResponse{Data: nil}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns empty slice when no coins have IDs", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		mockData := []CoinData{
-			{ID: "", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "", Symbol: "eth", Name: "Ethereum"},
-		}
-
-		updater.cache.Lock()
-		updater.cache.data = &APIResponse{Data: mockData}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Empty(t, result)
-	})
-
-	t.Run("Returns token IDs from cache data", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		mockData := []CoinData{
-			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "ethereum", Symbol: "eth", Name: "Ethereum"},
-			{ID: "cardano", Symbol: "ada", Name: "Cardano"},
-		}
-
-		updater.cache.Lock()
-		updater.cache.data = &APIResponse{Data: mockData}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		expected := []string{"bitcoin", "ethereum", "cardano"}
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("Filters out empty IDs", func(t *testing.T) {
-		cfg := createTestMarketsConfig()
-		updater := NewTopMarketsUpdater(cfg, mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t)))
-
-		mockData := []CoinData{
-			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "", Symbol: "eth", Name: "Ethereum"},
-			{ID: "cardano", Symbol: "ada", Name: "Cardano"},
-			{ID: "", Symbol: "sol", Name: "Solana"},
-		}
-
-		updater.cache.Lock()
-		updater.cache.data = &APIResponse{Data: mockData}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		expected := []string{"bitcoin", "cardano"}
-		assert.Equal(t, expected, result)
-	})
-}
-
 func TestTopMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	t.Run("Successful fetch and update", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -270,11 +172,9 @@ func TestTopMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	})
 
 	t.Run("Uses default limit when config limit is 0", func(t *testing.T) {
-		cfg := &config.Config{
-			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopPricesLimit: 0, // Should use default 500
-				Currency:       "usd",
-			},
+		cfg := &config.CoingeckoLeaderboardFetcher{
+			TopMarketsLimit: 0, // Should use default 500
+			Currency:        "usd",
 		}
 		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t))
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
@@ -290,11 +190,9 @@ func TestTopMarketsUpdater_fetchAndUpdate(t *testing.T) {
 	})
 
 	t.Run("Uses default limit when config limit is negative", func(t *testing.T) {
-		cfg := &config.Config{
-			CoingeckoLeaderboard: config.CoingeckoLeaderboardFetcher{
-				TopPricesLimit: -10, // Should use default 500
-				Currency:       "usd",
-			},
+		cfg := &config.CoingeckoLeaderboardFetcher{
+			TopMarketsLimit: -10, // Should use default 500
+			Currency:        "usd",
 		}
 		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(gomock.NewController(t))
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
@@ -568,9 +466,7 @@ func TestTopMarketsUpdater_ConcurrentAccess(t *testing.T) {
 				defer wg.Done()
 				for j := 0; j < 100; j++ {
 					data := updater.GetCacheData()
-					tokenIDs := updater.GetTopTokenIDs()
 					_ = data
-					_ = tokenIDs
 				}
 			}()
 		}

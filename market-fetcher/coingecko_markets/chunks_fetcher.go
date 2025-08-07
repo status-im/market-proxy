@@ -11,7 +11,7 @@ import (
 
 const (
 	CHUNKS_DEFAULT_CHUNK_SIZE    = 250
-	CHUNKS_DEFAULT_REQUEST_DELAY = 1000
+	CHUNKS_DEFAULT_REQUEST_DELAY = 1000 // ms
 )
 
 // ChunksFetcher handles fetching markets data in chunks
@@ -21,7 +21,6 @@ type ChunksFetcher struct {
 	requestDelay time.Duration
 }
 
-// NewChunksFetcher creates a new chunks fetcher
 func NewChunksFetcher(apiClient APIClient, chunkSize int, requestDelayMs int) *ChunksFetcher {
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {
@@ -53,7 +52,6 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 	numChunks := (len(params.IDs) + f.chunkSize - 1) / f.chunkSize
 	log.Printf("CoingeckoMarketsChunksFetcher: Fetching markets data for %d tokens in %d chunks", len(params.IDs), numChunks)
 
-	// Create fetch function for chunks
 	fetchFunc := func(ctx context.Context, chunk []string) ([][]byte, error) {
 		log.Printf("CoingeckoMarketsChunksFetcher: Fetching chunk with %d tokens", len(chunk))
 		chunkStartTime := time.Now()
@@ -79,7 +77,6 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 		duration := time.Since(chunkStartTime)
 		log.Printf("CoingeckoMarketsChunksFetcher: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
 
-		// Call onChunk callback if provided
 		if onChunk != nil {
 			onChunk(chunkData)
 		}
@@ -87,13 +84,11 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 		return chunkData, nil
 	}
 
-	// Use the generic chunking utility
 	result, err := coingecko_common.ChunkArrayFetcher(ctx, params.IDs, f.chunkSize, f.requestDelay, fetchFunc)
 	if err != nil {
 		return nil, err
 	}
 
-	// Log completion
 	tokensPerSecond := float64(len(params.IDs)) / time.Since(startTime).Seconds()
 	log.Printf("CoingeckoMarketsChunksFetcher: Fetched markets data for %d tokens in %d chunks (%.2f tokens/sec)",
 		len(params.IDs), numChunks, tokensPerSecond)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"sync/atomic"
-	"time"
 
 	"github.com/status-im/market-proxy/interfaces"
 
@@ -80,7 +79,7 @@ func (u *PeriodicUpdater) IsInitialized() bool {
 // fetchAndUpdate fetches tokens from API and calls the callback
 func (u *PeriodicUpdater) fetchAndUpdate(ctx context.Context) error {
 	u.metricsWriter.ResetCycleMetrics()
-	startTime := time.Now()
+	defer u.metricsWriter.TrackDataFetchCycle()()
 
 	tokens, err := u.client.FetchTokens()
 	if err != nil {
@@ -91,7 +90,6 @@ func (u *PeriodicUpdater) fetchAndUpdate(ctx context.Context) error {
 
 	tokensByPlatform := CountTokensByPlatform(filteredTokens)
 
-	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 	u.metricsWriter.RecordCacheSize(len(filteredTokens))
 	metrics.RecordTokensByPlatform(tokensByPlatform)
 

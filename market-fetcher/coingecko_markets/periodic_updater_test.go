@@ -181,101 +181,6 @@ func TestPeriodicUpdater_SetOnUpdateTierPagesCallback(t *testing.T) {
 	})
 }
 
-func TestPeriodicUpdater_GetTopTokenIDs(t *testing.T) {
-	t.Run("Returns nil when no cache data", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns nil when cache data is nil", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		// Cache is empty by default in tier mode
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns nil when cache data.Data is nil", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		// Cache is empty by default in tier mode
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Nil(t, result)
-	})
-
-	t.Run("Returns empty slice when no coins have IDs", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		mockData := []CoinGeckoData{
-			{ID: "", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "", Symbol: "eth", Name: "Ethereum"},
-		}
-
-		updater.cache.Lock()
-		// Setup tier cache
-		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		assert.Empty(t, result)
-	})
-
-	t.Run("Returns token IDs from cache data", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		mockData := []CoinGeckoData{
-			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "ethereum", Symbol: "eth", Name: "Ethereum"},
-			{ID: "cardano", Symbol: "ada", Name: "Cardano"},
-		}
-
-		updater.cache.Lock()
-		// Setup tier cache
-		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		expected := []string{"bitcoin", "ethereum", "cardano"}
-		assert.Equal(t, expected, result)
-	})
-
-	t.Run("Filters out empty IDs", func(t *testing.T) {
-		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
-
-		mockData := []CoinGeckoData{
-			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
-			{ID: "", Symbol: "eth", Name: "Ethereum"},
-			{ID: "cardano", Symbol: "ada", Name: "Cardano"},
-			{ID: "", Symbol: "sol", Name: "Solana"},
-		}
-
-		updater.cache.Lock()
-		// Setup tier cache
-		updater.cache.tiers["test"] = &TierDataWithTimestamp{Data: mockData, Timestamp: time.Now()}
-		updater.cache.Unlock()
-
-		result := updater.GetTopTokenIDs()
-
-		expected := []string{"bitcoin", "cardano"}
-		assert.Equal(t, expected, result)
-	})
-}
-
 func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 	t.Run("Successful fetch and update", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -643,9 +548,7 @@ func TestPeriodicUpdater_ConcurrentAccess(t *testing.T) {
 				defer wg.Done()
 				for j := 0; j < 100; j++ {
 					data := updater.GetCacheData()
-					tokenIDs := updater.GetTopTokenIDs()
 					_ = data
-					_ = tokenIDs
 				}
 			}()
 		}
