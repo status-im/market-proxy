@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -126,7 +127,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					t.Errorf("MarketsFetcherConfig.Validate() expected error but got none")
 					return
 				}
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
+				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("MarketsFetcherConfig.Validate() error = %v, expected to contain %v", err, tt.errMsg)
 				}
 			} else {
@@ -136,19 +137,4 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to check if a string contains another string
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(substr) > 0 && len(s) > 0 && findSubstring(s, substr)))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

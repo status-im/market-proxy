@@ -177,6 +177,8 @@ func TestService_Stop(t *testing.T) {
 			name: "Stop service with tokens service and active goroutine",
 			setupService: func() *Service {
 				mockCache := cache_mocks.NewMockICache(ctrl)
+				// Add expectations for cache Set calls that may occur during async operations
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 				mockTokensService := createMockTokensService(ctrl)
 				service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -192,6 +194,8 @@ func TestService_Stop(t *testing.T) {
 			name: "Stop service without tokens service",
 			setupService: func() *Service {
 				mockCache := cache_mocks.NewMockICache(ctrl)
+				// Add expectations for cache Set calls that may occur during async operations
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 				service := NewService(mockCache, createTestConfig(), nil)
 
 				// Start the service

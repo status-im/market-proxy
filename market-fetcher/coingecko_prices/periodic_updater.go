@@ -203,8 +203,10 @@ func (u *PeriodicUpdater) Stop() {
 func (u *PeriodicUpdater) ForceUpdate(ctx context.Context) {
 	log.Printf("Force updating all %d tier schedulers", len(u.schedulers))
 	for _, tierScheduler := range u.schedulers {
-		if tierScheduler.scheduler != nil {
-			tierScheduler.scheduler.TriggerNow()
+		if tierScheduler.scheduler != nil && !tierScheduler.scheduler.IsRunning() {
+			if err := u.fetchAndUpdateTier(ctx, tierScheduler.tier); err != nil {
+				log.Printf("Error force updating tier '%s' data: %v", tierScheduler.tier.Name, err)
+			}
 		}
 	}
 }
