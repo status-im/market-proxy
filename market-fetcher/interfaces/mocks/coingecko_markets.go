@@ -55,6 +55,20 @@ func (mr *MockCoingeckoMarketsServiceMockRecorder) Markets(arg0 any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Markets", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).Markets), arg0)
 }
 
+// SubscribeInitialized mocks base method.
+func (m *MockCoingeckoMarketsService) SubscribeInitialized() chan struct{} {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeInitialized")
+	ret0, _ := ret[0].(chan struct{})
+	return ret0
+}
+
+// SubscribeInitialized indicates an expected call of SubscribeInitialized.
+func (mr *MockCoingeckoMarketsServiceMockRecorder) SubscribeInitialized() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeInitialized", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).SubscribeInitialized))
+}
+
 // SubscribeTopMarketsUpdate mocks base method.
 func (m *MockCoingeckoMarketsService) SubscribeTopMarketsUpdate() chan struct{} {
 	m.ctrl.T.Helper()
@@ -109,4 +123,16 @@ func (m *MockCoingeckoMarketsService) Unsubscribe(arg0 chan struct{}) {
 func (mr *MockCoingeckoMarketsServiceMockRecorder) Unsubscribe(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).Unsubscribe), arg0)
+}
+
+// UnsubscribeInitialized mocks base method.
+func (m *MockCoingeckoMarketsService) UnsubscribeInitialized(arg0 chan struct{}) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "UnsubscribeInitialized", arg0)
+}
+
+// UnsubscribeInitialized indicates an expected call of UnsubscribeInitialized.
+func (mr *MockCoingeckoMarketsServiceMockRecorder) UnsubscribeInitialized(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnsubscribeInitialized", reflect.TypeOf((*MockCoingeckoMarketsService)(nil).UnsubscribeInitialized), arg0)
 }

@@ -40,6 +40,18 @@ func (m *MockPeriodicUpdaterInterface) EXPECT() *MockPeriodicUpdaterInterfaceMoc
 	return m.recorder
 }
 
+// ForceUpdate mocks base method.
+func (m *MockPeriodicUpdaterInterface) ForceUpdate(arg0 context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ForceUpdate", arg0)
+}
+
+// ForceUpdate indicates an expected call of ForceUpdate.
+func (mr *MockPeriodicUpdaterInterfaceMockRecorder) ForceUpdate(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceUpdate", reflect.TypeOf((*MockPeriodicUpdaterInterface)(nil).ForceUpdate), arg0)
+}
+
 // GetCacheData mocks base method.
 func (m *MockPeriodicUpdaterInterface) GetCacheData() map[string][]byte {
 	m.ctrl.T.Helper()
