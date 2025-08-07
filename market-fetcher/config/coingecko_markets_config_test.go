@@ -19,13 +19,13 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					{
 						Name:           "tier1",
 						PageFrom:       1,
-						PageTo:         500,
+						PageTo:         2, // optimized from 500
 						UpdateInterval: 30 * time.Second,
 					},
 					{
 						Name:           "tier2",
-						PageFrom:       501,
-						PageTo:         10000,
+						PageFrom:       3, // adjusted to not overlap
+						PageTo:         5, // optimized from 10000
 						UpdateInterval: 30 * time.Minute,
 					},
 				},
@@ -40,13 +40,13 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					{
 						Name:           "tier1",
 						PageFrom:       1,
-						PageTo:         500,
+						PageTo:         3, // optimized from 500
 						UpdateInterval: 30 * time.Second,
 					},
 					{
 						Name:           "tier2",
-						PageFrom:       450, // Overlaps with tier1
-						PageTo:         1000,
+						PageFrom:       2, // Overlaps with tier1 (still tests overlap logic)
+						PageTo:         5, // optimized from 1000
 						UpdateInterval: 30 * time.Minute,
 					},
 				},
@@ -60,8 +60,8 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
-						PageFrom:       500,
-						PageTo:         100, // Invalid: from > to
+						PageFrom:       3,
+						PageTo:         1, // Invalid: from > to (still tests validation logic)
 						UpdateInterval: 30 * time.Second,
 					},
 				},
@@ -76,7 +76,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					{
 						Name:           "tier1",
 						PageFrom:       0, // Invalid: must be > 0
-						PageTo:         500,
+						PageTo:         2, // optimized from 500
 						UpdateInterval: 30 * time.Second,
 					},
 				},
@@ -91,7 +91,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					{
 						Name:           "", // Invalid: empty name
 						PageFrom:       1,
-						PageTo:         500,
+						PageTo:         2, // optimized from 500
 						UpdateInterval: 30 * time.Second,
 					},
 				},
@@ -106,7 +106,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 					{
 						Name:           "tier1",
 						PageFrom:       1,
-						PageTo:         500,
+						PageTo:         2, // optimized from 500
 						UpdateInterval: 0, // Invalid: must be > 0
 
 					},

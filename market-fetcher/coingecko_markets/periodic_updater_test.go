@@ -26,7 +26,7 @@ func createTestPeriodicUpdaterConfig() *config.MarketsFetcherConfig {
 			{
 				Name:           "tier1",
 				PageFrom:       1,
-				PageTo:         10,
+				PageTo:         2,
 				UpdateInterval: time.Second * 5,
 			},
 		},
@@ -200,9 +200,12 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 		sampleData := createSampleMarketsData()
 		setupMockFetchPage(mockFetcher, sampleData, nil)
 
+		var mu sync.Mutex
 		callbackCalled := false
 		var callbackCtx context.Context
 		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
+			mu.Lock()
+			defer mu.Unlock()
 			callbackCalled = true
 			callbackCtx = ctx
 		})
@@ -211,8 +214,14 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 		err := updater.fetchAndUpdateTier(ctx, tier)
 
 		assert.NoError(t, err)
-		assert.True(t, callbackCalled)
-		assert.Equal(t, ctx, callbackCtx)
+
+		mu.Lock()
+		actualCallbackCalled := callbackCalled
+		actualCallbackCtx := callbackCtx
+		mu.Unlock()
+
+		assert.True(t, actualCallbackCalled)
+		assert.Equal(t, ctx, actualCallbackCtx)
 
 		// Verify cache was updated for this tier (4 items: 2 pages × 2 items each)
 		tierCacheData := updater.GetCacheDataForTier(tier.Name)
@@ -227,7 +236,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 	t.Run("Uses default limit when config limit is 0", func(t *testing.T) {
 		usdCurrency := "usd"
 		cfg := &config.MarketsFetcherConfig{
-			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 500, UpdateInterval: time.Second}}, // Tier with page 1-500
+			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}}, // Tier with page 1-1 (optimized from 500)
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
@@ -248,7 +257,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 	t.Run("Uses default limit when config limit is negative", func(t *testing.T) {
 		usdCurrency := "usd"
 		cfg := &config.MarketsFetcherConfig{
-			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier with page 1-100
+			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}}, // Test tier with page 1-1 (optimized from 100)
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
@@ -268,8 +277,8 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Uses default currency when MarketParamsNormalize is nil", func(t *testing.T) {
 		cfg := &config.MarketsFetcherConfig{
-			Tiers:                 []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier with page 1-100
-			MarketParamsNormalize: nil,                                                                                        // Should use default "usd"
+			Tiers:                 []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}}, // Test tier with page 1-1 (optimized from 100)
+			MarketParamsNormalize: nil,                                                                                      // Should use default "usd"
 		}
 		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
@@ -435,7 +444,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 
 	t.Run("Start fails when interval is zero", func(t *testing.T) {
 		cfg := &config.MarketsFetcherConfig{
-			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: 0}}, // Test tier with 0 interval - should fail validation
+			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: 0}}, // Test tier with 0 interval - should fail validation (optimized from 100)
 		}
 		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
@@ -449,7 +458,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 
 	t.Run("Start fails when interval is negative", func(t *testing.T) {
 		cfg := &config.MarketsFetcherConfig{
-			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: -time.Second}}, // Test tier with negative interval - should fail validation
+			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: -time.Second}}, // Test tier with negative interval - should fail validation (optimized from 100)
 		}
 		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
@@ -499,7 +508,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 	t.Run("Start with minimal update interval", func(t *testing.T) {
 		usdCurrency := "usd"
 		cfg := &config.MarketsFetcherConfig{
-			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier time.Millisecond, // Minimal interval
+			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 1, UpdateInterval: time.Second}}, // Test tier time.Millisecond, // Minimal interval (optimized from 100)
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
