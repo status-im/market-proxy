@@ -16,12 +16,6 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// Test data constants
-var (
-	samplePriceData1 = []byte(`{"usd":45000,"eur":38000}`)
-	samplePriceData2 = []byte(`{"usd":3000,"eur":2500}`)
-)
-
 func createMockTokensService(ctrl *gomock.Controller) *mock_interfaces.MockITokensService {
 	mockTokensService := mock_interfaces.NewMockITokensService(ctrl)
 	mockTokensService.EXPECT().GetTokens().Return([]cg.Token{

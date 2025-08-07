@@ -12,16 +12,6 @@ import (
 	"github.com/status-im/market-proxy/metrics"
 )
 
-// mockClient for testing
-type mockClient struct {
-	tokens []interfaces.Token
-	err    error
-}
-
-func (c *mockClient) FetchTokens() ([]interfaces.Token, error) {
-	return c.tokens, c.err
-}
-
 func TestNewPeriodicUpdater(t *testing.T) {
 	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
