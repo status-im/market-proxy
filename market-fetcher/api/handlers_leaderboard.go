@@ -17,13 +17,7 @@ func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request
 
 // handleLeaderboardPrices responds with price quotes from Binance service
 func (s *Server) handleLeaderboardPrices(w http.ResponseWriter, r *http.Request) {
-	quotes := s.binanceService.GetLatestQuotes()
-	if len(quotes) == 0 {
-		http.Error(w, "No CoinGecko prices available", http.StatusServiceUnavailable)
-		return
-	}
-
-	s.sendJSONResponse(w, quotes)
+	s.handleLeaderboardSimplePrices(w, r)
 }
 
 // handleLeaderboardSimplePrices responds with simple price quotes filtered by currency
