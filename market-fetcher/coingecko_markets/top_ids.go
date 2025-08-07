@@ -9,14 +9,9 @@ import (
 type TopIdsManager struct {
 	mu sync.RWMutex
 
-	// Map from page number to token IDs for that page
-	pageToIds map[int][]string
-
-	// Cached vector of all top IDs in order (built from pages)
-	topIds []string
-
-	// Track if topIds needs to be rebuilt
-	dirty bool
+	pageToIds map[int][]string // page number -> tokenIds
+	topIds    []string         // top Ids (built gradually when receiving pages)
+	dirty     bool             // need to rebuild
 }
 
 // NewTopIdsManager creates a new TopIdsManager
@@ -29,19 +24,15 @@ func NewTopIdsManager() *TopIdsManager {
 }
 
 // UpdatePageIds updates token IDs for a specific page
-// This method efficiently updates the internal topIds vector
 func (t *TopIdsManager) UpdatePageIds(page int, tokenIds []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// Store page IDs
 	t.pageToIds[page] = make([]string, len(tokenIds))
 	copy(t.pageToIds[page], tokenIds)
 
 	// Mark as dirty for rebuild
 	t.dirty = true
-
-	log.Printf("Updated page %d with %d token IDs", page, len(tokenIds))
 }
 
 // UpdatePagesFromPageData updates multiple pages from PageData slice
@@ -50,14 +41,10 @@ func (t *TopIdsManager) UpdatePagesFromPageData(pagesData []PageData) {
 	defer t.mu.Unlock()
 
 	for _, pageData := range pagesData {
-		// Extract token IDs from page data
 		tokenIds := extractTokenIDsFromPageData(pageData.Data)
 
-		// Store page IDs
 		t.pageToIds[pageData.Page] = make([]string, len(tokenIds))
 		copy(t.pageToIds[pageData.Page], tokenIds)
-
-		log.Printf("Updated page %d with %d token IDs from PageData", pageData.Page, len(tokenIds))
 	}
 
 	// Mark as dirty for rebuild
@@ -65,7 +52,6 @@ func (t *TopIdsManager) UpdatePagesFromPageData(pagesData []PageData) {
 }
 
 // GetTopIds returns the current top IDs vector up to the specified limit
-// Rebuilds the vector if it's dirty
 func (t *TopIdsManager) GetTopIds(limit int) []string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -122,7 +108,6 @@ func (t *TopIdsManager) GetTotalTokenCount() int {
 	defer t.mu.RUnlock()
 
 	if t.dirty {
-		// Count from pages
 		total := 0
 		for _, ids := range t.pageToIds {
 			total += len(ids)
@@ -133,7 +118,7 @@ func (t *TopIdsManager) GetTotalTokenCount() int {
 	return len(t.topIds)
 }
 
-// rebuildTopIds rebuilds the topIds vector from page data
+// rebuildTopIds rebuilds the topIds vector from page data with deduplication
 // Must be called with lock held
 func (t *TopIdsManager) rebuildTopIds() {
 	if len(t.pageToIds) == 0 {
@@ -149,16 +134,23 @@ func (t *TopIdsManager) rebuildTopIds() {
 		}
 	}
 
-	// Rebuild topIds in page order
+	// Use a map to track seen IDs for deduplication
+	seenIds := make(map[string]int) // tokenId -> first page seen
 	var newTopIds []string
+
+	// Rebuild topIds in page order, keeping only the first occurrence of each ID
 	for page := 1; page <= maxPage; page++ {
 		if ids, exists := t.pageToIds[page]; exists {
-			newTopIds = append(newTopIds, ids...)
+			for _, id := range ids {
+				if _, seen := seenIds[id]; !seen {
+					seenIds[id] = page
+					newTopIds = append(newTopIds, id)
+				}
+			}
 		}
 	}
 
 	t.topIds = newTopIds
-	log.Printf("Rebuilt topIds vector with %d tokens from %d pages", len(t.topIds), len(t.pageToIds))
 }
 
 // Clear removes all data
@@ -179,4 +171,29 @@ func (t *TopIdsManager) GetStats() (int, int, bool) {
 	defer t.mu.RUnlock()
 
 	return len(t.pageToIds), len(t.topIds), t.dirty
+}
+
+// GetDuplicateStats returns information about duplicate tokens across pages
+func (t *TopIdsManager) GetDuplicateStats() map[string][]int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	// Map token ID to pages where it appears
+	tokenToPages := make(map[string][]int)
+
+	for page, ids := range t.pageToIds {
+		for _, id := range ids {
+			tokenToPages[id] = append(tokenToPages[id], page)
+		}
+	}
+
+	// Return only tokens that appear in multiple pages
+	duplicates := make(map[string][]int)
+	for tokenId, pages := range tokenToPages {
+		if len(pages) > 1 {
+			duplicates[tokenId] = pages
+		}
+	}
+
+	return duplicates
 }

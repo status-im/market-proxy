@@ -2,6 +2,7 @@ package coingecko_markets
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,6 +191,121 @@ func TestTopIdsManager_Clear(t *testing.T) {
 	assert.Equal(t, 0, pageCount)
 	assert.Equal(t, 0, totalTokens)
 	assert.False(t, isDirty)
+}
+
+func TestTopIdsManager_Deduplication(t *testing.T) {
+	manager := NewTopIdsManager()
+
+	t.Run("Duplicates across pages are removed", func(t *testing.T) {
+		manager.Clear()
+
+		// Page 1: bitcoin, ethereum, cardano
+		page1Tokens := []string{"bitcoin", "ethereum", "cardano"}
+		manager.UpdatePageIds(1, page1Tokens)
+
+		// Page 2: ethereum, cardano, solana (ethereum and cardano are duplicates)
+		page2Tokens := []string{"ethereum", "cardano", "solana"}
+		manager.UpdatePageIds(2, page2Tokens)
+
+		// Page 3: cardano, solana, polkadot (cardano and solana are duplicates)
+		page3Tokens := []string{"cardano", "solana", "polkadot"}
+		manager.UpdatePageIds(3, page3Tokens)
+
+		// Expected: bitcoin, ethereum, cardano, solana, polkadot (in order of first appearance)
+		expected := []string{"bitcoin", "ethereum", "cardano", "solana", "polkadot"}
+		result := manager.GetTopIds(0)
+		assert.Equal(t, expected, result)
+
+		// Check duplicate stats
+		duplicates := manager.GetDuplicateStats()
+		assert.Len(t, duplicates, 3) // ethereum, cardano, solana appear in multiple pages
+
+		// Check specific duplicates
+		assert.Contains(t, duplicates, "ethereum")
+		assert.Contains(t, duplicates, "cardano")
+		assert.Contains(t, duplicates, "solana")
+
+		// Verify pages where duplicates appear (sort for consistent testing)
+		ethereumPages := duplicates["ethereum"]
+		sort.Ints(ethereumPages)
+		assert.Equal(t, []int{1, 2}, ethereumPages)
+
+		cardanoPages := duplicates["cardano"]
+		sort.Ints(cardanoPages)
+		assert.Equal(t, []int{1, 2, 3}, cardanoPages)
+
+		solanaPages := duplicates["solana"]
+		sort.Ints(solanaPages)
+		assert.Equal(t, []int{2, 3}, solanaPages)
+	})
+
+	t.Run("No duplicates case", func(t *testing.T) {
+		manager.Clear()
+
+		// Page 1: unique tokens
+		manager.UpdatePageIds(1, []string{"bitcoin", "ethereum"})
+		// Page 2: different unique tokens
+		manager.UpdatePageIds(2, []string{"cardano", "solana"})
+
+		expected := []string{"bitcoin", "ethereum", "cardano", "solana"}
+		result := manager.GetTopIds(0)
+		assert.Equal(t, expected, result)
+
+		// Should have no duplicates
+		duplicates := manager.GetDuplicateStats()
+		assert.Empty(t, duplicates)
+	})
+
+	t.Run("Token appears in non-consecutive pages", func(t *testing.T) {
+		manager.Clear()
+
+		// Page 1: bitcoin, ethereum
+		manager.UpdatePageIds(1, []string{"bitcoin", "ethereum"})
+		// Page 2: cardano, solana
+		manager.UpdatePageIds(2, []string{"cardano", "solana"})
+		// Page 4: bitcoin again (skipping page 3)
+		manager.UpdatePageIds(4, []string{"bitcoin", "polkadot"})
+
+		// Expected: bitcoin (from page 1), ethereum, cardano, solana, polkadot
+		expected := []string{"bitcoin", "ethereum", "cardano", "solana", "polkadot"}
+		result := manager.GetTopIds(0)
+		assert.Equal(t, expected, result)
+
+		// Check duplicates
+		duplicates := manager.GetDuplicateStats()
+		assert.Len(t, duplicates, 1)
+		assert.Contains(t, duplicates, "bitcoin")
+
+		bitcoinPages := duplicates["bitcoin"]
+		sort.Ints(bitcoinPages)
+		assert.Equal(t, []int{1, 4}, bitcoinPages)
+	})
+
+	t.Run("All tokens are duplicates", func(t *testing.T) {
+		manager.Clear()
+
+		// All pages have the same tokens
+		sameTokens := []string{"bitcoin", "ethereum"}
+		manager.UpdatePageIds(1, sameTokens)
+		manager.UpdatePageIds(2, sameTokens)
+		manager.UpdatePageIds(3, sameTokens)
+
+		// Should only keep first occurrence
+		result := manager.GetTopIds(0)
+		assert.Equal(t, sameTokens, result)
+
+		// All tokens should be duplicates
+		duplicates := manager.GetDuplicateStats()
+		assert.Len(t, duplicates, 2)
+
+		bitcoinPages := duplicates["bitcoin"]
+		sort.Ints(bitcoinPages)
+		assert.Equal(t, []int{1, 2, 3}, bitcoinPages)
+
+		ethereumPages := duplicates["ethereum"]
+		sort.Ints(ethereumPages)
+		assert.Equal(t, []int{1, 2, 3}, ethereumPages)
+	})
 }
 
 func TestTopIdsManager_ConcurrentAccess(t *testing.T) {
