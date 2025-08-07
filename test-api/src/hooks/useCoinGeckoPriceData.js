@@ -15,7 +15,7 @@ export default function useCoinGeckoPriceData(endpoint = 'prices') {
     fetchData,
     resetStats
   } = useApiRequest({
-    url: `${process.env.REACT_APP_API_URL}${endpointUrls[endpoint]}`,
+    url: endpointUrls[endpoint],
     processData: (data) => data || {},
     validateData: (data) => {
       // Check that data exists and is an object with keys

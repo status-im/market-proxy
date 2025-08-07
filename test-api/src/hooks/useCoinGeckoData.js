@@ -8,7 +8,7 @@ export default function useCoinGeckoData(endpoint = 'leaderboard') {
   
   // For leaderboard endpoint - direct request
   const leaderboardRequest = useApiRequest({
-    url: `${process.env.REACT_APP_API_URL}/v1/leaderboard/markets`,
+    url: '/v1/leaderboard/markets',
     processData: (data) => data.data || [],
     validateData: (data) => {
       return data !== null && 
@@ -22,7 +22,7 @@ export default function useCoinGeckoData(endpoint = 'leaderboard') {
   // For coins endpoint - request with IDs from leaderboard
   const coinsRequest = useApiRequest({
     url: coinIds.length > 0 ? 
-      `${process.env.REACT_APP_API_URL}/v1/coins/markets?` +
+      `/v1/coins/markets?` +
       `ids=${coinIds.join(',')}&` +
       `vs_currency=usd&` +
       `order=market_cap_desc&` +

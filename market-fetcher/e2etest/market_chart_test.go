@@ -391,8 +391,8 @@ func TestMarketChartTimestampFreshness(t *testing.T) {
 	// Give time for data initialization
 	waitForDataInitialization(t, env)
 
-	// Make a request to get market chart data
-	url := env.ServerBaseURL + "/api/v1/coins/bitcoin/market_chart"
+	// Make a request to get market chart data directly from mock server to test freshness
+	url := env.MockServer.GetURL() + "/api/v1/coins/bitcoin/market_chart"
 	resp, err := http.Get(url)
 	require.NoError(t, err, "Should be able to make a request to market chart endpoint")
 	defer resp.Body.Close()

@@ -3,18 +3,20 @@ package coingecko_tokens
 import (
 	"reflect"
 	"testing"
+
+	"github.com/status-im/market-proxy/interfaces"
 )
 
 func TestFilterTokensByPlatform(t *testing.T) {
 	tests := []struct {
 		name               string
-		tokens             []Token
+		tokens             []interfaces.Token
 		supportedPlatforms []string
-		want               []Token
+		want               []interfaces.Token
 	}{
 		{
 			name: "filter tokens with multiple platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "bitcoin",
 					Symbol: "btc",
@@ -44,7 +46,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum", "polygon-pos"},
-			want: []Token{
+			want: []interfaces.Token{
 				{
 					ID:     "bitcoin",
 					Symbol: "btc",
@@ -66,7 +68,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 		},
 		{
 			name: "native tokens are included even without platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:        "ethereum",
 					Symbol:    "eth",
@@ -89,7 +91,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum", "polygon-pos"},
-			want: []Token{
+			want: []interfaces.Token{
 				{
 					ID:        "ethereum",
 					Symbol:    "eth",
@@ -106,7 +108,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 		},
 		{
 			name: "native token with supported platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "ethereum",
 					Symbol: "eth",
@@ -119,7 +121,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum", "polygon-pos"},
-			want: []Token{
+			want: []interfaces.Token{
 				{
 					ID:     "ethereum",
 					Symbol: "eth",
@@ -133,7 +135,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 		},
 		{
 			name: "mix of native tokens and platform tokens",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:        "ethereum",
 					Symbol:    "eth",
@@ -159,7 +161,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum"},
-			want: []Token{
+			want: []interfaces.Token{
 				{
 					ID:        "ethereum",
 					Symbol:    "eth",
@@ -178,7 +180,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 		},
 		{
 			name: "no supported platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "bitcoin",
 					Symbol: "btc",
@@ -190,17 +192,17 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{},
-			want:               []Token{},
+			want:               []interfaces.Token{},
 		},
 		{
 			name:               "empty tokens list",
-			tokens:             []Token{},
+			tokens:             []interfaces.Token{},
 			supportedPlatforms: []string{"ethereum", "polygon-pos"},
-			want:               []Token{},
+			want:               []interfaces.Token{},
 		},
 		{
 			name: "no matching platforms or native tokens",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "bitcoin",
 					Symbol: "btc",
@@ -212,11 +214,11 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum", "polygon-pos"},
-			want:               []Token{},
+			want:               []interfaces.Token{},
 		},
 		{
 			name: "some tokens without any platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:        "bitcoin",
 					Symbol:    "btc",
@@ -233,7 +235,7 @@ func TestFilterTokensByPlatform(t *testing.T) {
 				},
 			},
 			supportedPlatforms: []string{"ethereum"},
-			want: []Token{
+			want: []interfaces.Token{
 				{
 					ID:     "ethereum",
 					Symbol: "eth",
@@ -278,12 +280,12 @@ func TestFilterTokensByPlatform(t *testing.T) {
 func TestCountTokensByPlatform(t *testing.T) {
 	tests := []struct {
 		name   string
-		tokens []Token
+		tokens []interfaces.Token
 		want   map[string]int
 	}{
 		{
 			name: "count tokens across multiple platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "bitcoin",
 					Symbol: "btc",
@@ -319,12 +321,12 @@ func TestCountTokensByPlatform(t *testing.T) {
 		},
 		{
 			name:   "empty tokens list",
-			tokens: []Token{},
+			tokens: []interfaces.Token{},
 			want:   map[string]int{},
 		},
 		{
 			name: "tokens without platforms",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:        "bitcoin",
 					Symbol:    "btc",
@@ -336,7 +338,7 @@ func TestCountTokensByPlatform(t *testing.T) {
 		},
 		{
 			name: "single platform with multiple tokens",
-			tokens: []Token{
+			tokens: []interfaces.Token{
 				{
 					ID:     "usdc",
 					Symbol: "usdc",

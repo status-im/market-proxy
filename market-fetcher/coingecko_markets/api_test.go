@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/status-im/market-proxy/interfaces"
+
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 )
@@ -76,7 +78,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.mockClient.Do(req)
 }
 
-// MockAPIKeyManager mocks the APIKeyManagerInterface for testing
+// MockAPIKeyManager mocks the IAPIKeyManager for testing
 type MockAPIKeyManager struct {
 	// Keys to return
 	mockKeys []cg.APIKey
@@ -174,13 +176,16 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -241,13 +246,16 @@ func TestCoinGeckoClient_FetchPage_ErrorHandling(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -311,13 +319,16 @@ func TestCoinGeckoClient_FetchPage_KeyFallback(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -388,13 +399,16 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -445,7 +459,10 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -456,7 +473,7 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage which should update the health status
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -485,7 +502,10 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	errorClient := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockErrorClient),
 	}
@@ -496,7 +516,7 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	// Call FetchPage with an error, health status should remain false
-	params = cg.MarketsParams{
+	params = interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -540,13 +560,16 @@ func TestCoinGeckoClient_FetchPage_WithCategory(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with Category parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -603,13 +626,16 @@ func TestCoinGeckoClient_FetchPage_WithIDs(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with IDs parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:     1,
 		PerPage:  10,
 		Currency: "usd",
@@ -666,13 +692,16 @@ func TestCoinGeckoClient_FetchPage_WithSparkline(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with SparklineEnabled parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:             1,
 		PerPage:          10,
 		Currency:         "usd",
@@ -729,13 +758,16 @@ func TestCoinGeckoClient_FetchPage_WithPriceChangePercentage(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with PriceChangePercentage parameter
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               10,
 		Currency:              "usd",
@@ -792,13 +824,16 @@ func TestCoinGeckoClient_FetchPage_WithAllNewParameters(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with all new parameters
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               50,
 		Currency:              "usd",
@@ -869,13 +904,16 @@ func TestCoinGeckoClient_FetchPage_EmptyOptionalParameters(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
 
 	// Call FetchPage with empty optional parameters
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Page:                  1,
 		PerPage:               10,
 		Currency:              "usd",

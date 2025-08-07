@@ -1,8 +1,10 @@
 package coingecko_tokens
 
+import "github.com/status-im/market-proxy/interfaces"
+
 // FilterTokensByPlatform filters tokens to keep only supported platforms and native tokens
-func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token {
-	result := make([]Token, 0, len(tokens))
+func FilterTokensByPlatform(tokens []interfaces.Token, supportedPlatforms []string) []interfaces.Token {
+	result := make([]interfaces.Token, 0, len(tokens))
 
 	// Create a map for faster lookups
 	supportedPlatformsMap := make(map[string]bool)
@@ -33,7 +35,7 @@ func FilterTokensByPlatform(tokens []Token, supportedPlatforms []string) []Token
 }
 
 // CountTokensByPlatform counts tokens per platform
-func CountTokensByPlatform(tokens []Token) map[string]int {
+func CountTokensByPlatform(tokens []interfaces.Token) map[string]int {
 	platformCounts := make(map[string]int)
 
 	for _, token := range tokens {

@@ -1,7 +1,7 @@
 package coingecko_leaderboard
 
 import (
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
 )
 
 // ConvertPriceResponseToPriceQuotes converts SimplePriceResponse to PriceQuotes for the given currency

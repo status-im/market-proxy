@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
 )
 
 // createCacheKeys creates cache keys for each token ID

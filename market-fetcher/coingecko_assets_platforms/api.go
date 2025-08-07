@@ -12,7 +12,7 @@ import (
 
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.APIKeyManagerInterface
+	keyManager      cg.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool
 }

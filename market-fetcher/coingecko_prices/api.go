@@ -6,16 +6,20 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/status-im/market-proxy/interfaces"
+
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
 )
 
+//go:generate mockgen -destination=mocks/api_client.go . APIClient
+
 // APIClient defines interface for API operations
 type APIClient interface {
 	// FetchPrices fetches prices for the given parameters
 	// Returns a map where key is token ID and value is raw JSON response for that token
-	FetchPrices(params cg.PriceParams) (map[string][]byte, error)
+	FetchPrices(params interfaces.PriceParams) (map[string][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
@@ -23,7 +27,7 @@ type APIClient interface {
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.APIKeyManagerInterface
+	keyManager      cg.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
@@ -47,7 +51,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 // FetchPrices fetches prices for the given parameters
-func (c *CoinGeckoClient) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
+func (c *CoinGeckoClient) FetchPrices(params interfaces.PriceParams) (map[string][]byte, error) {
 	// Get raw HTTP response and body using private function
 	resp, body, err := c.executeFetchRequest(params)
 	if err != nil {
@@ -78,7 +82,7 @@ func (c *CoinGeckoClient) FetchPrices(params cg.PriceParams) (map[string][]byte,
 	return result, nil
 }
 
-func (c *CoinGeckoClient) executeFetchRequest(params cg.PriceParams) (*http.Response, []byte, error) {
+func (c *CoinGeckoClient) executeFetchRequest(params interfaces.PriceParams) (*http.Response, []byte, error) {
 	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
 		// Get the appropriate base URL for this key type
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)

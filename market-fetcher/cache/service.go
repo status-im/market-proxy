@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Service implements Cache interface with go-cache only
+// Service implements ICache interface with go-cache only
 type Service struct {
 	goCache *GoCache
 	config  Config
@@ -25,7 +25,7 @@ func NewService(config Config) *Service {
 
 // Start implements core.Interface
 func (s *Service) Start(ctx context.Context) error {
-	// Cache service doesn't need startup logic
+	// ICache service doesn't need startup logic
 	// Just validate configuration
 	if s.goCache == nil {
 		return fmt.Errorf("cache service not properly initialized")

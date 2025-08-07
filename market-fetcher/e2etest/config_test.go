@@ -21,12 +21,13 @@ func createTestConfig(mockURL, mockWSURL string) (string, error) {
 coingecko_leaderboard:
   update_interval: 1s                 # shorter interval for tests
   top_markets_update_interval: 1s     # enable markets updates for tests
-  limit: 20                           # fewer tokens for tests
+  top_markets_limit: 20               # fewer tokens for tests 
   request_delay: 100ms                # short delay for tests
+  currency: "usd"                     # must match the markets service currency
 
 coingecko_markets:
   request_delay: 100ms     # short delay for tests
-  ttl: 5m                  # cache TTL for tests
+  default_ttl: 5m          # default cache TTL for tests
   market_params_normalize: # normalize parameters for consistent caching
     vs_currency: "usd"     # always use USD for tests
     order: "market_cap_desc" # always order by market cap
@@ -34,13 +35,27 @@ coingecko_markets:
     sparkline: false       # no sparkline for tests
     price_change_percentage: "1h,24h" # test price changes
     category: ""           # no category filtering
+  tiers:                   # required tier configuration
+    - name: "test"         # test tier
+      page_from: 1        # tokens 1-2 for tests - much smaller range
+      page_to: 2
+      update_interval: 1s  # fast updates for tests
+      ttl: 5s              # short TTL for tests
 
 coingecko_prices:
-  
   request_delay: 100ms      # short delay for tests
   currencies:               # test currencies
     - usd
     - eur
+  tiers:                    # required tier configuration  
+    - name: "top-1000"      # test tier for top tokens
+      token_from: 1         # tokens 1-1000 for tests
+      token_to: 1000
+      update_interval: 1s   # fast update interval for tests
+    - name: "top-1001-10000" # test tier for remaining tokens
+      token_from: 1001      # tokens 1001-10000 for tests
+      token_to: 10000
+      update_interval: 2s   # fast update interval for tests
 
 coingecko_coinslist:
   update_interval: 1s       # shorter interval for tests

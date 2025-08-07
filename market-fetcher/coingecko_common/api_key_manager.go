@@ -27,8 +27,8 @@ type APIKey struct {
 	Type KeyType
 }
 
-// APIKeyManagerInterface defines the interface for API key management
-type APIKeyManagerInterface interface {
+// IAPIKeyManager defines the interface for API key management
+type IAPIKeyManager interface {
 	// GetAvailableKeys returns a list of available API keys, including:
 	// - All Pro keys that are not in backoff
 	// - If there's only one Pro key, it's included even if in backoff
@@ -40,7 +40,7 @@ type APIKeyManagerInterface interface {
 	MarkKeyAsFailed(key string)
 }
 
-// APIKeyManager implements APIKeyManagerInterface for CoinGecko
+// APIKeyManager implements IAPIKeyManager for CoinGecko
 type APIKeyManager struct {
 	apiTokens   *config.APITokens
 	rand        *rand.Rand

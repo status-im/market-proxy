@@ -3,8 +3,8 @@ package coingecko_leaderboard
 import (
 	"testing"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
-	"github.com/status-im/market-proxy/config"
+	cg "github.com/status-im/market-proxy/interfaces"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -168,65 +168,6 @@ func TestConvertPriceResponseToPriceQuotes(t *testing.T) {
 		assert.Equal(t, 0.0, bitcoinQuote.MarketCap)        // Should be 0 due to invalid type
 		assert.Equal(t, 0.0, bitcoinQuote.Volume24h)        // Should be 0 due to invalid type
 		assert.Equal(t, 0.0, bitcoinQuote.PercentChange24h) // Should be 0 due to invalid type
-	})
-}
-
-func TestTopPricesUpdater_SetGetTopTokenIDs(t *testing.T) {
-	cfg := &config.Config{}
-	updater := NewTopPricesUpdater(cfg, nil)
-
-	t.Run("Set and get token IDs", func(t *testing.T) {
-		tokenIDs := []string{"bitcoin", "ethereum", "cardano"}
-		updater.SetTopTokenIDs(tokenIDs)
-
-		result := updater.getTopTokenIDs()
-		assert.Equal(t, tokenIDs, result)
-	})
-
-	t.Run("Empty token IDs", func(t *testing.T) {
-		updater.SetTopTokenIDs([]string{})
-
-		result := updater.getTopTokenIDs()
-		assert.Nil(t, result)
-	})
-
-	t.Run("Nil token IDs", func(t *testing.T) {
-		updater.SetTopTokenIDs(nil)
-
-		result := updater.getTopTokenIDs()
-		assert.Nil(t, result)
-	})
-
-	t.Run("Overwrite existing token IDs", func(t *testing.T) {
-		// Set initial token IDs
-		initialIDs := []string{"bitcoin", "ethereum"}
-		updater.SetTopTokenIDs(initialIDs)
-
-		// Verify they're set
-		result := updater.getTopTokenIDs()
-		assert.Equal(t, initialIDs, result)
-
-		// Overwrite with new IDs
-		newIDs := []string{"cardano", "solana", "polkadot"}
-		updater.SetTopTokenIDs(newIDs)
-
-		// Verify they're updated
-		result = updater.getTopTokenIDs()
-		assert.Equal(t, newIDs, result)
-	})
-
-	t.Run("Returned slice is independent copy", func(t *testing.T) {
-		originalIDs := []string{"bitcoin", "ethereum"}
-		updater.SetTopTokenIDs(originalIDs)
-
-		// Get the IDs and modify the returned slice
-		result := updater.getTopTokenIDs()
-		result[0] = "modified"
-
-		// Original should be unchanged
-		originalResult := updater.getTopTokenIDs()
-		assert.Equal(t, "bitcoin", originalResult[0])
-		assert.NotEqual(t, "modified", originalResult[0])
 	})
 }
 

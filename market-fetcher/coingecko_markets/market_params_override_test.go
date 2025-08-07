@@ -3,9 +3,14 @@ package coingecko_markets
 import (
 	"testing"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
+	interface_mocks "github.com/status-im/market-proxy/interfaces/mocks"
+
+	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 // Helper functions for creating string and int pointers
@@ -15,9 +20,17 @@ func boolPtr(b bool) *bool       { return &b }
 
 func TestService_getParamsOverride(t *testing.T) {
 	t.Run("No normalization config - returns params as is", func(t *testing.T) {
-		service := NewService(&MockCache{}, createTestConfig())
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-		originalParams := cg.MarketsParams{
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+
+		service := NewService(mockCache, createTestConfig(), mockTokensService)
+
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,
@@ -32,6 +45,9 @@ func TestService_getParamsOverride(t *testing.T) {
 	})
 
 	t.Run("With normalization config - overrides parameters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestConfig()
 		cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{
 			VsCurrency:            stringPtr("usd"),
@@ -42,9 +58,14 @@ func TestService_getParamsOverride(t *testing.T) {
 			Category:              stringPtr(""),
 		}
 
-		service := NewService(&MockCache{}, cfg)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
-		originalParams := cg.MarketsParams{
+		service := NewService(mockCache, cfg, mockTokensService)
+
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,
@@ -64,6 +85,9 @@ func TestService_getParamsOverride(t *testing.T) {
 	})
 
 	t.Run("Partial normalization config - overrides only configured parameters", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := createTestConfig()
 		cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{
 			VsCurrency: stringPtr("usd"),
@@ -71,9 +95,14 @@ func TestService_getParamsOverride(t *testing.T) {
 			// Other fields not configured
 		}
 
-		service := NewService(&MockCache{}, cfg)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
+		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
-		originalParams := cg.MarketsParams{
+		service := NewService(mockCache, cfg, mockTokensService)
+
+		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
 			Order:                 "volume_desc",
 			PerPage:               100,

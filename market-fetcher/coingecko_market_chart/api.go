@@ -12,14 +12,14 @@ import (
 	"github.com/status-im/market-proxy/metrics"
 )
 
-type APIClient interface {
+type IAPIClient interface {
 	FetchMarketChart(params MarketChartParams) (map[string][]byte, error)
 	Healthy() bool
 }
 
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.APIKeyManagerInterface
+	keyManager      cg.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool
 }

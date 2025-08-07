@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
 )
 
-// MockAPIClient for testing PaginatedFetcher
-type MockAPIClient struct {
+// MockIAPIClient for testing PaginatedFetcher
+type MockIAPIClient struct {
 	// Define how many items to return per page
 	itemsPerPage [][]CoinGeckoData
 	// Define which pages should return errors
@@ -22,8 +22,8 @@ type MockAPIClient struct {
 	isHealthy bool
 }
 
-// FetchPage implements APIClient interface for mock
-func (m *MockAPIClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
+// FetchPage implements IAPIClient interface for mock
+func (m *MockIAPIClient) FetchPage(params interfaces.MarketsParams) ([][]byte, error) {
 	// Record the page request
 	m.requestedPages = append(m.requestedPages, params.Page)
 
@@ -58,8 +58,8 @@ func (m *MockAPIClient) FetchPage(params cg.MarketsParams) ([][]byte, error) {
 	return result, nil
 }
 
-// Healthy implements APIClient interface for mock
-func (m *MockAPIClient) Healthy() bool {
+// Healthy implements IAPIClient interface for mock
+func (m *MockIAPIClient) Healthy() bool {
 	return m.isHealthy
 }
 
@@ -73,19 +73,21 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 	}
 
 	// Create mock API client
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
-	// Create fetcher with total limit matching our mock data
-	params := cg.MarketsParams{
+	// Create fetcher with page range covering our mock data
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, len(mockItems), 0, params)
+	pageFrom := 1
+	pageTo := (len(mockItems) + params.PerPage - 1) / params.PerPage // Ceiling division
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params)
 
 	// Call FetchData
 	response, err := fetcher.FetchData()
@@ -135,20 +137,22 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 	}
 
 	// Create mock API client with multiple pages of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
-	// Create fetcher with total limit requiring all pages, and minimal delay for tests
+	// Create fetcher with page range requiring all pages, and minimal delay for tests
 	totalItems := len(page1Items) + len(page2Items) + len(page3Items)
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  2, // Each page has limit 2
 	}
-	fetcher := NewPaginatedFetcher(mockClient, totalItems, 1, params) // 1ms delay
+	pageFrom := 1
+	pageTo := (totalItems + params.PerPage - 1) / params.PerPage            // Ceiling division
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 1, params) // 1ms delay
 
 	// Call FetchData
 	response, err := fetcher.FetchData()
@@ -203,20 +207,21 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 	}
 
 	// Create mock API client with two pages of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
-	// Create fetcher with a limit less than the total available items
-	limit := 4 // Less than the total 6 items
-	params := cg.MarketsParams{
+	// Create fetcher with a page range that fetches only the first page (3 items out of 6 available)
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  3, // Each page has limit 3
 	}
-	fetcher := NewPaginatedFetcher(mockClient, limit, 0, params) // no delay
+	pageFrom := 1
+	pageTo := 1                                                             // Only fetch first page
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params) // no delay
 
 	// Call FetchData
 	response, err := fetcher.FetchData()
@@ -226,14 +231,15 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 
-	// Check that we got exactly the limit number of items
-	if len(response) != limit {
-		t.Errorf("Expected %d items (limit), got %d", limit, len(response))
+	// Check that we got items from only the first page (3 items)
+	expectedItems := 3 // Items from first page only
+	if len(response) != expectedItems {
+		t.Errorf("Expected %d items from first page only, got %d", expectedItems, len(response))
 	}
 
-	// Check that we requested both pages
-	if len(mockClient.requestedPages) != 2 {
-		t.Errorf("Expected two page requests, got: %v", mockClient.requestedPages)
+	// Check that we requested only one page
+	if len(mockClient.requestedPages) != 1 {
+		t.Errorf("Expected one page request, got: %v", mockClient.requestedPages)
 	}
 
 	// Check the first and last items to ensure they're correct
@@ -245,31 +251,33 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 		t.Errorf("Expected first item to be bitcoin, got %s", firstItem.ID)
 	}
 
-	var fourthItem CoinGeckoData
-	if err := json.Unmarshal(response[3], &fourthItem); err != nil {
-		t.Fatalf("Failed to unmarshal fourth item: %v", err)
+	var lastItem CoinGeckoData
+	if err := json.Unmarshal(response[2], &lastItem); err != nil {
+		t.Fatalf("Failed to unmarshal last item: %v", err)
 	}
-	if fourthItem.ID != "litecoin" {
-		t.Errorf("Expected fourth item to be litecoin, got %s", fourthItem.ID)
+	if lastItem.ID != "ripple" {
+		t.Errorf("Expected last item to be ripple, got %s", lastItem.ID)
 	}
 }
 
 // TestPaginatedFetcher_ErrorFirstPage tests handling errors on the first page
 func TestPaginatedFetcher_ErrorFirstPage(t *testing.T) {
 	// Create mock API client with error on first page
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   map[int]error{1: errors.New("API error on first page")},
 		isHealthy:    true,
 	}
 
 	// Create fetcher
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  5,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 10, 0, params)
+	pageFrom := 1
+	pageTo := (10 + params.PerPage - 1) / params.PerPage // Ceiling division
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params)
 
 	// Call FetchData
 	_, err := fetcher.FetchData()
@@ -293,19 +301,21 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 	}
 
 	// Create mock API client with error on second page
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items},
 		errorPages:   map[int]error{2: errors.New("API error on second page")},
 		isHealthy:    true,
 	}
 
-	// Create fetcher with total limit requiring multiple pages
-	params := cg.MarketsParams{
+	// Create fetcher with page range requiring multiple pages
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  2,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 4, 0, params) // need 2 pages
+	pageFrom := 1
+	pageTo := (4 + params.PerPage - 1) / params.PerPage                     // Ceiling division
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params) // need 2 pages
 
 	// Call FetchData - should return partial data
 	response, err := fetcher.FetchData()
@@ -329,19 +339,21 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 // TestPaginatedFetcher_ZeroLimit tests that a zero limit request handles appropriately
 func TestPaginatedFetcher_ZeroLimit(t *testing.T) {
 	// Create mock API client
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
-	// Create fetcher with zero total limit
-	params := cg.MarketsParams{
+	// Create fetcher with zero pages (pageFrom > pageTo means no pages)
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 0, 0, params)
+	pageFrom := 1
+	pageTo := 0 // No pages to fetch
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params)
 
 	// Call FetchData
 	response, err := fetcher.FetchData()
@@ -371,20 +383,22 @@ func TestPaginatedFetcher_LargeRequest(t *testing.T) {
 	}
 
 	// Create mock API client with only one page of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
-	// Create fetcher with a large limit
+	// Create fetcher with a large page range
 	limit := 100 // Much more than available
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  10,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, limit, 0, params)
+	pageFrom := 1
+	pageTo := (limit + params.PerPage - 1) / params.PerPage // Ceiling division
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params)
 
 	// Call FetchData
 	response, err := fetcher.FetchData()
@@ -424,7 +438,7 @@ func TestPaginatedFetcher_RequestDelay(t *testing.T) {
 	page3Items := []CoinGeckoData{{ID: "ripple"}}
 
 	// Create mock API client with multiple pages
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -432,12 +446,14 @@ func TestPaginatedFetcher_RequestDelay(t *testing.T) {
 
 	// Create fetcher with a significant delay (100ms for test)
 	delay := 100 // 100ms delay between pages
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  1,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 3, delay, params)
+	pageFrom := 1
+	pageTo := 3
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, delay, params)
 
 	// Record start time
 	startTime := start()
@@ -473,19 +489,21 @@ func TestPaginatedFetcher_ZeroDelay(t *testing.T) {
 	page3Items := []CoinGeckoData{{ID: "ripple"}}
 
 	// Create mock API client with multiple pages
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
 	}
 
 	// Create fetcher with zero delay
-	params := cg.MarketsParams{
+	params := interfaces.MarketsParams{
 		Currency: "usd",
 		Order:    "market_cap_desc",
 		PerPage:  1,
 	}
-	fetcher := NewPaginatedFetcher(mockClient, 3, 0, params)
+	pageFrom := 1
+	pageTo := 3
+	fetcher := NewPaginatedFetcher(mockClient, pageFrom, pageTo, 0, params)
 
 	// Record start time
 	startTime := start()

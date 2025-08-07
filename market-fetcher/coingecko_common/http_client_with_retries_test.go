@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// MockHttpStatusHandler implements HttpStatusHandler for testing
+// MockHttpStatusHandler implements IHttpStatusHandler for testing
 type MockHttpStatusHandler struct {
 	requestStatuses []string
 	retryCount      int

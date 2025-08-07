@@ -153,6 +153,22 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// CoinGecko simple price endpoint
+	if strings.Contains(path, "/api/v3/simple/price") {
+		w.Header().Set("Content-Type", "application/json")
+
+		// Default response for common test tokens
+		// In a real implementation, you might parse ids and vs_currencies from query parameters
+		priceResponse := `{
+			"bitcoin": {"usd": 50000, "eur": 42000, "usd_market_cap": 950000000000, "usd_24h_vol": 35000000000, "usd_24h_change": 2.5, "last_updated_at": 1703097600},
+			"ethereum": {"usd": 3000, "eur": 2520, "usd_market_cap": 360000000000, "usd_24h_vol": 15000000000, "usd_24h_change": 3.2, "last_updated_at": 1703097600},
+			"tether": {"usd": 1, "eur": 0.84, "usd_market_cap": 90000000000, "usd_24h_vol": 25000000000, "usd_24h_change": 0.1, "last_updated_at": 1703097600}
+		}`
+
+		fmt.Fprint(w, priceResponse)
+		return
+	}
+
 	// Market chart endpoints - match pattern /api/v3/coins/{id}/market_chart
 	if strings.Contains(path, "/market_chart") {
 		w.Header().Set("Content-Type", "application/json")
