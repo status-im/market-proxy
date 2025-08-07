@@ -15,8 +15,8 @@ type PriceTier struct {
 	FetchCoinslistIds bool          `yaml:"fetch_coinslist_ids"` // Whether to fetch missing coinslist IDs for supported platforms after main fetch
 }
 
-// CoingeckoPricesFetcher represents configuration for CoinGecko prices service
-type CoingeckoPricesFetcher struct {
+// PricesFetcherConfig represents configuration for CoinGecko prices service
+type PricesFetcherConfig struct {
 	ChunkSize    int           `yaml:"chunk_size"`    // Number of tokens to fetch in one request
 	RequestDelay time.Duration `yaml:"request_delay"` // Delay between requests
 	Currencies   []string      `yaml:"currencies"`    // Default currencies to fetch
@@ -24,8 +24,8 @@ type CoingeckoPricesFetcher struct {
 	Tiers        []PriceTier   `yaml:"tiers"`         // Tier configurations
 }
 
-// Validate validates the CoingeckoPricesFetcher configuration
-func (c *CoingeckoPricesFetcher) Validate() error {
+// Validate validates the PricesFetcherConfig configuration
+func (c *PricesFetcherConfig) Validate() error {
 	if err := c.validateTiers(); err != nil {
 		return fmt.Errorf("tier configuration validation failed: %w", err)
 	}
@@ -34,7 +34,7 @@ func (c *CoingeckoPricesFetcher) Validate() error {
 }
 
 // validateTiers validates that tier ranges don't overlap and are valid
-func (c *CoingeckoPricesFetcher) validateTiers() error {
+func (c *PricesFetcherConfig) validateTiers() error {
 	if len(c.Tiers) == 0 {
 		return fmt.Errorf("at least one tier must be configured")
 	}
@@ -76,7 +76,7 @@ func (c *CoingeckoPricesFetcher) validateTiers() error {
 }
 
 // GetTTL returns the TTL configuration or default value
-func (c *CoingeckoPricesFetcher) GetTTL() time.Duration {
+func (c *PricesFetcherConfig) GetTTL() time.Duration {
 	if c.TTL > 0 {
 		return c.TTL
 	}

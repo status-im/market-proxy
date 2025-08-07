@@ -17,8 +17,8 @@ import (
 )
 
 // Helper function to create test config for prices updater
-func createTestPricesConfig() *config.CoingeckoLeaderboardFetcher {
-	return &config.CoingeckoLeaderboardFetcher{
+func createTestPricesConfig() *config.LeaderboardFetcherConfig {
+	return &config.LeaderboardFetcherConfig{
 		TopPricesUpdateInterval: time.Second * 5,
 		TopPricesLimit:          10,
 		Currency:                "usd",
@@ -49,7 +49,7 @@ func TestNewTopPricesUpdater(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
@@ -78,7 +78,7 @@ func TestNewTopPricesUpdater(t *testing.T) {
 func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 	t.Run("Returns empty map when no data cached", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		result := updater.GetTopPricesQuotes("usd")
 
@@ -88,7 +88,7 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 
 	t.Run("Returns empty map when currency not found", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		// Add data for EUR but request USD
 		sampleQuotes := PriceQuotes{
@@ -112,7 +112,7 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 
 	t.Run("Returns cached data for correct currency", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		sampleQuotes := PriceQuotes{
 			"bitcoin": Quote{
@@ -144,7 +144,7 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 
 	t.Run("Returns independent copy to avoid race conditions", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		sampleQuotes := PriceQuotes{
 			"bitcoin": Quote{Price: 50000.0},
@@ -167,7 +167,7 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 
 	t.Run("Works with multiple currencies", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		usdQuotes := PriceQuotes{
 			"bitcoin": Quote{Price: 50000.0},
@@ -195,7 +195,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Setup mock response - TopPrices returns top tokens directly
@@ -220,7 +220,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 	t.Run("Handles empty price response", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Mock empty price response
@@ -243,11 +243,11 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		cfg := &config.CoingeckoLeaderboardFetcher{
+		cfg := &config.LeaderboardFetcherConfig{
 			TopPricesLimit: 2, // Limit to 2 tokens
 			Currency:       "usd",
 		}
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// TopPrices should be called with the configured limit
@@ -265,7 +265,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 	t.Run("Handles price fetcher error", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Mock error response
@@ -286,7 +286,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 	t.Run("Handles empty price response", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// Mock empty response
@@ -320,7 +320,7 @@ func TestTopPricesUpdater_fetchAndUpdateTopPrices(t *testing.T) {
 
 	t.Run("Updates metrics", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		sampleResponse := createSamplePriceResponse()
@@ -341,7 +341,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// TopPrices will be called for top tokens
@@ -381,7 +381,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// TopPrices will be called for top tokens
@@ -409,7 +409,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 
 	t.Run("Stop doesn't panic when not started", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		// Call stop without starting
 		assert.NotPanics(t, func() {
@@ -422,7 +422,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(ctrl)
+		mockFetcher := mock_interfaces.NewMockIPricesService(ctrl)
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// TopPrices will be called for top tokens
@@ -449,7 +449,7 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 func TestTopPricesUpdater_ConcurrentAccess(t *testing.T) {
 	t.Run("Concurrent cache access is safe", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t)))
+		updater := NewTopPricesUpdater(cfg, mock_interfaces.NewMockIPricesService(gomock.NewController(t)))
 
 		var wg sync.WaitGroup
 		numGoroutines := 10
@@ -502,7 +502,7 @@ func TestTopPricesUpdater_ConcurrentAccess(t *testing.T) {
 func TestTopPricesUpdater_Integration(t *testing.T) {
 	t.Run("Full workflow: fetch top prices, get quotes", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// 1. Setup mock for fetchAndUpdateTopPrices using TopPrices
@@ -528,7 +528,7 @@ func TestTopPricesUpdater_Integration(t *testing.T) {
 
 	t.Run("Cache survives multiple updates", func(t *testing.T) {
 		cfg := createTestPricesConfig()
-		mockFetcher := mock_interfaces.NewMockCoingeckoPricesService(gomock.NewController(t))
+		mockFetcher := mock_interfaces.NewMockIPricesService(gomock.NewController(t))
 		updater := NewTopPricesUpdater(cfg, mockFetcher)
 
 		// First update

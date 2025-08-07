@@ -13,11 +13,11 @@ import (
 
 // TopMarketsUpdater handles subscription-based updates of markets leaderboard data
 type TopMarketsUpdater struct {
-	config             *config.CoingeckoLeaderboardFetcher
-	marketsFetcher     interfaces.CoingeckoMarketsService
+	config             *config.LeaderboardFetcherConfig
+	marketsFetcher     interfaces.IMarketsService
 	metricsWriter      *metrics.MetricsWriter
 	onUpdate           func()
-	updateSubscription events.SubscriptionInterface
+	updateSubscription events.ISubscription
 
 	cache struct {
 		sync.RWMutex
@@ -25,7 +25,7 @@ type TopMarketsUpdater struct {
 	}
 }
 
-func NewTopMarketsUpdater(cfg *config.CoingeckoLeaderboardFetcher, marketsFetcher interfaces.CoingeckoMarketsService) *TopMarketsUpdater {
+func NewTopMarketsUpdater(cfg *config.LeaderboardFetcherConfig, marketsFetcher interfaces.IMarketsService) *TopMarketsUpdater {
 	updater := &TopMarketsUpdater{
 		config:         cfg,
 		marketsFetcher: marketsFetcher,

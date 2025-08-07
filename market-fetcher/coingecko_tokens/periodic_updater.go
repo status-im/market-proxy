@@ -18,7 +18,7 @@ type UpdatedCallback func(ctx context.Context, tokens []interfaces.Token) error
 
 // PeriodicUpdater handles periodic fetching and updating of tokens
 type PeriodicUpdater struct {
-	config        config.CoingeckoCoinslistFetcher
+	config        config.CoinslistFetcherConfig
 	client        *Client
 	metricsWriter *metrics.MetricsWriter
 	onUpdated     UpdatedCallback
@@ -28,7 +28,7 @@ type PeriodicUpdater struct {
 
 // NewPeriodicUpdater creates a new periodic updater
 func NewPeriodicUpdater(
-	config config.CoingeckoCoinslistFetcher,
+	config config.CoinslistFetcherConfig,
 	client *Client,
 	metricsWriter *metrics.MetricsWriter,
 	onUpdated UpdatedCallback,

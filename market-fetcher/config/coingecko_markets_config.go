@@ -25,15 +25,15 @@ type MarketTier struct {
 	FetchCoinslistIds bool          `yaml:"fetch_coinslist_ids"` // Whether to fetch missing coinslist IDs for supported platforms after main fetch
 }
 
-type CoingeckoMarketsFetcher struct {
+type MarketsFetcherConfig struct {
 	RequestDelay          time.Duration          `yaml:"request_delay"`           // Delay between requests
 	MarketParamsNormalize *MarketParamsNormalize `yaml:"market_params_normalize"` // Parameters normalization config
 	Tiers                 []MarketTier           `yaml:"tiers"`                   // Tier configurations
 	TTL                   time.Duration          `yaml:"ttl"`                     // Default TTL for non-tier operations
 }
 
-// Validate validates the CoingeckoMarketsFetcher configuration
-func (c *CoingeckoMarketsFetcher) Validate() error {
+// Validate validates the MarketsFetcherConfig configuration
+func (c *MarketsFetcherConfig) Validate() error {
 	if err := c.validateTiers(); err != nil {
 		return fmt.Errorf("tier configuration validation failed: %w", err)
 	}
@@ -42,7 +42,7 @@ func (c *CoingeckoMarketsFetcher) Validate() error {
 }
 
 // validateTiers validates that tier ranges don't overlap and are valid
-func (c *CoingeckoMarketsFetcher) validateTiers() error {
+func (c *MarketsFetcherConfig) validateTiers() error {
 	if len(c.Tiers) == 0 {
 		return fmt.Errorf("at least one tier must be configured")
 	}
@@ -83,7 +83,7 @@ func (c *CoingeckoMarketsFetcher) validateTiers() error {
 	return nil
 }
 
-func (c *CoingeckoMarketsFetcher) GetTTL() time.Duration {
+func (c *MarketsFetcherConfig) GetTTL() time.Duration {
 	if c.TTL > 0 {
 		return c.TTL
 	}

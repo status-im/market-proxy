@@ -8,13 +8,13 @@ import (
 func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  CoingeckoMarketsFetcher
+		config  MarketsFetcherConfig
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid tier configuration",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
@@ -35,7 +35,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 
 		{
 			name: "overlapping tiers",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
@@ -56,7 +56,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid range (from > to)",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
@@ -71,7 +71,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "zero page_from",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
@@ -86,7 +86,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "empty tier name",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "", // Invalid: empty name
@@ -101,7 +101,7 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "zero update interval",
-			config: CoingeckoMarketsFetcher{
+			config: MarketsFetcherConfig{
 				Tiers: []MarketTier{
 					{
 						Name:           "tier1",
@@ -123,15 +123,15 @@ func TestCoingeckoMarketsFetcher_Validate(t *testing.T) {
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("CoingeckoMarketsFetcher.Validate() expected error but got none")
+					t.Errorf("MarketsFetcherConfig.Validate() expected error but got none")
 					return
 				}
 				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("CoingeckoMarketsFetcher.Validate() error = %v, expected to contain %v", err, tt.errMsg)
+					t.Errorf("MarketsFetcherConfig.Validate() error = %v, expected to contain %v", err, tt.errMsg)
 				}
 			} else {
 				if err != nil {
-					t.Errorf("CoingeckoMarketsFetcher.Validate() unexpected error = %v", err)
+					t.Errorf("MarketsFetcherConfig.Validate() unexpected error = %v", err)
 				}
 			}
 		})

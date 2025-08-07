@@ -7,10 +7,10 @@ import "time"
 // and should return a key->data map for those keys.
 type LoaderFunc func(missingKeys []string) (map[string][]byte, error)
 
-//go:generate mockgen -destination=mocks/cache.go . Cache
+//go:generate mockgen -destination=mocks/cache.go . ICache
 
-// Cache interface for universal multi-level cache
-type Cache interface {
+// ICache interface for universal multi-level cache
+type ICache interface {
 	// GetOrLoad retrieves data by keys from cache or loads them using LoaderFunc
 	//
 	// Parameters:

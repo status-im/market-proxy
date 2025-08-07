@@ -21,7 +21,7 @@ const (
 
 // PaginatedFetcher handles fetching data with pagination support
 type PaginatedFetcher struct {
-	apiClient    APIClient
+	apiClient    IAPIClient
 	pageFrom     int
 	pageTo       int
 	perPage      int
@@ -29,7 +29,7 @@ type PaginatedFetcher struct {
 	params       interfaces.MarketsParams // Markets parameters
 }
 
-func NewPaginatedFetcher(apiClient APIClient, pageFrom int, pageTo int, requestDelayMs int, params interfaces.MarketsParams) *PaginatedFetcher {
+func NewPaginatedFetcher(apiClient IAPIClient, pageFrom int, pageTo int, requestDelayMs int, params interfaces.MarketsParams) *PaginatedFetcher {
 	// allowing 0 as valid value, negative -> default
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {

@@ -10,12 +10,12 @@ import (
 )
 
 type Config struct {
-	CoingeckoLeaderboard CoingeckoLeaderboardFetcher `yaml:"coingecko_leaderboard"`
-	CoingeckoMarkets     CoingeckoMarketsFetcher     `yaml:"coingecko_markets"`
-	CoingeckoPrices      CoingeckoPricesFetcher      `yaml:"coingecko_prices"`
-	CoingeckoMarketChart CoingeckoMarketChartFetcher `yaml:"coingecko_market_chart"`
-	TokensFetcher        CoingeckoCoinslistFetcher   `yaml:"coingecko_coinslist"`
-	TokensFile           string                      `yaml:"tokens_file"`
+	CoingeckoLeaderboard LeaderboardFetcherConfig `yaml:"coingecko_leaderboard"`
+	CoingeckoMarkets     MarketsFetcherConfig     `yaml:"coingecko_markets"`
+	CoingeckoPrices      PricesFetcherConfig      `yaml:"coingecko_prices"`
+	CoingeckoMarketChart MarketChartFetcherConfig `yaml:"coingecko_market_chart"`
+	TokensFetcher        CoinslistFetcherConfig   `yaml:"coingecko_coinslist"`
+	TokensFile           string                   `yaml:"tokens_file"`
 	APITokens            *APITokens
 	Cache                cache.Config `yaml:"cache"`
 

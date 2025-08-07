@@ -16,31 +16,31 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockAPIClient is a mock of APIClient interface.
-type MockAPIClient struct {
+// MockIAPIClient is a mock of APIClient interface.
+type MockIAPIClient struct {
 	ctrl     *gomock.Controller
-	recorder *MockAPIClientMockRecorder
+	recorder *MockIAPIClientMockRecorder
 }
 
-// MockAPIClientMockRecorder is the mock recorder for MockAPIClient.
-type MockAPIClientMockRecorder struct {
-	mock *MockAPIClient
+// MockIAPIClientMockRecorder is the mock recorder for MockIAPIClient.
+type MockIAPIClientMockRecorder struct {
+	mock *MockIAPIClient
 }
 
-// NewMockAPIClient creates a new mock instance.
-func NewMockAPIClient(ctrl *gomock.Controller) *MockAPIClient {
-	mock := &MockAPIClient{ctrl: ctrl}
-	mock.recorder = &MockAPIClientMockRecorder{mock}
+// NewMockIAPIClient creates a new mock instance.
+func NewMockIAPIClient(ctrl *gomock.Controller) *MockIAPIClient {
+	mock := &MockIAPIClient{ctrl: ctrl}
+	mock.recorder = &MockIAPIClientMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAPIClient) EXPECT() *MockAPIClientMockRecorder {
+func (m *MockIAPIClient) EXPECT() *MockIAPIClientMockRecorder {
 	return m.recorder
 }
 
 // FetchPrices mocks base method.
-func (m *MockAPIClient) FetchPrices(arg0 interfaces.PriceParams) (map[string][]byte, error) {
+func (m *MockIAPIClient) FetchPrices(arg0 interfaces.PriceParams) (map[string][]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchPrices", arg0)
 	ret0, _ := ret[0].(map[string][]byte)
@@ -49,13 +49,13 @@ func (m *MockAPIClient) FetchPrices(arg0 interfaces.PriceParams) (map[string][]b
 }
 
 // FetchPrices indicates an expected call of FetchPrices.
-func (mr *MockAPIClientMockRecorder) FetchPrices(arg0 any) *gomock.Call {
+func (mr *MockIAPIClientMockRecorder) FetchPrices(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPrices", reflect.TypeOf((*MockAPIClient)(nil).FetchPrices), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPrices", reflect.TypeOf((*MockIAPIClient)(nil).FetchPrices), arg0)
 }
 
 // Healthy mocks base method.
-func (m *MockAPIClient) Healthy() bool {
+func (m *MockIAPIClient) Healthy() bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Healthy")
 	ret0, _ := ret[0].(bool)
@@ -63,7 +63,7 @@ func (m *MockAPIClient) Healthy() bool {
 }
 
 // Healthy indicates an expected call of Healthy.
-func (mr *MockAPIClientMockRecorder) Healthy() *gomock.Call {
+func (mr *MockIAPIClientMockRecorder) Healthy() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Healthy", reflect.TypeOf((*MockAPIClient)(nil).Healthy))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Healthy", reflect.TypeOf((*MockIAPIClient)(nil).Healthy))
 }

@@ -55,7 +55,6 @@ func NewService(config *config.Config) *Service {
 
 // onTokensUpdated is the callback called when tokens are updated
 func (s *Service) onTokensUpdated(ctx context.Context, tokens []interfaces.Token) error {
-	// Extract token IDs
 	tokenIds := make([]string, 0, len(tokens))
 	for _, token := range tokens {
 		if token.ID != "" {
@@ -63,13 +62,11 @@ func (s *Service) onTokensUpdated(ctx context.Context, tokens []interfaces.Token
 		}
 	}
 
-	// Update cache with both tokens and precomputed IDs
 	s.cache.Lock()
 	s.cache.tokens = tokens
 	s.cache.tokenIds = tokenIds
 	s.cache.Unlock()
 
-	// Emit update notification
 	s.subscriptionManager.Emit(ctx)
 
 	return nil
@@ -88,7 +85,6 @@ func (s *Service) GetTokens() []interfaces.Token {
 	s.cache.RLock()
 	defer s.cache.RUnlock()
 
-	// Return copy to avoid race conditions
 	tokensCopy := make([]interfaces.Token, len(s.cache.tokens))
 	copy(tokensCopy, s.cache.tokens)
 
@@ -100,7 +96,6 @@ func (s *Service) GetTokenIds() []string {
 	s.cache.RLock()
 	defer s.cache.RUnlock()
 
-	// Return copy of precomputed token IDs to avoid race conditions
 	tokenIdsCopy := make([]string, len(s.cache.tokenIds))
 	copy(tokenIdsCopy, s.cache.tokenIds)
 
@@ -116,6 +111,6 @@ func (s *Service) Healthy() bool {
 	return s.periodicUpdater.IsInitialized() && tokensLen > 0
 }
 
-func (s *Service) SubscribeOnTokensUpdate() events.SubscriptionInterface {
+func (s *Service) SubscribeOnTokensUpdate() events.ISubscription {
 	return s.subscriptionManager.Subscribe()
 }

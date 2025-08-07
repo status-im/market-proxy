@@ -8,20 +8,20 @@ import (
 	"github.com/status-im/market-proxy/config"
 )
 
-type mockAPIClient struct {
+type MockIAPIClient struct {
 	shouldFail      bool
 	shouldBeHealthy bool
 	response        AssetsPlatformsResponse
 }
 
-func (m *mockAPIClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
+func (m *MockIAPIClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
 	if m.shouldFail {
 		return nil, fmt.Errorf("mock error")
 	}
 	return m.response, nil
 }
 
-func (m *mockAPIClient) Healthy() bool {
+func (m *MockIAPIClient) Healthy() bool {
 	return m.shouldBeHealthy
 }
 
@@ -75,7 +75,7 @@ func TestService_AssetsPlatforms(t *testing.T) {
 		map[string]interface{}{"id": "polygon-pos", "name": "Polygon"},
 	}
 
-	mockClient := &mockAPIClient{
+	mockClient := &MockIAPIClient{
 		shouldFail:      false,
 		shouldBeHealthy: true,
 		response:        mockData,
@@ -105,7 +105,7 @@ func TestService_Healthy(t *testing.T) {
 	service := NewService(config)
 
 	// Mock healthy client
-	mockClient := &mockAPIClient{shouldBeHealthy: true}
+	mockClient := &MockIAPIClient{shouldBeHealthy: true}
 	service.client = mockClient
 
 	if !service.Healthy() {

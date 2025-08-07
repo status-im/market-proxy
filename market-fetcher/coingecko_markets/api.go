@@ -12,20 +12,20 @@ import (
 	"github.com/status-im/market-proxy/metrics"
 )
 
-//go:generate mockgen -destination=mocks/api_client.go . APIClient
+//go:generate mockgen -destination=mocks/api_client.go . IAPIClient
 
-// APIClient defines interface for API operations
-type APIClient interface {
+// IAPIClient defines interface for API operations
+type IAPIClient interface {
 	// FetchPage fetches a single page of data with given parameters
 	FetchPage(params interfaces.MarketsParams) ([][]byte, error)
 	// Healthy checks if the API is responsive by fetching a minimal amount of data
 	Healthy() bool
 }
 
-// CoinGeckoClient implements APIClient for CoinGecko
+// CoinGeckoClient implements IAPIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.APIKeyManagerInterface
+	keyManager      cg.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }

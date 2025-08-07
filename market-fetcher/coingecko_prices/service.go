@@ -17,21 +17,21 @@ import (
 
 // Service provides price fetching functionality with caching
 type Service struct {
-	cache                          cache.Cache
+	cache                          cache.ICache
 	fetcher                        *ChunksFetcher
 	config                         *config.Config
 	metricsWriter                  *metrics.MetricsWriter
 	subscriptionManager            *events.SubscriptionManager
-	periodicUpdater                PeriodicUpdaterInterface
-	marketsService                 interfaces.CoingeckoMarketsService
-	tokensService                  interfaces.CoingeckoTokensService
-	marketUpdateSubscription       events.SubscriptionInterface
-	tokenUpdateSubscription        events.SubscriptionInterface
-	marketsInitializedSubscription events.SubscriptionInterface
+	periodicUpdater                IPeriodicUpdater
+	marketsService                 interfaces.IMarketsService
+	tokensService                  interfaces.ITokensService
+	marketUpdateSubscription       events.ISubscription
+	tokenUpdateSubscription        events.ISubscription
+	marketsInitializedSubscription events.ISubscription
 }
 
 // NewService creates a new price service with the given cache and config
-func NewService(cache cache.Cache, config *config.Config, marketsService interfaces.CoingeckoMarketsService, tokensService interfaces.CoingeckoTokensService) *Service {
+func NewService(cache cache.ICache, config *config.Config, marketsService interfaces.IMarketsService, tokensService interfaces.ITokensService) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
 	apiClient := NewCoinGeckoClient(config, metricsWriter)
 
@@ -70,7 +70,7 @@ func NewService(cache cache.Cache, config *config.Config, marketsService interfa
 
 // handleTopPricesUpdate handles top prices update by caching tokens and emitting events
 func (s *Service) handleTopPricesUpdate(ctx context.Context, tier config.PriceTier, pricesData map[string][]byte) {
-	// Cache prices by individual token IDs
+	// ICache prices by individual token IDs
 	err := s.cachePricesByID(pricesData)
 	if err != nil {
 		log.Printf("Failed to cache prices data by id: %v", err)
@@ -81,7 +81,7 @@ func (s *Service) handleTopPricesUpdate(ctx context.Context, tier config.PriceTi
 
 // handleMissingExtraIdsUpdate handles missing extra IDs update by caching tokens and emitting events
 func (s *Service) handleMissingExtraIdsUpdate(ctx context.Context, pricesData map[string][]byte) {
-	// Cache missing tokens by their IDs
+	// ICache missing tokens by their IDs
 	err := s.cachePricesByID(pricesData)
 	if err != nil {
 		log.Printf("Failed to cache missing extra IDs: %v", err)
@@ -162,7 +162,7 @@ func (s *Service) cachePricesByID(pricesData map[string][]byte) error {
 		cacheData[cacheKey] = data
 	}
 
-	// Cache prices data
+	// ICache prices data
 	err := s.cache.Set(cacheData, s.config.CoingeckoPrices.GetTTL())
 	if err != nil {
 		log.Printf("Failed to cache prices data: %v", err)
@@ -237,7 +237,7 @@ func (s *Service) Stop() {
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.Stop()
 	}
-	// Cache will handle its own cleanup
+	// ICache will handle its own cleanup
 }
 
 // SimplePrices fetches prices for the given parameters using cache only
@@ -343,6 +343,6 @@ func (s *Service) Healthy() bool {
 }
 
 // SubscribeTopPricesUpdate subscribes to prices update notifications
-func (s *Service) SubscribeTopPricesUpdate() events.SubscriptionInterface {
+func (s *Service) SubscribeTopPricesUpdate() events.ISubscription {
 	return s.subscriptionManager.Subscribe()
 }

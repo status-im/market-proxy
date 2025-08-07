@@ -23,7 +23,7 @@ func (c *mockClient) FetchTokens() ([]interfaces.Token, error) {
 }
 
 func TestNewPeriodicUpdater(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
 		SupportedPlatforms: []string{"ethereum"},
 	}
@@ -54,7 +54,7 @@ func TestNewPeriodicUpdater(t *testing.T) {
 }
 
 func TestPeriodicUpdater_IsInitialized(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
 		SupportedPlatforms: []string{"ethereum"},
 	}
@@ -81,7 +81,7 @@ func TestPeriodicUpdater_IsInitialized(t *testing.T) {
 }
 
 func TestPeriodicUpdater_fetchAndUpdate_Success(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
 		SupportedPlatforms: []string{"ethereum"},
 	}
@@ -169,7 +169,7 @@ func TestPeriodicUpdater_fetchAndUpdate_Success(t *testing.T) {
 }
 
 func TestPeriodicUpdater_Start_DisabledInterval(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     0, // Disabled
 		SupportedPlatforms: []string{"ethereum"},
 	}
@@ -196,7 +196,7 @@ func TestPeriodicUpdater_Start_DisabledInterval(t *testing.T) {
 }
 
 func TestPeriodicUpdater_Stop(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
 		SupportedPlatforms: []string{"ethereum"},
 	}
@@ -216,7 +216,7 @@ func TestPeriodicUpdater_Stop(t *testing.T) {
 }
 
 func TestPeriodicUpdater_CallbackParameters(t *testing.T) {
-	cfg := config.CoingeckoCoinslistFetcher{
+	cfg := config.CoinslistFetcherConfig{
 		UpdateInterval:     30 * time.Second,
 		SupportedPlatforms: []string{"ethereum", "polygon-pos"},
 	}

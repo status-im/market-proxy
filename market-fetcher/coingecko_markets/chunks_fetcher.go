@@ -16,12 +16,12 @@ const (
 
 // ChunksFetcher handles fetching markets data in chunks
 type ChunksFetcher struct {
-	apiClient    APIClient
+	apiClient    IAPIClient
 	chunkSize    int
 	requestDelay time.Duration
 }
 
-func NewChunksFetcher(apiClient APIClient, chunkSize int, requestDelayMs int) *ChunksFetcher {
+func NewChunksFetcher(apiClient IAPIClient, chunkSize int, requestDelayMs int) *ChunksFetcher {
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {
 		requestDelay = time.Duration(requestDelayMs) * time.Millisecond

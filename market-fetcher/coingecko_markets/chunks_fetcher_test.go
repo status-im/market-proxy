@@ -16,7 +16,7 @@ func TestNewChunksFetcher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := api_mocks.NewMockAPIClient(ctrl)
+	mockClient := api_mocks.NewMockIAPIClient(ctrl)
 
 	tests := []struct {
 		name                 string
@@ -71,7 +71,7 @@ func TestChunksFetcher_FetchMarkets(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := api_mocks.NewMockAPIClient(ctrl)
+	mockClient := api_mocks.NewMockIAPIClient(ctrl)
 
 	// Sample market data responses
 	sampleData1 := []byte(`{"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":45000}`)
@@ -249,7 +249,7 @@ func TestChunksFetcher_FetchMarkets_ParameterPassing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := api_mocks.NewMockAPIClient(ctrl)
+	mockClient := api_mocks.NewMockIAPIClient(ctrl)
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
 
 	originalParams := interfaces.MarketsParams{
@@ -292,7 +292,7 @@ func TestChunksFetcher_ChunkBoundaryCalculation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockClient := api_mocks.NewMockAPIClient(ctrl)
+	mockClient := api_mocks.NewMockIAPIClient(ctrl)
 
 	tests := []struct {
 		name         string

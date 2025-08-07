@@ -21,18 +21,18 @@ const (
 
 // Service provides markets data fetching functionality with caching
 type Service struct {
-	cache                          cache.Cache
+	cache                          cache.ICache
 	config                         *cfg.Config
 	metricsWriter                  *metrics.MetricsWriter
 	subscriptionManager            *events.SubscriptionManager
 	initializedSubscriptionManager *events.SubscriptionManager
 	periodicUpdater                *PeriodicUpdater
-	tokensService                  interfaces.CoingeckoTokensService
-	tokenUpdateSubscription        events.SubscriptionInterface
+	tokensService                  interfaces.ITokensService
+	tokenUpdateSubscription        events.ISubscription
 	topIdsManager                  *TopIdsManager
 }
 
-func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.CoingeckoTokensService) *Service {
+func NewService(cache cache.ICache, config *cfg.Config, tokensService interfaces.ITokensService) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
 
@@ -57,7 +57,7 @@ func NewService(cache cache.Cache, config *cfg.Config, tokensService interfaces.
 
 // handleTierPagesUpdate handles tier pages update by caching tokens and emitting events
 func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier, pagesData []PageData) {
-	// Cache by individual ids
+	// ICache by individual ids
 	for _, pageData := range pagesData {
 		_, err := s.cacheTokensByID(pageData.Data)
 		if err != nil {
@@ -65,7 +65,7 @@ func (s *Service) handleTierPagesUpdate(ctx context.Context, tier cfg.MarketTier
 		}
 	}
 
-	// Cache pages
+	// ICache pages
 	_, err := s.cacheTokensPage(tier, pagesData)
 	if err != nil {
 		log.Printf("Failed to cache page data: %v", err)
@@ -407,10 +407,10 @@ func (s *Service) TopMarketIds(limit int) ([]string, error) {
 	return topIds, nil
 }
 
-func (s *Service) SubscribeTopMarketsUpdate() events.SubscriptionInterface {
+func (s *Service) SubscribeTopMarketsUpdate() events.ISubscription {
 	return s.subscriptionManager.Subscribe()
 }
 
-func (s *Service) SubscribeInitialized() events.SubscriptionInterface {
+func (s *Service) SubscribeInitialized() events.ISubscription {
 	return s.initializedSubscriptionManager.Subscribe()
 }

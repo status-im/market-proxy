@@ -10,8 +10,8 @@ import (
 	"github.com/status-im/market-proxy/interfaces"
 )
 
-// MockAPIClient for testing PaginatedFetcher
-type MockAPIClient struct {
+// MockIAPIClient for testing PaginatedFetcher
+type MockIAPIClient struct {
 	// Define how many items to return per page
 	itemsPerPage [][]CoinGeckoData
 	// Define which pages should return errors
@@ -22,8 +22,8 @@ type MockAPIClient struct {
 	isHealthy bool
 }
 
-// FetchPage implements APIClient interface for mock
-func (m *MockAPIClient) FetchPage(params interfaces.MarketsParams) ([][]byte, error) {
+// FetchPage implements IAPIClient interface for mock
+func (m *MockIAPIClient) FetchPage(params interfaces.MarketsParams) ([][]byte, error) {
 	// Record the page request
 	m.requestedPages = append(m.requestedPages, params.Page)
 
@@ -58,8 +58,8 @@ func (m *MockAPIClient) FetchPage(params interfaces.MarketsParams) ([][]byte, er
 	return result, nil
 }
 
-// Healthy implements APIClient interface for mock
-func (m *MockAPIClient) Healthy() bool {
+// Healthy implements IAPIClient interface for mock
+func (m *MockIAPIClient) Healthy() bool {
 	return m.isHealthy
 }
 
@@ -73,7 +73,7 @@ func TestPaginatedFetcher_SinglePage(t *testing.T) {
 	}
 
 	// Create mock API client
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -137,7 +137,7 @@ func TestPaginatedFetcher_MultiPage(t *testing.T) {
 	}
 
 	// Create mock API client with multiple pages of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -207,7 +207,7 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 	}
 
 	// Create mock API client with two pages of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -263,7 +263,7 @@ func TestPaginatedFetcher_Limit(t *testing.T) {
 // TestPaginatedFetcher_ErrorFirstPage tests handling errors on the first page
 func TestPaginatedFetcher_ErrorFirstPage(t *testing.T) {
 	// Create mock API client with error on first page
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   map[int]error{1: errors.New("API error on first page")},
 		isHealthy:    true,
@@ -301,7 +301,7 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 	}
 
 	// Create mock API client with error on second page
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items},
 		errorPages:   map[int]error{2: errors.New("API error on second page")},
 		isHealthy:    true,
@@ -339,7 +339,7 @@ func TestPaginatedFetcher_ErrorLaterPage(t *testing.T) {
 // TestPaginatedFetcher_ZeroLimit tests that a zero limit request handles appropriately
 func TestPaginatedFetcher_ZeroLimit(t *testing.T) {
 	// Create mock API client
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -383,7 +383,7 @@ func TestPaginatedFetcher_LargeRequest(t *testing.T) {
 	}
 
 	// Create mock API client with only one page of data
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{mockItems},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -438,7 +438,7 @@ func TestPaginatedFetcher_RequestDelay(t *testing.T) {
 	page3Items := []CoinGeckoData{{ID: "ripple"}}
 
 	// Create mock API client with multiple pages
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,
@@ -489,7 +489,7 @@ func TestPaginatedFetcher_ZeroDelay(t *testing.T) {
 	page3Items := []CoinGeckoData{{ID: "ripple"}}
 
 	// Create mock API client with multiple pages
-	mockClient := &MockAPIClient{
+	mockClient := &MockIAPIClient{
 		itemsPerPage: [][]CoinGeckoData{page1Items, page2Items, page3Items},
 		errorPages:   make(map[int]error),
 		isHealthy:    true,

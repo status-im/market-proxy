@@ -10,13 +10,13 @@ import (
 func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      CoingeckoPricesFetcher
+		config      PricesFetcherConfig
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid configuration",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "tier1",
@@ -36,7 +36,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "no tiers",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{},
 			},
 			expectError: true,
@@ -44,7 +44,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "tier with empty name",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "",
@@ -59,7 +59,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "tier with invalid token_from",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "tier1",
@@ -74,7 +74,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "tier with token_to < token_from",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "tier1",
@@ -89,7 +89,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "tier with zero update interval",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "tier1",
@@ -104,7 +104,7 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 		},
 		{
 			name: "overlapping tiers",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				Tiers: []PriceTier{
 					{
 						Name:           "tier1",
@@ -141,26 +141,26 @@ func TestCoingeckoPricesFetcher_Validate(t *testing.T) {
 func TestCoingeckoPricesFetcher_GetTTL(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   CoingeckoPricesFetcher
+		config   PricesFetcherConfig
 		expected time.Duration
 	}{
 		{
 			name: "with custom TTL",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				TTL: 1 * time.Minute,
 			},
 			expected: 1 * time.Minute,
 		},
 		{
 			name: "with zero TTL (default)",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				TTL: 0,
 			},
 			expected: 30 * time.Second,
 		},
 		{
 			name: "with negative TTL (default)",
-			config: CoingeckoPricesFetcher{
+			config: PricesFetcherConfig{
 				TTL: -1 * time.Second,
 			},
 			expected: 30 * time.Second,

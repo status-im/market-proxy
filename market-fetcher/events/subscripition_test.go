@@ -29,7 +29,7 @@ func TestSubscriptionManager(t *testing.T) {
 		idx := i // Copy the value of i to use inside the goroutine
 
 		wg.Add(1)
-		go func(sub SubscriptionInterface, idx int) {
+		go func(sub ISubscription, idx int) {
 			defer wg.Done()
 			select {
 			case <-sub.Chan():

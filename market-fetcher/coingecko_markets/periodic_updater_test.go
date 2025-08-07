@@ -16,9 +16,9 @@ import (
 )
 
 // Helper function to create test config
-func createTestPeriodicUpdaterConfig() *config.CoingeckoMarketsFetcher {
+func createTestPeriodicUpdaterConfig() *config.MarketsFetcherConfig {
 	usdCurrency := "usd"
-	return &config.CoingeckoMarketsFetcher{
+	return &config.MarketsFetcherConfig{
 		MarketParamsNormalize: &config.MarketParamsNormalize{
 			VsCurrency: &usdCurrency,
 		},
@@ -34,7 +34,7 @@ func createTestPeriodicUpdaterConfig() *config.CoingeckoMarketsFetcher {
 }
 
 // Helper function to setup mock FetchPage for any parameters
-func setupMockFetchPage(mockFetcher *api_mocks.MockAPIClient, data interfaces.MarketsResponse, err error) {
+func setupMockFetchPage(mockFetcher *api_mocks.MockIAPIClient, data interfaces.MarketsResponse, err error) {
 	// Convert data to bytes for FetchPage mock
 	sampleBytes := make([][]byte, len(data))
 	for i, item := range data {
@@ -91,13 +91,13 @@ func TestNewPeriodicUpdater(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPeriodicUpdaterConfig()
-		mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
+		MockIAPIClient := api_mocks.NewMockIAPIClient(ctrl)
 
-		updater := NewPeriodicUpdater(cfg, mockAPIClient)
+		updater := NewPeriodicUpdater(cfg, MockIAPIClient)
 
 		assert.NotNil(t, updater)
 		assert.Equal(t, cfg, updater.config)
-		assert.Equal(t, mockAPIClient, updater.apiClient)
+		assert.Equal(t, MockIAPIClient, updater.apiClient)
 		assert.Empty(t, updater.schedulers)
 		assert.Nil(t, updater.onUpdateTierPages)
 		assert.Nil(t, updater.GetCacheData())
@@ -120,8 +120,8 @@ func TestPeriodicUpdater_SetOnUpdateTierPagesCallback(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPeriodicUpdaterConfig()
-		mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-		updater := NewPeriodicUpdater(cfg, mockAPIClient)
+		MockIAPIClient := api_mocks.NewMockIAPIClient(ctrl)
+		updater := NewPeriodicUpdater(cfg, MockIAPIClient)
 
 		callbackCalled := false
 		callback := func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {
@@ -142,7 +142,7 @@ func TestPeriodicUpdater_SetOnUpdateTierPagesCallback(t *testing.T) {
 
 	t.Run("Overwrites existing callback", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
+		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockIAPIClient(gomock.NewController(t)))
 
 		firstCallbackCalled := false
 		secondCallbackCalled := false
@@ -169,7 +169,7 @@ func TestPeriodicUpdater_SetOnUpdateTierPagesCallback(t *testing.T) {
 
 	t.Run("Can set nil callback", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
+		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockIAPIClient(gomock.NewController(t)))
 
 		// Set a callback first
 		updater.SetOnUpdateTierPagesCallback(func(ctx context.Context, tier config.MarketTier, pagesData []PageData) {})
@@ -187,7 +187,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 		defer ctrl.Finish()
 
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(ctrl)
+		mockFetcher := api_mocks.NewMockIAPIClient(ctrl)
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		// Override tier to have PageTo = 2 for this test (expecting 4 elements: 2 pages × 2 items each)
@@ -226,13 +226,13 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Uses default limit when config limit is 0", func(t *testing.T) {
 		usdCurrency := "usd"
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 500, UpdateInterval: time.Second}}, // Tier with page 1-500
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
@@ -247,13 +247,13 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Uses default limit when config limit is negative", func(t *testing.T) {
 		usdCurrency := "usd"
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier with page 1-100
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
@@ -267,11 +267,11 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 	})
 
 	t.Run("Uses default currency when MarketParamsNormalize is nil", func(t *testing.T) {
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers:                 []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier with page 1-100
 			MarketParamsNormalize: nil,                                                                                        // Should use default "usd"
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
@@ -286,7 +286,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Handles fetcher error", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		expectedError := errors.New("API error")
@@ -312,7 +312,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Handles empty response", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		emptyData := interfaces.MarketsResponse([]interface{}{})
@@ -337,7 +337,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 
 	t.Run("Doesn't call callback when callback is nil", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		sampleData := createSampleMarketsData()
@@ -357,7 +357,7 @@ func TestPeriodicUpdater_fetchAndUpdateTier(t *testing.T) {
 func TestPeriodicUpdater_Healthy(t *testing.T) {
 	t.Run("Returns true when cache has data", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
+		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockIAPIClient(gomock.NewController(t)))
 
 		mockData := []CoinGeckoData{
 			{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
@@ -375,9 +375,9 @@ func TestPeriodicUpdater_Healthy(t *testing.T) {
 
 	t.Run("Returns true when fetcher exists but no cache", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockAPIClient := api_mocks.NewMockAPIClient(gomock.NewController(t))
-		mockAPIClient.EXPECT().Healthy().Return(true)
-		updater := NewPeriodicUpdater(cfg, mockAPIClient)
+		MockIAPIClient := api_mocks.NewMockIAPIClient(gomock.NewController(t))
+		MockIAPIClient.EXPECT().Healthy().Return(true)
+		updater := NewPeriodicUpdater(cfg, MockIAPIClient)
 
 		result := updater.Healthy()
 
@@ -386,9 +386,9 @@ func TestPeriodicUpdater_Healthy(t *testing.T) {
 
 	t.Run("Returns true when cache data is empty but fetcher exists", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockAPIClient := api_mocks.NewMockAPIClient(gomock.NewController(t))
-		mockAPIClient.EXPECT().Healthy().Return(true)
-		updater := NewPeriodicUpdater(cfg, mockAPIClient)
+		MockIAPIClient := api_mocks.NewMockIAPIClient(gomock.NewController(t))
+		MockIAPIClient.EXPECT().Healthy().Return(true)
+		updater := NewPeriodicUpdater(cfg, MockIAPIClient)
 
 		updater.cache.Lock()
 		// Setup tier cache
@@ -413,7 +413,7 @@ func TestPeriodicUpdater_Healthy(t *testing.T) {
 func TestPeriodicUpdater_StartStop(t *testing.T) {
 	t.Run("Start creates and starts scheduler", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
@@ -434,10 +434,10 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 	})
 
 	t.Run("Start fails when interval is zero", func(t *testing.T) {
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: 0}}, // Test tier with 0 interval - should fail validation
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		ctx := context.Background()
@@ -448,10 +448,10 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 	})
 
 	t.Run("Start fails when interval is negative", func(t *testing.T) {
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: -time.Second}}, // Test tier with negative interval - should fail validation
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		ctx := context.Background()
@@ -463,7 +463,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 
 	t.Run("Stop stops scheduler when it exists", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
@@ -488,7 +488,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 
 	t.Run("Stop doesn't panic when scheduler is nil", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
+		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockIAPIClient(gomock.NewController(t)))
 
 		// Call stop without starting
 		assert.NotPanics(t, func() {
@@ -498,13 +498,13 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 
 	t.Run("Start with minimal update interval", func(t *testing.T) {
 		usdCurrency := "usd"
-		cfg := &config.CoingeckoMarketsFetcher{
+		cfg := &config.MarketsFetcherConfig{
 			Tiers: []config.MarketTier{{Name: "test", PageFrom: 1, PageTo: 100, UpdateInterval: time.Second}}, // Test tier time.Millisecond, // Minimal interval
 			MarketParamsNormalize: &config.MarketParamsNormalize{
 				VsCurrency: &usdCurrency,
 			},
 		}
-		mockFetcher := api_mocks.NewMockAPIClient(gomock.NewController(t))
+		mockFetcher := api_mocks.NewMockIAPIClient(gomock.NewController(t))
 		updater := NewPeriodicUpdater(cfg, mockFetcher)
 
 		// Setup mock for potential immediate scheduler call
@@ -527,7 +527,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 func TestPeriodicUpdater_ConcurrentAccess(t *testing.T) {
 	t.Run("Concurrent cache access is safe", func(t *testing.T) {
 		cfg := createTestPeriodicUpdaterConfig()
-		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockAPIClient(gomock.NewController(t)))
+		updater := NewPeriodicUpdater(cfg, api_mocks.NewMockIAPIClient(gomock.NewController(t)))
 
 		var wg sync.WaitGroup
 		numGoroutines := 10

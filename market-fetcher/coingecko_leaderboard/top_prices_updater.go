@@ -14,10 +14,10 @@ import (
 
 // TopPricesUpdater handles subscription-based price updates for top tokens
 type TopPricesUpdater struct {
-	config             *config.CoingeckoLeaderboardFetcher
-	priceFetcher       cg.CoingeckoPricesService
+	config             *config.LeaderboardFetcherConfig
+	priceFetcher       cg.IPricesService
 	metricsWriter      *metrics.MetricsWriter
-	updateSubscription events.SubscriptionInterface
+	updateSubscription events.ISubscription
 	// Cache for top tokens prices
 	topPricesCache struct {
 		sync.RWMutex
@@ -25,7 +25,7 @@ type TopPricesUpdater struct {
 	}
 }
 
-func NewTopPricesUpdater(cfg *config.CoingeckoLeaderboardFetcher, priceFetcher cg.CoingeckoPricesService) *TopPricesUpdater {
+func NewTopPricesUpdater(cfg *config.LeaderboardFetcherConfig, priceFetcher cg.IPricesService) *TopPricesUpdater {
 	updater := &TopPricesUpdater{
 		config:        cfg,
 		priceFetcher:  priceFetcher,

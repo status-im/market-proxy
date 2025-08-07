@@ -18,13 +18,13 @@ const (
 )
 
 type Service struct {
-	cache         cache.Cache
+	cache         cache.ICache
 	config        *config.Config
 	metricsWriter *metrics.MetricsWriter
-	apiClient     APIClient
+	apiClient     IAPIClient
 }
 
-func NewService(cache cache.Cache, config *config.Config) *Service {
+func NewService(cache cache.ICache, config *config.Config) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarketCharts)
 	apiClient := NewCoinGeckoClient(config)
 
@@ -75,7 +75,7 @@ func (s *Service) MarketChart(params MarketChartParams) (MarketChartResponseData
 		log.Printf("Returning cached market chart data for coin %s", params.ID)
 		chartData = cachedData
 	} else {
-		log.Printf("Cache miss for market chart %s, fetching from API with rounded params", params.ID)
+		log.Printf("ICache miss for market chart %s, fetching from API with rounded params", params.ID)
 		fetchedData, err := s.apiClient.FetchMarketChart(roundedParams)
 		if err != nil {
 			log.Printf("apiClient.FetchMarketChart failed: %v", err)

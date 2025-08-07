@@ -78,7 +78,7 @@ func (m *MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.mockClient.Do(req)
 }
 
-// MockAPIKeyManager mocks the APIKeyManagerInterface for testing
+// MockAPIKeyManager mocks the IAPIKeyManager for testing
 type MockAPIKeyManager struct {
 	// Keys to return
 	mockKeys []cg.APIKey

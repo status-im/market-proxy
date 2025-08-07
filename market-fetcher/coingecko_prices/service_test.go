@@ -22,8 +22,8 @@ var (
 	samplePriceData2 = []byte(`{"usd":3000,"eur":2500}`)
 )
 
-func createMockTokensService(ctrl *gomock.Controller) *mock_interfaces.MockCoingeckoTokensService {
-	mockTokensService := mock_interfaces.NewMockCoingeckoTokensService(ctrl)
+func createMockTokensService(ctrl *gomock.Controller) *mock_interfaces.MockITokensService {
+	mockTokensService := mock_interfaces.NewMockITokensService(ctrl)
 	mockTokensService.EXPECT().GetTokens().Return([]cg.Token{
 		{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
 		{ID: "ethereum", Symbol: "eth", Name: "Ethereum"},
@@ -38,7 +38,7 @@ func createMockTokensService(ctrl *gomock.Controller) *mock_interfaces.MockCoing
 
 func createTestConfig() *config.Config {
 	return &config.Config{
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
+		CoingeckoPrices: config.PricesFetcherConfig{
 			Currencies: []string{"usd", "eur"},
 			TTL:        30 * time.Second,
 			Tiers: []config.PriceTier{
@@ -67,11 +67,11 @@ func TestService_Basic(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create mock cache service - expect possible cache operations from periodic updater
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Create mock markets service
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
@@ -103,10 +103,10 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create mock cache service
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 
 	// Create mock markets service
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
@@ -124,7 +124,7 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 		Currencies: []string{"usd", "eur"},
 	}
 
-	// Cache returns missing keys (not found)
+	// ICache returns missing keys (not found)
 	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
 	mockCache.EXPECT().Get(expectedCacheKeys).Return(
 		map[string][]byte{}, // No cached data
@@ -163,14 +163,14 @@ func TestService_StartStop(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Create mock cache service - expect possible cache operations from periodic updater
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Create test config
 	cfg := createTestConfig()
 
 	// Create mock markets service
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
@@ -208,7 +208,7 @@ func TestService_GetConfigCurrencies(t *testing.T) {
 		APITokens: &config.APITokens{
 			Tokens: []string{},
 		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
+		CoingeckoPrices: config.PricesFetcherConfig{
 			Currencies: []string{"usd", "eur"},
 			TTL:        30 * time.Second,
 		},
@@ -222,7 +222,7 @@ func TestService_GetConfigCurrencies(t *testing.T) {
 		APITokens: &config.APITokens{
 			Tokens: []string{},
 		},
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
+		CoingeckoPrices: config.PricesFetcherConfig{
 			Currencies: []string{},
 			TTL:        30 * time.Second,
 		},
@@ -253,7 +253,7 @@ func TestService_TTLCaching(t *testing.T) {
 
 	// Create test config with short TTL
 	cfg := &config.Config{
-		CoingeckoPrices: config.CoingeckoPricesFetcher{
+		CoingeckoPrices: config.PricesFetcherConfig{
 			Currencies: []string{"usd", "eur"},
 			TTL:        500 * time.Millisecond, // Very short TTL for testing
 		},
@@ -401,7 +401,7 @@ func TestService_SimplePricesAndTopPricesReturnSameFormat(t *testing.T) {
 	}`)
 
 	// Create mock cache service
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 
 	// Setup cache to return test data for both bitcoin and ethereum
 	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
@@ -415,7 +415,7 @@ func TestService_SimplePricesAndTopPricesReturnSameFormat(t *testing.T) {
 	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Create mock markets service that returns the same IDs that we'll use in SimplePrices
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
@@ -517,7 +517,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithPartialData(t *tes
 	}`)
 
 	// Create mock cache service
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 
 	// Setup cache to return test data for only bitcoin (ethereum missing)
 	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
@@ -531,7 +531,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithPartialData(t *tes
 	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Create mock markets service
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
@@ -600,7 +600,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithEmptyResponse(t *t
 	defer ctrl.Finish()
 
 	// Create mock cache service
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 
 	// Setup cache to return no data (complete cache miss)
 	expectedCacheKeys := []string{"price:id:bitcoin", "price:id:ethereum"}
@@ -611,7 +611,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithEmptyResponse(t *t
 	mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	// Create mock markets service
-	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
+	mockMarketsService := mock_interfaces.NewMockIMarketsService(ctrl)
 	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()

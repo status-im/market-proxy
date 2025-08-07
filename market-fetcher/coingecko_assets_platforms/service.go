@@ -6,14 +6,14 @@ import (
 	"github.com/status-im/market-proxy/config"
 )
 
-type APIClient interface {
+type IAPIClient interface {
 	FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error)
 	Healthy() bool
 }
 
 type Service struct {
 	config *config.Config
-	client APIClient
+	client IAPIClient
 }
 
 func NewService(config *config.Config) *Service {

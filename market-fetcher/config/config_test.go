@@ -71,13 +71,13 @@ coingecko_coinslist:
 					t.Errorf("TopMarketsLimit = %v, want 100", cfg.CoingeckoLeaderboard.TopMarketsLimit)
 				}
 				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
+					t.Errorf("CoinslistFetcherConfig.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 2 {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
 				}
 				if cfg.TokensFetcher.SupportedPlatforms[0] != "ethereum" || cfg.TokensFetcher.SupportedPlatforms[1] != "polygon-pos" {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
 				}
 				if cfg.APITokens == nil {
 					t.Error("APITokens should not be nil")
@@ -174,16 +174,16 @@ coingecko_coinslist:
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
+					t.Errorf("CoinslistFetcherConfig.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				expectedPlatforms := []string{"ethereum", "optimistic-ethereum", "arbitrum-one", "base"}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != len(expectedPlatforms) {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want %v",
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms length = %v, want %v",
 						len(cfg.TokensFetcher.SupportedPlatforms), len(expectedPlatforms))
 				}
 				for i, platform := range expectedPlatforms {
 					if i < len(cfg.TokensFetcher.SupportedPlatforms) && cfg.TokensFetcher.SupportedPlatforms[i] != platform {
-						t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms[%d] = %v, want %v",
+						t.Errorf("CoinslistFetcherConfig.SupportedPlatforms[%d] = %v, want %v",
 							i, cfg.TokensFetcher.SupportedPlatforms[i], platform)
 					}
 				}
@@ -210,7 +210,7 @@ coingecko_coinslist:
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 0 {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
 				}
 			},
 		},

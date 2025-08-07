@@ -27,7 +27,7 @@ type APIClient interface {
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.APIKeyManagerInterface
+	keyManager      cg.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }

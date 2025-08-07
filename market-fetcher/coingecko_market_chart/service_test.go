@@ -13,17 +13,17 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockAPIClient implements APIClient for testing
-type MockAPIClient struct {
+// MockIAPIClient implements IAPIClient for testing
+type MockIAPIClient struct {
 	mock.Mock
 }
 
-func (m *MockAPIClient) FetchMarketChart(params MarketChartParams) (map[string][]byte, error) {
+func (m *MockIAPIClient) FetchMarketChart(params MarketChartParams) (map[string][]byte, error) {
 	args := m.Called(params)
 	return args.Get(0).(map[string][]byte), args.Error(1)
 }
 
-func (m *MockAPIClient) Healthy() bool {
+func (m *MockIAPIClient) Healthy() bool {
 	args := m.Called()
 	return args.Bool(0)
 }
@@ -31,7 +31,7 @@ func (m *MockAPIClient) Healthy() bool {
 // createTestConfig creates a test configuration with market chart settings
 func createTestConfig() *config.Config {
 	return &config.Config{
-		CoingeckoMarketChart: config.CoingeckoMarketChartFetcher{
+		CoingeckoMarketChart: config.MarketChartFetcherConfig{
 			HourlyTTL:          30 * time.Minute,
 			DailyTTL:           12 * time.Hour,
 			DailyDataThreshold: 90,
@@ -80,7 +80,7 @@ func TestService_Basic(t *testing.T) {
 
 	// Create test config
 	cfg := &config.Config{
-		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
+		CoingeckoMarkets: config.MarketsFetcherConfig{
 			TTL: 30 * time.Second,
 		},
 	}
@@ -101,7 +101,7 @@ func TestService_Basic(t *testing.T) {
 func TestService_StartWithoutCache(t *testing.T) {
 	// Create test config
 	cfg := &config.Config{
-		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
+		CoingeckoMarkets: config.MarketsFetcherConfig{
 			TTL: 30 * time.Second,
 		},
 	}
@@ -127,7 +127,7 @@ func TestService_Healthy(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 	service.apiClient = mockClient
 
@@ -237,7 +237,7 @@ func TestService_CreateCacheKey(t *testing.T) {
 			expected: "market_chart:bitcoin:usd:days:30",
 		},
 		{
-			name: "Cache key with interval",
+			name: "ICache key with interval",
 			params: MarketChartParams{
 				ID:       "ethereum",
 				Currency: "eur",
@@ -247,7 +247,7 @@ func TestService_CreateCacheKey(t *testing.T) {
 			expected: "market_chart:ethereum:eur:days:90:interval:hourly",
 		},
 		{
-			name: "Cache key without interval",
+			name: "ICache key without interval",
 			params: MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
@@ -277,7 +277,7 @@ func TestService_MarketChart_CacheMiss(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd",
@@ -319,7 +319,7 @@ func TestService_MarketChart_CacheHit(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client (should not be called)
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	service.apiClient = mockClient
 
 	// Pre-populate cache with rounded data
@@ -370,7 +370,7 @@ func TestService_MarketChart_APIError(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client to return error
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd",
@@ -410,7 +410,7 @@ func TestService_MarketChart_DefaultValues(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	roundedParams := MarketChartParams{
 		ID:       "bitcoin",
 		Currency: "usd", // Default currency
@@ -494,7 +494,7 @@ func TestService_MarketChart_RoundUpLogic(t *testing.T) {
 			service := NewService(cacheService, cfg)
 
 			// Mock API client
-			mockClient := new(MockAPIClient)
+			mockClient := new(MockIAPIClient)
 			roundedParams := MarketChartParams{
 				ID:       "bitcoin",
 				Currency: "usd",
@@ -539,7 +539,7 @@ func TestService_MarketChart_DataFilter(t *testing.T) {
 	service := NewService(cacheService, cfg)
 
 	// Mock API client
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	roundedParams := MarketChartParams{
 		ID:         "bitcoin",
 		Currency:   "usd",

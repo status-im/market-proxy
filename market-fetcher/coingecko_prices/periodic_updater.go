@@ -13,10 +13,10 @@ import (
 	"github.com/status-im/market-proxy/scheduler"
 )
 
-//go:generate mockgen -destination=mocks/periodic_updater.go . PeriodicUpdaterInterface
+//go:generate mockgen -destination=mocks/periodic_updater.go . IPeriodicUpdater
 
-// PeriodicUpdaterInterface defines the interface for periodic price updater
-type PeriodicUpdaterInterface interface {
+// IPeriodicUpdater defines the interface for periodic price updater
+type IPeriodicUpdater interface {
 	Start(ctx context.Context) error
 	Stop()
 	SetTopMarketIds(ids []string)
@@ -43,7 +43,7 @@ type TierDataWithTimestamp struct {
 
 // PeriodicUpdater handles periodic updates of prices data
 type PeriodicUpdater struct {
-	config                   *config.CoingeckoPricesFetcher
+	config                   *config.PricesFetcherConfig
 	schedulers               []*TierScheduler // Multiple schedulers for different tiers
 	apiClient                APIClient
 	metricsWriter            *metrics.MetricsWriter
@@ -70,7 +70,7 @@ type PeriodicUpdater struct {
 }
 
 // NewPeriodicUpdater creates a new periodic prices updater
-func NewPeriodicUpdater(cfg *config.CoingeckoPricesFetcher, apiClient APIClient) *PeriodicUpdater {
+func NewPeriodicUpdater(cfg *config.PricesFetcherConfig, apiClient APIClient) *PeriodicUpdater {
 	updater := &PeriodicUpdater{
 		config:        cfg,
 		apiClient:     apiClient,

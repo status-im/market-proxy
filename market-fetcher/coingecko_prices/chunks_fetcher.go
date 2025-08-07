@@ -53,11 +53,11 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 
 	startTime := time.Now()
 	numChunks := (len(params.IDs) + f.chunkSize - 1) / f.chunkSize
-	log.Printf("CoingeckoPricesService: Fetching prices for %d tokens in %d chunks", len(params.IDs), numChunks)
+	log.Printf("IPricesService: Fetching prices for %d tokens in %d chunks", len(params.IDs), numChunks)
 
 	// Create fetch function for chunks
 	fetchFunc := func(ctx context.Context, chunk []string) (map[string][]byte, error) {
-		log.Printf("CoingeckoPricesService: Fetching chunk with %d tokens", len(chunk))
+		log.Printf("IPricesService: Fetching chunk with %d tokens", len(chunk))
 		chunkStartTime := time.Now()
 
 		chunkParams := cg.PriceParams{
@@ -72,12 +72,12 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 
 		chunkData, err := f.apiClient.FetchPrices(chunkParams)
 		if err != nil {
-			log.Printf("CoingeckoPricesService: Error fetching chunk: %v", err)
+			log.Printf("IPricesService: Error fetching chunk: %v", err)
 			return nil, err
 		}
 
 		duration := time.Since(chunkStartTime)
-		log.Printf("CoingeckoPricesService: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
+		log.Printf("IPricesService: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
 
 		// Call onChunk callback if provided
 		if onChunk != nil {
@@ -93,7 +93,7 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 	}
 
 	tokensPerSecond := float64(len(params.IDs)) / time.Since(startTime).Seconds()
-	log.Printf("CoingeckoPricesService: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
+	log.Printf("IPricesService: Fetched prices for %d tokens in %d chunks (%.2f tokens/sec)",
 		len(params.IDs), numChunks, tokensPerSecond)
 
 	return result, nil

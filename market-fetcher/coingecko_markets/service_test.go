@@ -30,7 +30,7 @@ var (
 
 func createTestConfig() *config.Config {
 	return &config.Config{
-		CoingeckoMarkets: config.CoingeckoMarketsFetcher{
+		CoingeckoMarkets: config.MarketsFetcherConfig{
 			RequestDelay: 1000 * time.Millisecond,
 			TTL:          300 * time.Second,
 			Tiers: []config.MarketTier{
@@ -48,14 +48,14 @@ func createTestConfig() *config.Config {
 	}
 }
 
-func createMockSubscription() events.SubscriptionInterface {
+func createMockSubscription() events.ISubscription {
 	// Create a subscription that can be used in tests
 	mgr := events.NewSubscriptionManager()
 	return mgr.Subscribe()
 }
 
-func createMockTokensService(ctrl *gomock.Controller) *interface_mocks.MockCoingeckoTokensService {
-	mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+func createMockTokensService(ctrl *gomock.Controller) *interface_mocks.MockITokensService {
+	mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 	mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{
 		{ID: "bitcoin", Symbol: "btc", Name: "Bitcoin"},
 		{ID: "ethereum", Symbol: "eth", Name: "Ethereum"},
@@ -75,12 +75,12 @@ func TestNewService(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		cache  cache.Cache
+		cache  cache.ICache
 		config *config.Config
 	}{
 		{
 			name:   "Valid service creation",
-			cache:  cache_mocks.NewMockCache(ctrl),
+			cache:  cache_mocks.NewMockICache(ctrl),
 			config: createTestConfig(),
 		},
 		{
@@ -109,22 +109,22 @@ func TestService_Start(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		cache         cache.Cache
-		tokensService interfaces.CoingeckoTokensService
+		cache         cache.ICache
+		tokensService interfaces.ITokensService
 		expectError   bool
 		errorMsg      string
 		expectCancel  bool
 	}{
 		{
 			name:          "Start with valid cache and tokens service",
-			cache:         cache_mocks.NewMockCache(ctrl),
+			cache:         cache_mocks.NewMockICache(ctrl),
 			tokensService: createMockTokensService(ctrl),
 			expectError:   false,
 			expectCancel:  true,
 		},
 		{
 			name:          "Start with valid cache but no tokens service",
-			cache:         cache_mocks.NewMockCache(ctrl),
+			cache:         cache_mocks.NewMockICache(ctrl),
 			tokensService: nil,
 			expectError:   false,
 			expectCancel:  false,
@@ -176,7 +176,7 @@ func TestService_Stop(t *testing.T) {
 		{
 			name: "Stop service with tokens service and active goroutine",
 			setupService: func() *Service {
-				mockCache := cache_mocks.NewMockCache(ctrl)
+				mockCache := cache_mocks.NewMockICache(ctrl)
 				mockTokensService := createMockTokensService(ctrl)
 				service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -191,7 +191,7 @@ func TestService_Stop(t *testing.T) {
 		{
 			name: "Stop service without tokens service",
 			setupService: func() *Service {
-				mockCache := cache_mocks.NewMockCache(ctrl)
+				mockCache := cache_mocks.NewMockICache(ctrl)
 				service := NewService(mockCache, createTestConfig(), nil)
 
 				// Start the service
@@ -205,7 +205,7 @@ func TestService_Stop(t *testing.T) {
 		{
 			name: "Stop service that was never started",
 			setupService: func() *Service {
-				mockCache := cache_mocks.NewMockCache(ctrl)
+				mockCache := cache_mocks.NewMockICache(ctrl)
 				mockTokensService := createMockTokensService(ctrl)
 				return NewService(mockCache, createTestConfig(), mockTokensService)
 			},
@@ -239,14 +239,14 @@ func TestService_onTokenListChanged(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		tokensService  interfaces.CoingeckoTokensService
+		tokensService  interfaces.ITokensService
 		expectedTokens []string
 		expectCall     bool
 	}{
 		{
 			name: "Update with valid tokens service",
-			tokensService: func() interfaces.CoingeckoTokensService {
-				mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+			tokensService: func() interfaces.ITokensService {
+				mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 				mockTokensService.EXPECT().GetTokenIds().Return([]string{
 					"bitcoin", "ethereum", "cardano",
 				}).Times(1)
@@ -265,7 +265,7 @@ func TestService_onTokenListChanged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockCache := cache_mocks.NewMockICache(ctrl)
 			service := NewService(mockCache, createTestConfig(), tt.tokensService)
 
 			// Create a mock periodic updater to verify SetExtraIds is called
@@ -363,7 +363,7 @@ func TestService_cacheTokensByID(t *testing.T) {
 			expectedLen:   2,
 		},
 		{
-			name:          "Cache set error",
+			name:          "ICache set error",
 			tokensData:    [][]byte{sampleMarketData1},
 			cacheSetError: errors.New("cache error"),
 			expectedError: true,
@@ -383,7 +383,7 @@ func TestService_cacheTokensByID(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -437,11 +437,11 @@ func TestService_Healthy(t *testing.T) {
 			service := &Service{}
 
 			if tt.hasPeriodicUpdater {
-				mockAPIClient := api_mocks.NewMockAPIClient(ctrl)
-				mockAPIClient.EXPECT().Healthy().Return(tt.periodicUpdaterHealthy).AnyTimes()
+				MockIAPIClient := api_mocks.NewMockIAPIClient(ctrl)
+				MockIAPIClient.EXPECT().Healthy().Return(tt.periodicUpdaterHealthy).AnyTimes()
 
 				periodicUpdater := &PeriodicUpdater{
-					apiClient: mockAPIClient,
+					apiClient: MockIAPIClient,
 				}
 				service.periodicUpdater = periodicUpdater
 			}
@@ -483,7 +483,7 @@ func TestService_Markets(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -562,7 +562,7 @@ func TestService_MarketsByIds(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -639,7 +639,7 @@ func TestService_TopMarkets(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			mockCache := cache_mocks.NewMockCache(ctrl)
+			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
 			service := NewService(mockCache, createTestConfig(), mockTokensService)
 
@@ -696,7 +696,7 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
 	intPtr := func(i int) *int { return &i }
 
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 
 	// Create config with MarketParamsNormalize to test default values
 	cfg := createTestConfig()
@@ -736,8 +736,8 @@ func TestService_TopMarketIds(t *testing.T) {
 		defer ctrl.Finish()
 
 		// Create fresh mocks for this test
-		mockCache := cache_mocks.NewMockCache(ctrl)
-		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
 
@@ -779,8 +779,8 @@ func TestService_TopMarketIds(t *testing.T) {
 		defer ctrl.Finish()
 
 		// Create fresh mocks for this test
-		mockCache := cache_mocks.NewMockCache(ctrl)
-		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
 
@@ -828,11 +828,11 @@ func TestMarketsByPageAndMarketsByIdsReturnSameFormat(t *testing.T) {
 	testData3 := []byte(`{"id":"cardano","symbol":"ada","name":"Cardano","current_price":1.5,"market_cap":50000000000}`)
 
 	// Setup cache mock
-	mockCache := cache_mocks.NewMockCache(ctrl)
+	mockCache := cache_mocks.NewMockICache(ctrl)
 	config := createTestConfig()
 
 	// Mock tokens service
-	mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+	mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(createMockSubscription()).AnyTimes()
 
 	service := NewService(mockCache, config, mockTokensService)

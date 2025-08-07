@@ -21,9 +21,9 @@ type TierScheduler struct {
 
 // PeriodicUpdater handles periodic updates of markets data
 type PeriodicUpdater struct {
-	config                  *config.CoingeckoMarketsFetcher
+	config                  *config.MarketsFetcherConfig
 	schedulers              []*TierScheduler // Multiple schedulers for different tiers
-	apiClient               APIClient
+	apiClient               IAPIClient
 	metricsWriter           *metrics.MetricsWriter
 	onUpdateTierPages       func(ctx context.Context, tier config.MarketTier, pagesData []PageData)
 	onUpdateMissingExtraIds func(ctx context.Context, tokensData [][]byte)
@@ -50,7 +50,7 @@ type PeriodicUpdater struct {
 }
 
 // NewPeriodicUpdater creates a new periodic markets updater
-func NewPeriodicUpdater(cfg *config.CoingeckoMarketsFetcher, apiClient APIClient) *PeriodicUpdater {
+func NewPeriodicUpdater(cfg *config.MarketsFetcherConfig, apiClient IAPIClient) *PeriodicUpdater {
 	updater := &PeriodicUpdater{
 		config:        cfg,
 		apiClient:     apiClient,

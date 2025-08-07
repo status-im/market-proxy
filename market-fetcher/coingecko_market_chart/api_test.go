@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockAPIKeyManager implements APIKeyManagerInterface for testing
+// MockAPIKeyManager implements IAPIKeyManager for testing
 type MockAPIKeyManager struct {
 	mock.Mock
 }
@@ -142,7 +142,7 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create config with TryFreeApiFirst setting
 			cfg := &config.Config{
-				CoingeckoMarketChart: config.CoingeckoMarketChartFetcher{
+				CoingeckoMarketChart: config.MarketChartFetcherConfig{
 					TryFreeApiFirst: tt.tryFreeApiFirst,
 					HourlyTTL:       30 * time.Minute,
 					DailyTTL:        12 * time.Hour,
@@ -206,7 +206,7 @@ func TestCoinGeckoClient_TryFreeApiFirst_NoKeyNotFound(t *testing.T) {
 	defer server.Close()
 
 	cfg := &config.Config{
-		CoingeckoMarketChart: config.CoingeckoMarketChartFetcher{
+		CoingeckoMarketChart: config.MarketChartFetcherConfig{
 			TryFreeApiFirst: true,
 			HourlyTTL:       30 * time.Minute,
 			DailyTTL:        12 * time.Hour,

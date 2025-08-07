@@ -180,9 +180,9 @@ func TestService_ClearAndDelete(t *testing.T) {
 }
 
 func TestService_Implementation(t *testing.T) {
-	// Verify that Service implements Cache interface
+	// Verify that Service implements ICache interface
 	config := DefaultCacheConfig()
-	var cache Cache = NewService(config)
+	var cache ICache = NewService(config)
 
 	loader := func(missingKeys []string) (map[string][]byte, error) {
 		return map[string][]byte{"test": []byte("value")}, nil

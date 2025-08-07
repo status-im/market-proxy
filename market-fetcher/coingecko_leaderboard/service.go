@@ -18,7 +18,7 @@ type Service struct {
 	topPricesUpdater  *TopPricesUpdater
 }
 
-func NewService(cfg *config.Config, priceFetcher interfaces.CoingeckoPricesService, marketsFetcher interfaces.CoingeckoMarketsService) *Service {
+func NewService(cfg *config.Config, priceFetcher interfaces.IPricesService, marketsFetcher interfaces.IMarketsService) *Service {
 	topMarketsUpdater := NewTopMarketsUpdater(&cfg.CoingeckoLeaderboard, marketsFetcher)
 	topPricesUpdater := NewTopPricesUpdater(&cfg.CoingeckoLeaderboard, priceFetcher)
 

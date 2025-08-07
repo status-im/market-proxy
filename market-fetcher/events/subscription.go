@@ -1,14 +1,14 @@
 package events
 
-//go:generate mockgen -destination=mocks/subscription.go . SubscriptionInterface,SubscriptionManagerInterface
+//go:generate mockgen -destination=mocks/subscription.go . ISubscription,ISubscriptionManager
 
 import (
 	"context"
 	"sync"
 )
 
-// SubscriptionInterface defines the contract for subscription objects
-type SubscriptionInterface interface {
+// ISubscription defines the contract for subscription objects
+type ISubscription interface {
 	// Chan returns a read-only channel for self-handling events
 	Chan() <-chan struct{}
 	// Cancel unsubscribes and closes the channel. Safe for repeated calls
@@ -16,13 +16,13 @@ type SubscriptionInterface interface {
 	// Watch starts a goroutine that calls cb on each event
 	// If callNow is true, cb is called immediately
 	// When parentCtx finishes, the subscription is automatically cancelled
-	Watch(parentCtx context.Context, cb func(), callNow bool) SubscriptionInterface
+	Watch(parentCtx context.Context, cb func(), callNow bool) ISubscription
 }
 
-// SubscriptionManagerInterface defines the contract for managing subscriptions
-type SubscriptionManagerInterface interface {
+// ISubscriptionManager defines the contract for managing subscriptions
+type ISubscriptionManager interface {
 	// Subscribe creates a new subscription and returns it
-	Subscribe() SubscriptionInterface
+	Subscribe() ISubscription
 	// Unsubscribe removes a subscription by its channel
 	Unsubscribe(ch chan struct{})
 	// Emit sends notification to all subscribers (non-blocking if their channel is full)
@@ -52,7 +52,7 @@ func (s *Subscription) Cancel() {
 // Watch starts a goroutine that calls cb on each event.
 // If callNow is true, cb is called immediately.
 // When parentCtx finishes, the subscription is automatically cancelled.
-func (s *Subscription) Watch(parentCtx context.Context, cb func(), callNow bool) SubscriptionInterface {
+func (s *Subscription) Watch(parentCtx context.Context, cb func(), callNow bool) ISubscription {
 	ctx, cancel := context.WithCancel(parentCtx)
 	s.cancel = cancel
 
@@ -86,7 +86,7 @@ func NewSubscriptionManager() *SubscriptionManager {
 	}
 }
 
-func (m *SubscriptionManager) Subscribe() SubscriptionInterface {
+func (m *SubscriptionManager) Subscribe() ISubscription {
 	ch := make(chan struct{}, 1)
 
 	m.mu.Lock()

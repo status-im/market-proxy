@@ -2,10 +2,10 @@ package interfaces
 
 import "github.com/status-im/market-proxy/events"
 
-//go:generate mockgen -destination=mocks/coingecko_tokens.go . CoingeckoTokensService
+//go:generate mockgen -destination=mocks/coingecko_tokens.go . ITokensService
 
-// CoingeckoTokensService defines the interface for CoinGecko tokens service
-type CoingeckoTokensService interface {
+// ITokensService defines the interface for CoinGecko tokens service
+type ITokensService interface {
 	// GetTokens returns cached tokens
 	GetTokens() []Token
 
@@ -13,7 +13,7 @@ type CoingeckoTokensService interface {
 	GetTokenIds() []string
 
 	// SubscribeOnTokensUpdate subscribes to tokens update notifications
-	SubscribeOnTokensUpdate() events.SubscriptionInterface
+	SubscribeOnTokensUpdate() events.ISubscription
 }
 
 type Token struct {

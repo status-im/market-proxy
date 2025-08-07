@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// CoingeckoMarketChartFetcher defines configuration for CoinGecko market chart service
-type CoingeckoMarketChartFetcher struct {
+// MarketChartFetcherConfig defines configuration for CoinGecko market chart service
+type MarketChartFetcherConfig struct {
 	// HourlyTTL is the cache TTL for hourly data (for requests with days <= DailyDataThreshold)
 	HourlyTTL time.Duration `yaml:"hourly_ttl"`
 
@@ -24,8 +24,8 @@ type CoingeckoMarketChartFetcher struct {
 }
 
 // GetDefaultMarketChartConfig returns default configuration for market chart service
-func GetDefaultMarketChartConfig() CoingeckoMarketChartFetcher {
-	return CoingeckoMarketChartFetcher{
+func GetDefaultMarketChartConfig() MarketChartFetcherConfig {
+	return MarketChartFetcherConfig{
 		HourlyTTL:          30 * time.Minute, // 30 minutes for hourly data
 		DailyTTL:           12 * time.Hour,   // 12 hours for daily data
 		DailyDataThreshold: 90,               // 90 days is the threshold for daily data

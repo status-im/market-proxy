@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockAPIClient is a mock implementation of APIClient
-type MockAPIClient struct {
+// MockIAPIClient is a mock implementation of APIClient
+type MockIAPIClient struct {
 	mock.Mock
 }
 
 // FetchPrices mocks the FetchPrices method
-func (m *MockAPIClient) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
+func (m *MockIAPIClient) FetchPrices(params cg.PriceParams) (map[string][]byte, error) {
 	args := m.Called(params)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -26,13 +26,13 @@ func (m *MockAPIClient) FetchPrices(params cg.PriceParams) (map[string][]byte, e
 }
 
 // Healthy mocks the Healthy method
-func (m *MockAPIClient) Healthy() bool {
+func (m *MockIAPIClient) Healthy() bool {
 	args := m.Called()
 	return args.Bool(0)
 }
 
 func TestNewChunksFetcher(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	fetcher := NewChunksFetcher(mockClient, 100, 1000)
@@ -42,7 +42,7 @@ func TestNewChunksFetcher(t *testing.T) {
 }
 
 func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks
@@ -77,7 +77,7 @@ func TestChunksFetcher_FetchPrices_Success(t *testing.T) {
 }
 
 func TestChunksFetcher_FetchPrices_Error(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectation for error
@@ -98,7 +98,7 @@ func TestChunksFetcher_FetchPrices_Error(t *testing.T) {
 }
 
 func TestChunksFetcher_FetchPrices_EmptyInput(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	fetcher := NewChunksFetcher(mockClient, 2, 0)
@@ -114,7 +114,7 @@ func TestChunksFetcher_FetchPrices_EmptyInput(t *testing.T) {
 }
 
 func TestChunksFetcher_FetchPrices_DefaultValues(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	// Test with negative chunk size
@@ -127,7 +127,7 @@ func TestChunksFetcher_FetchPrices_DefaultValues(t *testing.T) {
 }
 
 func TestChunksFetcher_FetchPrices_RequestDelay(t *testing.T) {
-	mockClient := new(MockAPIClient)
+	mockClient := new(MockIAPIClient)
 	mockClient.On("Healthy").Return(true)
 
 	// Set up expectations for two chunks

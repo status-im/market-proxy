@@ -23,8 +23,8 @@ func TestService_getParamsOverride(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		mockCache := cache_mocks.NewMockCache(ctrl)
-		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
@@ -58,8 +58,8 @@ func TestService_getParamsOverride(t *testing.T) {
 			Category:              stringPtr(""),
 		}
 
-		mockCache := cache_mocks.NewMockCache(ctrl)
-		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
@@ -95,8 +95,8 @@ func TestService_getParamsOverride(t *testing.T) {
 			// Other fields not configured
 		}
 
-		mockCache := cache_mocks.NewMockCache(ctrl)
-		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
+		mockCache := cache_mocks.NewMockICache(ctrl)
+		mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
