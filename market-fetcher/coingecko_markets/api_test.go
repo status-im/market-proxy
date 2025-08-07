@@ -176,7 +176,10 @@ func TestCoinGeckoClient_FetchPage_Success(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -243,7 +246,10 @@ func TestCoinGeckoClient_FetchPage_ErrorHandling(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -313,7 +319,10 @@ func TestCoinGeckoClient_FetchPage_KeyFallback(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -390,7 +399,10 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -447,7 +459,10 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -487,7 +502,10 @@ func TestCoinGeckoClient_Healthy(t *testing.T) {
 	}
 
 	errorClient := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockErrorClient),
 	}
@@ -542,7 +560,10 @@ func TestCoinGeckoClient_FetchPage_WithCategory(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -605,7 +626,10 @@ func TestCoinGeckoClient_FetchPage_WithIDs(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -668,7 +692,10 @@ func TestCoinGeckoClient_FetchPage_WithSparkline(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -731,7 +758,10 @@ func TestCoinGeckoClient_FetchPage_WithPriceChangePercentage(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -794,7 +824,10 @@ func TestCoinGeckoClient_FetchPage_WithAllNewParameters(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}
@@ -871,7 +904,10 @@ func TestCoinGeckoClient_FetchPage_EmptyOptionalParameters(t *testing.T) {
 
 	// Create CoinGeckoClient with mocks
 	client := &CoinGeckoClient{
-		config:     &config.Config{},
+		config: &config.Config{
+			OverrideCoingeckoProURL:    "http://mock-pro.example.com",
+			OverrideCoingeckoPublicURL: "http://mock-public.example.com",
+		},
 		keyManager: mockKeyManager,
 		httpClient: createMockHTTPClientWithRetries(mockClient),
 	}

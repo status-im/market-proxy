@@ -595,9 +595,7 @@ func TestService_TopMarkets(t *testing.T) {
 			currency:      "usd",
 			topMarketsIDs: []string{"bitcoin", "ethereum"},
 			cachedData: map[string][]byte{
-				"markets_page_ids:1": []byte(`["bitcoin","ethereum"]`),
-				"markets:bitcoin":    sampleMarketData1,
-				"markets:ethereum":   sampleMarketData2,
+				"markets_page:1": []byte(`[{"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":45000,"market_cap":850000000000},{"id":"ethereum","symbol":"eth","name":"Ethereum","current_price":3000,"market_cap":360000000000}]`),
 			},
 			expectedLen:   2,
 			expectedError: false,

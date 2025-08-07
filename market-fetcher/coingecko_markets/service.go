@@ -213,6 +213,10 @@ func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsRe
 		return s.MarketsByIds(params)
 	}
 
+	if params.Page > 0 {
+		return s.MarketsByPage(params.Page, params.Page, params)
+	}
+
 	// TODO: Implement general markets fetching without specific IDs
 	log.Printf("Markets called without specific IDs - returning empty array (TODO: implement general fetching)")
 	return interfaces.MarketsResponse([]interface{}{}), interfaces.CacheStatusMiss, nil
@@ -259,6 +263,55 @@ func (s *Service) MarketsByIds(params interfaces.MarketsParams) (response interf
 	}
 
 	return interfaces.MarketsResponse(marketData), cacheStatus, nil
+}
+
+// MarketsByPage fetches markets data for a specific page range using cache only
+func (s *Service) MarketsByPage(pageFrom, pageTo int, params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+	log.Printf("Loading markets data for pages %d-%d from cache with currency=%s", pageFrom, pageTo, params.Currency)
+
+	// Validate page range
+	if pageFrom <= 0 || pageTo <= 0 || pageFrom > pageTo {
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("invalid page range: from=%d, to=%d", pageFrom, pageTo)
+	}
+
+	pageCacheKeys := make([]string, 0, pageTo-pageFrom+1)
+	for page := pageFrom; page <= pageTo; page++ {
+		pageCacheKeys = append(pageCacheKeys, createPageCacheKey(page))
+	}
+
+	cachedData, missingKeys, err := s.cache.Get(pageCacheKeys)
+	if err != nil {
+		log.Printf("Failed to check cache for pages: %v", err)
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("failed to check cache for pages: %w", err)
+	}
+
+	var allMarketData []interface{}
+	for page := pageFrom; page <= pageTo; page++ {
+		pageCacheKey := createPageCacheKey(page)
+		if pageBytes, exists := cachedData[pageCacheKey]; exists {
+			var pageData []interface{}
+			if err := json.Unmarshal(pageBytes, &pageData); err != nil {
+				log.Printf("Failed to unmarshal page %d data: %v", page, err)
+				continue
+			}
+			allMarketData = append(allMarketData, pageData...)
+		}
+	}
+
+	// Determine cache status
+	var cacheStatus interfaces.CacheStatus
+	if len(missingKeys) == 0 && len(cachedData) == len(pageCacheKeys) {
+		cacheStatus = interfaces.CacheStatusFull
+		log.Printf("Returning cached data for all %d pages (%d tokens)", len(pageCacheKeys), len(allMarketData))
+	} else if len(cachedData) > 0 {
+		cacheStatus = interfaces.CacheStatusPartial
+		log.Printf("Returning partial cached data for %d/%d pages (%d tokens)", len(cachedData), len(pageCacheKeys), len(allMarketData))
+	} else {
+		cacheStatus = interfaces.CacheStatusMiss
+		log.Printf("No cached data found for pages %d-%d", pageFrom, pageTo)
+	}
+
+	return interfaces.MarketsResponse(allMarketData), cacheStatus, nil
 }
 
 // getMaxTokenLimit calculates the maximum token limit from tiers configuration
@@ -315,29 +368,34 @@ func (s *Service) TopMarkets(limit int, currency string) (interfaces.MarketsResp
 		log.Printf("Limit adjusted to maximum available: %d", limit)
 	}
 
-	// Get top market token IDs from cache
-	tokenIDs, err := s.TopMarketIds(limit)
-	if err != nil {
-		log.Printf("Failed to get top market IDs: %v", err)
-		return nil, fmt.Errorf("failed to get top market IDs: %w", err)
-	}
-
-	if len(tokenIDs) == 0 {
-		log.Printf("No top market IDs found in cache - service only returns pre-warmed data from periodic updater")
-		return interfaces.MarketsResponse([]interface{}{}), nil
-	}
-
-	// Create parameters for markets request
+	// Calculate how many pages we need to fetch based on per_page size
+	// Apply parameters normalization from config to get the actual per_page
 	params := interfaces.MarketsParams{
 		Currency: currency,
-		IDs:      tokenIDs,
+		Order:    "market_cap_desc",
+		PerPage:  MARKETS_DEFAULT_CHUNK_SIZE,
+	}
+	params = s.getParamsOverride(params)
+	perPage := params.PerPage
+
+	pageTo := (limit + perPage - 1) / perPage
+	if pageTo == 0 {
+		pageTo = 1
 	}
 
-	// Use MarketsByIds to get the actual market data from cache
-	response, cacheStatus, err := s.MarketsByIds(params)
+	log.Printf("Fetching top markets using page-based approach: need %d pages (per_page=%d) for limit=%d", pageTo, perPage, limit)
+
+	// Use MarketsByPage to get the data more efficiently from page cache
+	response, cacheStatus, err := s.MarketsByPage(1, pageTo, params)
 	if err != nil {
-		log.Printf("Failed to get markets data by IDs: %v", err)
-		return nil, fmt.Errorf("failed to get markets data by IDs: %w", err)
+		log.Printf("Failed to get markets data by pages: %v", err)
+		return nil, fmt.Errorf("failed to get markets data by pages: %w", err)
+	}
+
+	// Trim the response to the exact limit requested since we might have fetched more
+	if len(response) > limit {
+		response = response[:limit]
+		log.Printf("Trimmed response from %d to %d tokens to match requested limit", len(response)+limit-len(response), limit)
 	}
 
 	log.Printf("Returned top markets data with %d coins (cache status: %v)", len(response), cacheStatus)

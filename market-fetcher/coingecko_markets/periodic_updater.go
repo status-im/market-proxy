@@ -226,6 +226,11 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 	log.Printf("Updated tier '%s' cache with %d tokens (page: %d-%d)",
 		tier.Name, len(localData.Data), tier.PageFrom, tier.PageTo)
 
+	// Call final callback to notify tier update completion (even for empty data)
+	if u.onUpdateTierPages != nil {
+		u.onUpdateTierPages(ctx, tier, pagesData)
+	}
+
 	// Check if this is the first time this tier completed and all tiers are now complete
 	u.checkAndTriggerInitialLoadCompleted(ctx, tier.Name)
 
