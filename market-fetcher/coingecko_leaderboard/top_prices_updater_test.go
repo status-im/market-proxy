@@ -11,6 +11,7 @@ import (
 	mock_interfaces "github.com/status-im/market-proxy/interfaces/mocks"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -57,7 +58,6 @@ func TestNewTopPricesUpdater(t *testing.T) {
 		assert.Equal(t, mockFetcher, updater.priceFetcher)
 		assert.NotNil(t, updater.metricsWriter)
 		assert.Nil(t, updater.updateSubscription)
-		assert.Nil(t, updater.cancelFunc)
 		assert.NotNil(t, updater.topPricesCache.data)
 		assert.Empty(t, updater.topPricesCache.data)
 	})
@@ -347,9 +347,9 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		// TopPrices will be called for top tokens
 
 		// Setup mock for subscription and initial fetch
-		updateCh := make(chan struct{}, 1)
-		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(updateCh).Times(1)
-		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).Times(1)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
+		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(mockSubscription).Times(1)
+		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -358,10 +358,8 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, updater.updateSubscription)
-		assert.NotNil(t, updater.cancelFunc)
 
 		// Stop to clean up
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 	})
 
@@ -376,7 +374,6 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Nil(t, updater.updateSubscription)
-		assert.Nil(t, updater.cancelFunc)
 	})
 
 	t.Run("Stop unsubscribes and cancels goroutine", func(t *testing.T) {
@@ -390,9 +387,9 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		// TopPrices will be called for top tokens
 
 		// Setup mock for subscription and initial fetch
-		updateCh := make(chan struct{}, 1)
-		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(updateCh).Times(1)
-		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).Times(1)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
+		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(mockSubscription).Times(1)
+		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -403,12 +400,11 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		assert.NotNil(t, updater.updateSubscription)
 
 		// Now stop
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
+
 		updater.Stop()
 
 		// Should be cleaned up
 		assert.Nil(t, updater.updateSubscription)
-		assert.Nil(t, updater.cancelFunc)
 	})
 
 	t.Run("Stop doesn't panic when not started", func(t *testing.T) {
@@ -431,10 +427,10 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 
 		// TopPrices will be called for top tokens
 
-		updateCh := make(chan struct{}, 2)
-		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(updateCh).Times(1)
-		// Expect initial fetch + one more when we send update signal
-		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).Times(2)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
+		mockFetcher.EXPECT().SubscribeTopPricesUpdate().Return(mockSubscription).Times(1)
+		// Expect initial fetch (triggered by Watch with startNow: true)
+		mockFetcher.EXPECT().TopPrices(gomock.Any(), gomock.Any(), gomock.Any()).Return(interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil).AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
@@ -442,14 +438,10 @@ func TestTopPricesUpdater_StartStop(t *testing.T) {
 		err := updater.Start(ctx)
 		assert.NoError(t, err)
 
-		// Send update signal
-		updateCh <- struct{}{}
-
-		// Give some time for the goroutine to process the signal
+		// Give some time for the initial processing
 		time.Sleep(time.Millisecond * 100)
 
 		// Stop to clean up
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 	})
 }

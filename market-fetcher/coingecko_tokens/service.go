@@ -116,10 +116,6 @@ func (s *Service) Healthy() bool {
 	return s.periodicUpdater.IsInitialized() && tokensLen > 0
 }
 
-func (s *Service) SubscribeOnTokensUpdate() chan struct{} {
+func (s *Service) SubscribeOnTokensUpdate() events.SubscriptionInterface {
 	return s.subscriptionManager.Subscribe()
-}
-
-func (s *Service) Unsubscribe(ch chan struct{}) {
-	s.subscriptionManager.Unsubscribe(ch)
 }

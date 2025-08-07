@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	events "github.com/status-im/market-proxy/events"
 	interfaces "github.com/status-im/market-proxy/interfaces"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -57,10 +58,10 @@ func (mr *MockCoingeckoPricesServiceMockRecorder) SimplePrices(arg0, arg1 any) *
 }
 
 // SubscribeTopPricesUpdate mocks base method.
-func (m *MockCoingeckoPricesService) SubscribeTopPricesUpdate() chan struct{} {
+func (m *MockCoingeckoPricesService) SubscribeTopPricesUpdate() events.SubscriptionInterface {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubscribeTopPricesUpdate")
-	ret0, _ := ret[0].(chan struct{})
+	ret0, _ := ret[0].(events.SubscriptionInterface)
 	return ret0
 }
 
@@ -84,16 +85,4 @@ func (m *MockCoingeckoPricesService) TopPrices(arg0 context.Context, arg1 int, a
 func (mr *MockCoingeckoPricesServiceMockRecorder) TopPrices(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopPrices", reflect.TypeOf((*MockCoingeckoPricesService)(nil).TopPrices), arg0, arg1, arg2)
-}
-
-// Unsubscribe mocks base method.
-func (m *MockCoingeckoPricesService) Unsubscribe(arg0 chan struct{}) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Unsubscribe", arg0)
-}
-
-// Unsubscribe indicates an expected call of Unsubscribe.
-func (mr *MockCoingeckoPricesServiceMockRecorder) Unsubscribe(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockCoingeckoPricesService)(nil).Unsubscribe), arg0)
 }

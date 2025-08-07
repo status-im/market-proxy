@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
 )
@@ -16,8 +17,7 @@ type TopMarketsUpdater struct {
 	marketsFetcher     interfaces.CoingeckoMarketsService
 	metricsWriter      *metrics.MetricsWriter
 	onUpdate           func()
-	updateSubscription chan struct{}
-	cancelFunc         context.CancelFunc
+	updateSubscription events.SubscriptionInterface
 
 	cache struct {
 		sync.RWMutex
@@ -49,47 +49,23 @@ func (u *TopMarketsUpdater) GetCacheData() *APIResponse {
 
 // Start starts the top markets updater by subscribing to market updates
 func (u *TopMarketsUpdater) Start(ctx context.Context) error {
-	u.updateSubscription = u.marketsFetcher.SubscribeTopMarketsUpdate()
-	subscriptionCtx, cancel := context.WithCancel(ctx)
-	u.cancelFunc = cancel
-
-	go u.handleMarketUpdates(subscriptionCtx)
+	u.updateSubscription = u.marketsFetcher.SubscribeTopMarketsUpdate().
+		Watch(ctx, func() {
+			if err := u.fetchAndUpdate(ctx); err != nil {
+				log.Printf("Error updating markets data on subscription signal: %v", err)
+			}
+		}, true)
 
 	log.Printf("Started top markets updater with subscription to market updates")
-
-	// Perform initial fetch to populate cache
-	if err := u.fetchAndUpdate(ctx); err != nil {
-		log.Printf("Error during initial markets data fetch: %v", err)
-		// Don't return error - subscription can still work for future updates
-	}
 
 	return nil
 }
 
 // Stop stops the top markets updater
 func (u *TopMarketsUpdater) Stop() {
-	if u.cancelFunc != nil {
-		u.cancelFunc()
-		u.cancelFunc = nil
-	}
-
-	if u.updateSubscription != nil && u.marketsFetcher != nil {
-		u.marketsFetcher.Unsubscribe(u.updateSubscription)
+	if u.updateSubscription != nil {
+		u.updateSubscription.Cancel()
 		u.updateSubscription = nil
-	}
-}
-
-// handleMarketUpdates handles subscription to market updates
-func (u *TopMarketsUpdater) handleMarketUpdates(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-u.updateSubscription:
-			if err := u.fetchAndUpdate(ctx); err != nil {
-				log.Printf("Error updating markets data on subscription signal: %v", err)
-			}
-		}
 	}
 }
 

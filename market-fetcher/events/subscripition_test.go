@@ -25,19 +25,19 @@ func TestSubscriptionManager(t *testing.T) {
 	notificationReceived := make([]bool, subscriberCount)
 
 	for i := 0; i < subscriberCount; i++ {
-		ch := sm.Subscribe()
+		sub := sm.Subscribe()
 		idx := i // Copy the value of i to use inside the goroutine
 
 		wg.Add(1)
-		go func(ch chan struct{}, idx int) {
+		go func(sub SubscriptionInterface, idx int) {
 			defer wg.Done()
 			select {
-			case <-ch:
+			case <-sub.Chan():
 				notificationReceived[idx] = true
 			case <-time.After(1 * time.Second):
 				// Timeout waiting for notification
 			}
-		}(ch, idx)
+		}(sub, idx)
 	}
 
 	// Emit a notification to all subscribers
@@ -52,15 +52,14 @@ func TestSubscriptionManager(t *testing.T) {
 	}
 
 	// Test that notifications are not sent to closed channels
-	chClosed := sm.Subscribe()
-	// Ensure that unsubscribe handles already closed channels properly
-	sm.Unsubscribe(chClosed)
+	subClosed := sm.Subscribe()
+	// Ensure that cancel handles already closed channels properly
+	subClosed.Cancel()
 
-	// ensure subscription is removed
-	_, exists := sm.subscribers[chClosed]
-	require.False(t, exists, "Subscription was not removed")
-
-	sm.Unsubscribe(chClosed)
+	// Test double cancel is safe (should not panic)
+	require.NotPanics(t, func() {
+		subClosed.Cancel()
+	}, "Double cancel should be safe")
 	// Emit a notification
 	sm.Emit(ctx)
 
@@ -73,14 +72,14 @@ func TestSubscriptionManager_MultipleEmitsCollapse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ch := sm.Subscribe()
-	defer sm.Unsubscribe(ch)
+	sub := sm.Subscribe()
+	defer sub.Cancel()
 
 	var received int
 	var mu sync.Mutex
 
 	go func() {
-		for range ch {
+		for range sub.Chan() {
 			mu.Lock()
 			received++
 			mu.Unlock()

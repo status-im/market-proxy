@@ -81,10 +81,6 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if data == nil {
-		http.Error(w, "No data available", http.StatusServiceUnavailable)
-		return
-	}
 
 	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, data)

@@ -8,6 +8,7 @@ import (
 	cg "github.com/status-im/market-proxy/interfaces"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/metrics"
 )
 
@@ -16,8 +17,7 @@ type TopPricesUpdater struct {
 	config             *config.CoingeckoLeaderboardFetcher
 	priceFetcher       cg.CoingeckoPricesService
 	metricsWriter      *metrics.MetricsWriter
-	updateSubscription chan struct{}
-	cancelFunc         context.CancelFunc
+	updateSubscription events.SubscriptionInterface
 	// Cache for top tokens prices
 	topPricesCache struct {
 		sync.RWMutex
@@ -56,18 +56,14 @@ func (u *TopPricesUpdater) GetTopPricesQuotes(currency string) map[string]Quote 
 // Start starts the price updater by subscribing to price updates
 func (u *TopPricesUpdater) Start(ctx context.Context) error {
 	if u.priceFetcher != nil {
-		u.updateSubscription = u.priceFetcher.SubscribeTopPricesUpdate()
-		subscriptionCtx, cancel := context.WithCancel(ctx)
-		u.cancelFunc = cancel
-
-		go u.handlePriceUpdates(subscriptionCtx)
+		u.updateSubscription = u.priceFetcher.SubscribeTopPricesUpdate().
+			Watch(ctx, func() {
+				if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
+					log.Printf("Error updating price data on subscription signal: %v", err)
+				}
+			}, true)
 
 		log.Printf("Started top prices updater with subscription to price updates")
-
-		// Perform initial fetch to populate cache
-		if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
-			log.Printf("Error during initial price data fetch: %v", err)
-		}
 	} else {
 		log.Printf("No price fetcher available, price updater will not be active")
 	}
@@ -77,28 +73,9 @@ func (u *TopPricesUpdater) Start(ctx context.Context) error {
 
 // Stop stops the price updater
 func (u *TopPricesUpdater) Stop() {
-	if u.cancelFunc != nil {
-		u.cancelFunc()
-		u.cancelFunc = nil
-	}
-
-	if u.updateSubscription != nil && u.priceFetcher != nil {
-		u.priceFetcher.Unsubscribe(u.updateSubscription)
+	if u.updateSubscription != nil {
+		u.updateSubscription.Cancel()
 		u.updateSubscription = nil
-	}
-}
-
-// handlePriceUpdates handles subscription to price updates
-func (u *TopPricesUpdater) handlePriceUpdates(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-u.updateSubscription:
-			if err := u.fetchAndUpdateTopPrices(ctx); err != nil {
-				log.Printf("Error updating price data on subscription signal: %v", err)
-			}
-		}
 	}
 }
 

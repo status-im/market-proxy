@@ -11,6 +11,7 @@ import (
 	"github.com/status-im/market-proxy/cache"
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -30,8 +31,8 @@ func createMockTokensService(ctrl *gomock.Controller) *mock_interfaces.MockCoing
 	mockTokensService.EXPECT().GetTokenIds().Return([]string{
 		"bitcoin", "ethereum",
 	}).AnyTimes()
-	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
-	mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+
 	return mockTokensService
 }
 
@@ -71,9 +72,9 @@ func TestService_Basic(t *testing.T) {
 
 	// Create mock markets service
 	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
-	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(make(chan struct{})).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
-	mockMarketsService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
 
 	// Create test config
 	cfg := createTestConfig()
@@ -106,9 +107,9 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 
 	// Create mock markets service
 	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
-	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(make(chan struct{})).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
-	mockMarketsService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
 
 	// Create test config
 	cfg := createTestConfig()
@@ -170,9 +171,9 @@ func TestService_StartStop(t *testing.T) {
 
 	// Create mock markets service
 	mockMarketsService := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
-	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(make(chan struct{})).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeTopMarketsUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+	mockMarketsService.EXPECT().SubscribeInitialized().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 	mockMarketsService.EXPECT().TopMarketIds(10000).Return([]string{"bitcoin", "ethereum"}, nil).AnyTimes()
-	mockMarketsService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
 
 	// Create price service
 	mockTokensService := createMockTokensService(ctrl)

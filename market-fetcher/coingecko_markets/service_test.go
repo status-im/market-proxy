@@ -14,6 +14,7 @@ import (
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	api_mocks "github.com/status-im/market-proxy/coingecko_markets/mocks"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -46,6 +47,12 @@ func createTestConfig() *config.Config {
 	}
 }
 
+func createMockSubscription() events.SubscriptionInterface {
+	// Create a subscription that can be used in tests
+	mgr := events.NewSubscriptionManager()
+	return mgr.Subscribe()
+}
+
 func createMockTokensService(ctrl *gomock.Controller) *interface_mocks.MockCoingeckoTokensService {
 	mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
 	mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{
@@ -55,8 +62,7 @@ func createMockTokensService(ctrl *gomock.Controller) *interface_mocks.MockCoing
 	mockTokensService.EXPECT().GetTokenIds().Return([]string{
 		"bitcoin", "ethereum",
 	}).AnyTimes()
-	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
-	mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(createMockSubscription()).AnyTimes()
 	return mockTokensService
 }
 
@@ -148,9 +154,9 @@ func TestService_Start(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				if tt.expectCancel {
-					assert.NotNil(t, service.cancelFunc, "cancelFunc should be set when tokens service is provided")
+					assert.NotNil(t, service.tokenUpdateSubscription, "tokenUpdateSubscription should be set when tokens service is provided")
 				} else {
-					assert.Nil(t, service.cancelFunc, "cancelFunc should be nil when tokens service is not provided")
+					assert.Nil(t, service.tokenUpdateSubscription, "tokenUpdateSubscription should be nil when tokens service is not provided")
 				}
 			}
 		})
@@ -212,7 +218,7 @@ func TestService_Stop(t *testing.T) {
 
 			// Verify initial state
 			if tt.expectCancel {
-				assert.NotNil(t, service.cancelFunc, "cancelFunc should be set before Stop")
+				assert.NotNil(t, service.tokenUpdateSubscription, "tokenUpdateSubscription should be set before Stop")
 			}
 
 			// Should not panic
@@ -220,9 +226,8 @@ func TestService_Stop(t *testing.T) {
 				service.Stop()
 			})
 
-			// Verify cancelFunc is cleared after Stop
-			assert.Nil(t, service.cancelFunc, "cancelFunc should be nil after Stop")
-			assert.Nil(t, service.tokenUpdateCh, "tokenUpdateCh should be nil after Stop")
+			// Verify subscription is cleared after Stop
+			assert.Nil(t, service.tokenUpdateSubscription, "tokenUpdateSubscription should be nil after Stop")
 		})
 	}
 }
@@ -724,7 +729,7 @@ func TestService_TopMarketIds(t *testing.T) {
 		// Create fresh mocks for this test
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
-		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
 
 		// Create config and service
@@ -767,7 +772,7 @@ func TestService_TopMarketIds(t *testing.T) {
 		// Create fresh mocks for this test
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
-		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 		mockTokensService.EXPECT().GetTokenIds().Return([]string{}).AnyTimes()
 
 		// Create config and service

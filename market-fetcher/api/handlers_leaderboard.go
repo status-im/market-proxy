@@ -8,7 +8,10 @@ import (
 func (s *Server) handleLeaderboardMarkets(w http.ResponseWriter, r *http.Request) {
 	data := s.cgService.GetCacheData()
 	if data == nil {
-		http.Error(w, "No data available", http.StatusServiceUnavailable)
+		emptyResponse := map[string]interface{}{
+			"data": []interface{}{},
+		}
+		s.sendJSONResponse(w, emptyResponse)
 		return
 	}
 

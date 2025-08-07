@@ -1,6 +1,10 @@
 package interfaces
 
-import "context"
+import (
+	"context"
+
+	"github.com/status-im/market-proxy/events"
+)
 
 //go:generate mockgen -destination=mocks/coingecko_prices.go . CoingeckoPricesService
 
@@ -35,9 +39,6 @@ type CoingeckoPricesService interface {
 	// Similar to TopMarkets in markets service, provides clean interface for token price fetching
 	TopPrices(ctx context.Context, limit int, currencies []string) (SimplePriceResponse, CacheStatus, error)
 
-	// SubscribeTopMarketsUpdate subscribes to markets update notifications
-	SubscribeTopPricesUpdate() chan struct{}
-
-	// Unsubscribe unsubscribes from markets update notifications
-	Unsubscribe(ch chan struct{})
+	// SubscribeTopPricesUpdate subscribes to prices update notifications
+	SubscribeTopPricesUpdate() events.SubscriptionInterface
 }

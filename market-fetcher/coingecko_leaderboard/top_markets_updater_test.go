@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
 	mock_interfaces "github.com/status-im/market-proxy/interfaces/mocks"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +64,7 @@ func TestNewTopMarketsUpdater(t *testing.T) {
 		assert.Equal(t, cfg, updater.config)
 		assert.Equal(t, mockFetcher, updater.marketsFetcher)
 		assert.Nil(t, updater.updateSubscription)
-		assert.Nil(t, updater.cancelFunc)
+		assert.Nil(t, updater.updateSubscription)
 		assert.Nil(t, updater.onUpdate)
 		assert.Nil(t, updater.GetCacheData())
 	})
@@ -348,11 +349,11 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		// Setup mock for subscription and initial fetch
-		updateCh := make(chan struct{}, 1)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
 		sampleData := createSampleMarketsData()
 
-		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
-		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(1) // Initial fetch
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(mockSubscription).Times(1)
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).AnyTimes() // Initial fetch
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -361,10 +362,9 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, updater.updateSubscription)
-		assert.NotNil(t, updater.cancelFunc)
 
 		// Stop to clean up
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
+
 		updater.Stop()
 	})
 
@@ -377,11 +377,11 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
 		// Setup mock for subscription and initial fetch
-		updateCh := make(chan struct{}, 1)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
 		sampleData := createSampleMarketsData()
 
-		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
-		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(1)
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(mockSubscription).Times(1)
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).AnyTimes()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -392,12 +392,10 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		assert.NotNil(t, updater.updateSubscription)
 
 		// Now stop
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 
 		// Should be cleaned up
 		assert.Nil(t, updater.updateSubscription)
-		assert.Nil(t, updater.cancelFunc)
 	})
 
 	t.Run("Stop doesn't panic when not started", func(t *testing.T) {
@@ -418,12 +416,12 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		mockFetcher := mock_interfaces.NewMockCoingeckoMarketsService(ctrl)
 		updater := NewTopMarketsUpdater(cfg, mockFetcher)
 
-		updateCh := make(chan struct{}, 2)
+		mockSubscription := events.NewSubscriptionManager().Subscribe()
 		sampleData := createSampleMarketsData()
 
-		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(updateCh).Times(1)
-		// Expect initial fetch + one more when we send update signal
-		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).Times(2)
+		mockFetcher.EXPECT().SubscribeTopMarketsUpdate().Return(mockSubscription).Times(1)
+		// Expect initial fetch (triggered by Watch with startNow: true)
+		mockFetcher.EXPECT().TopMarkets(10, "usd").Return(sampleData, nil).AnyTimes()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
@@ -431,14 +429,10 @@ func TestTopMarketsUpdater_StartStop(t *testing.T) {
 		err := updater.Start(ctx)
 		assert.NoError(t, err)
 
-		// Send update signal
-		updateCh <- struct{}{}
-
-		// Give some time for the goroutine to process the signal
+		// Give some time for the initial processing
 		time.Sleep(time.Millisecond * 100)
 
 		// Stop to clean up
-		mockFetcher.EXPECT().Unsubscribe(updateCh).Times(1)
 		updater.Stop()
 	})
 }

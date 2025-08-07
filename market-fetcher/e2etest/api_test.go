@@ -164,27 +164,56 @@ func waitForDataInitialization(t *testing.T, env *TestEnv) {
 	pollInterval := 500 * time.Millisecond
 	timeout := time.Now().Add(maxWait)
 
+	marketsReady := false
+	leaderboardReady := false
+
 	for time.Now().Before(timeout) {
-		// Test if the cache contains the expected test tokens
-		resp, err := http.Get(env.ServerBaseURL + "/api/v1/coins/markets?ids=bitcoin,ethereum")
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				// Check if we get non-empty response
-				resp2, err2 := http.Get(env.ServerBaseURL + "/api/v1/coins/markets?ids=bitcoin,ethereum")
-				if err2 == nil {
-					body, err3 := io.ReadAll(resp2.Body)
-					resp2.Body.Close()
-					if err3 == nil {
+		// Test if the markets cache contains the expected test tokens
+		if !marketsReady {
+			resp, err := http.Get(env.ServerBaseURL + "/api/v1/coins/markets?ids=bitcoin,ethereum")
+			if err == nil {
+				if resp.StatusCode == http.StatusOK {
+					body, err2 := io.ReadAll(resp.Body)
+					resp.Body.Close()
+					if err2 == nil {
 						var data []interface{}
 						if json.Unmarshal(body, &data) == nil && len(data) > 0 {
-							// Data is available, initialization complete
-							t.Logf("Data initialization completed, found %d tokens in cache", len(data))
-							return
+							marketsReady = true
+							t.Logf("Markets data initialization completed, found %d tokens in cache", len(data))
 						}
 					}
+				} else {
+					resp.Body.Close()
 				}
 			}
+		}
+
+		// Test if the leaderboard cache has data
+		if marketsReady && !leaderboardReady {
+			resp, err := http.Get(env.ServerBaseURL + "/api/v1/leaderboard/markets")
+			if err == nil {
+				if resp.StatusCode == http.StatusOK {
+					body, err2 := io.ReadAll(resp.Body)
+					resp.Body.Close()
+					if err2 == nil {
+						var leaderboardResponse map[string]interface{}
+						if json.Unmarshal(body, &leaderboardResponse) == nil {
+							if data, ok := leaderboardResponse["data"].([]interface{}); ok && len(data) > 0 {
+								leaderboardReady = true
+								t.Logf("Leaderboard data initialization completed, found %d tokens", len(data))
+							}
+						}
+					}
+				} else {
+					resp.Body.Close()
+				}
+			}
+		}
+
+		// Both services are ready
+		if marketsReady && leaderboardReady {
+			t.Log("All services data initialization completed")
+			return
 		}
 
 		time.Sleep(pollInterval)
@@ -192,5 +221,8 @@ func waitForDataInitialization(t *testing.T, env *TestEnv) {
 
 	// Fallback to original behavior if polling doesn't work
 	t.Log("Data polling timeout, falling back to fixed wait time")
+	if marketsReady {
+		t.Log("Markets service ready, but leaderboard service not ready yet")
+	}
 	time.Sleep(2 * time.Second)
 }

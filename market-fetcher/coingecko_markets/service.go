@@ -28,8 +28,7 @@ type Service struct {
 	initializedSubscriptionManager *events.SubscriptionManager
 	periodicUpdater                *PeriodicUpdater
 	tokensService                  interfaces.CoingeckoTokensService
-	tokenUpdateCh                  chan struct{}
-	cancelFunc                     context.CancelFunc
+	tokenUpdateSubscription        events.SubscriptionInterface
 	topIdsManager                  *TopIdsManager
 }
 
@@ -110,18 +109,6 @@ func (s *Service) onTokenListChanged() {
 	}
 }
 
-// handleTokenUpdates handles token update notifications
-func (s *Service) handleTokenUpdates(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-s.tokenUpdateCh:
-			s.onTokenListChanged()
-		}
-	}
-}
-
 // Start implements core.Interface
 func (s *Service) Start(ctx context.Context) error {
 	if s.cache == nil {
@@ -129,13 +116,8 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	if s.tokensService != nil {
-		s.tokenUpdateCh = s.tokensService.SubscribeOnTokensUpdate()
-
-		goroutineCtx, cancel := context.WithCancel(ctx)
-		s.cancelFunc = cancel
-		go s.handleTokenUpdates(goroutineCtx)
-		// initial update
-		s.onTokenListChanged()
+		s.tokenUpdateSubscription = s.tokensService.SubscribeOnTokensUpdate().
+			Watch(ctx, s.onTokenListChanged, true)
 	}
 
 	if s.periodicUpdater != nil {
@@ -149,14 +131,9 @@ func (s *Service) Start(ctx context.Context) error {
 
 // Stop implements core.Interface
 func (s *Service) Stop() {
-	if s.cancelFunc != nil {
-		s.cancelFunc()
-		s.cancelFunc = nil
-	}
-
-	if s.tokensService != nil && s.tokenUpdateCh != nil {
-		s.tokensService.Unsubscribe(s.tokenUpdateCh)
-		s.tokenUpdateCh = nil
+	if s.tokenUpdateSubscription != nil {
+		s.tokenUpdateSubscription.Cancel()
+		s.tokenUpdateSubscription = nil
 	}
 
 	if s.periodicUpdater != nil {
@@ -422,18 +399,10 @@ func (s *Service) TopMarketIds(limit int) ([]string, error) {
 	return topIds, nil
 }
 
-func (s *Service) SubscribeTopMarketsUpdate() chan struct{} {
+func (s *Service) SubscribeTopMarketsUpdate() events.SubscriptionInterface {
 	return s.subscriptionManager.Subscribe()
 }
 
-func (s *Service) SubscribeInitialized() chan struct{} {
+func (s *Service) SubscribeInitialized() events.SubscriptionInterface {
 	return s.initializedSubscriptionManager.Subscribe()
-}
-
-func (s *Service) Unsubscribe(ch chan struct{}) {
-	s.subscriptionManager.Unsubscribe(ch)
-}
-
-func (s *Service) UnsubscribeInitialized(ch chan struct{}) {
-	s.initializedSubscriptionManager.Unsubscribe(ch)
 }

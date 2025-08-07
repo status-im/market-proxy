@@ -8,6 +8,7 @@ import (
 
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -25,8 +26,8 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
-		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
-		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+
 		service := NewService(mockCache, createTestConfig(), mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
@@ -60,8 +61,8 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
-		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
-		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+
 		service := NewService(mockCache, cfg, mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
@@ -97,8 +98,8 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockCache := cache_mocks.NewMockCache(ctrl)
 		mockTokensService := interface_mocks.NewMockCoingeckoTokensService(ctrl)
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
-		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(make(chan struct{})).AnyTimes()
-		mockTokensService.EXPECT().Unsubscribe(gomock.Any()).AnyTimes()
+		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
+
 		service := NewService(mockCache, cfg, mockTokensService)
 
 		originalParams := interfaces.MarketsParams{
