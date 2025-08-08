@@ -31,7 +31,7 @@ func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 
 	return &Client{
 		baseURL:    baseURL,
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter, cg.GetRateLimiterManagerInstance()),
 	}
 }
 
