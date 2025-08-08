@@ -40,13 +40,14 @@ func DefaultRetryOptions() RetryOptions {
 
 // HTTPClientWithRetries wraps an HTTP Client with retry capabilities
 type HTTPClientWithRetries struct {
-	Client        *http.Client
-	Opts          RetryOptions
-	StatusHandler IHttpStatusHandler
+	Client         *http.Client
+	Opts           RetryOptions
+	StatusHandler  IHttpStatusHandler
+	LimiterManager IRateLimiterManager
 }
 
 // NewHTTPClientWithRetries creates a new HTTP Client with retry capabilities
-func NewHTTPClientWithRetries(opts RetryOptions, handler IHttpStatusHandler) *HTTPClientWithRetries {
+func NewHTTPClientWithRetries(opts RetryOptions, handler IHttpStatusHandler, limiterManager IRateLimiterManager) *HTTPClientWithRetries {
 	client := &http.Client{
 		Timeout: opts.RequestTimeout,
 		Transport: &http.Transport{
@@ -57,9 +58,10 @@ func NewHTTPClientWithRetries(opts RetryOptions, handler IHttpStatusHandler) *HT
 	}
 
 	return &HTTPClientWithRetries{
-		Client:        client,
-		Opts:          opts,
-		StatusHandler: handler,
+		Client:         client,
+		Opts:           opts,
+		StatusHandler:  handler,
+		LimiterManager: limiterManager,
 	}
 }
 
@@ -87,6 +89,20 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 		}
 
 		requestStart := time.Now()
+
+		// Rate limit per API key before executing the request
+		if c.LimiterManager != nil {
+			limiter := c.LimiterManager.GetLimiterForURL(req.URL)
+			if limiter != nil {
+				if err := limiter.Wait(req.Context()); err != nil {
+					lastErr = fmt.Errorf("rate limiter wait failed: %w", err)
+					if c.StatusHandler != nil {
+						c.StatusHandler.OnRequest("error")
+					}
+					break
+				}
+			}
+		}
 
 		// Execute request
 		resp, err := c.Client.Do(req)
