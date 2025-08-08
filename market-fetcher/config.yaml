@@ -6,6 +6,18 @@ cache:
     default_expiration: 5m    # 5 minutes
     cleanup_interval: 10m     # 10 minutes
 
+# CoinGecko API keys rate limits
+api_key_settings:
+  pro:
+    rate_limit_per_minute: 250
+    burst: 5
+  demo:
+    rate_limit_per_minute: 30
+    burst: 2
+  nokey:
+    rate_limit_per_minute: 30
+    burst: 1
+
 coingecko_leaderboard:
   top_markets_update_interval: 30m
   top_markets_limit: 5000
@@ -14,7 +26,6 @@ coingecko_leaderboard:
   top_prices_limit: 500         # maximum number of top tokens to track prices
 
 coingecko_markets:
-  request_delay: 300ms        # delay between requests
   ttl: 35m                    # default TTL
   market_params_normalize:    # override user parameters to normalize cache keys
     vs_currency: "usd"        # always use USD regardless of user request
@@ -39,7 +50,6 @@ coingecko_markets:
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request
-  request_delay: 300ms        # 2 seconds delay between requests
   ttl: 10m                    # time to live for cached price data
   currencies:                 # default currencies to fetch
     - usd
