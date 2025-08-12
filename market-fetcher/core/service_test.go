@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// MockService implements the Interface for testing
+// MockService implements the IService for testing
 type MockService struct {
 	startCalled bool
 	stopCalled  bool
@@ -246,7 +246,7 @@ func TestStopAllInReverseOrder(t *testing.T) {
 }
 
 // createRecordingService creates a core that records when it is stopped
-func createRecordingService(id string, recorder *StopRecorder) Interface {
+func createRecordingService(id string, recorder *StopRecorder) IService {
 	return &recordingService{
 		id:       id,
 		recorder: recorder,

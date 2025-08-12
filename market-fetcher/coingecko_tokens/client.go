@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/status-im/market-proxy/interfaces"
+
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/metrics"
 )
@@ -34,7 +36,7 @@ func NewClient(baseURL string, metricsWriter *metrics.MetricsWriter) *Client {
 }
 
 // FetchTokens retrieves tokens from CoinGecko API
-func (c *Client) FetchTokens() ([]Token, error) {
+func (c *Client) FetchTokens() ([]interfaces.Token, error) {
 	url := fmt.Sprintf("%s%s", c.baseURL, CoinsListEndpoint)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -52,7 +54,7 @@ func (c *Client) FetchTokens() ([]Token, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var tokens []Token
+	var tokens []interfaces.Token
 	if err := json.Unmarshal(body, &tokens); err != nil {
 		return nil, fmt.Errorf("error unmarshaling response: %w", err)
 	}

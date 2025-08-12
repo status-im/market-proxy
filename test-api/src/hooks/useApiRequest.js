@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import axios from 'axios';
+import { proxyGet } from '../utils/proxy_request';
 
 /**
  * A utility hook for making API requests with ETag support and statistics tracking
@@ -72,15 +72,11 @@ export default function useApiRequest({
       }
       log("send etag:", etagRef.current)
       
-      // Make the API request
-      const response = await axios.get(url, {
-        ...requestConfig,
+      // Make the API request using proxy utility
+      const response = await proxyGet(url, {
         headers,
-        auth: requestConfig.auth || {
-          username: process.env.REACT_APP_PROXY_USER,
-          password: process.env.REACT_APP_PROXY_PASSWORD
-        },
-        validateStatus: status => (status >= 200 && status < 300) || status === 304
+        validateStatus: status => (status >= 200 && status < 300) || status === 304,
+        ...requestConfig
       });
       
       // Output headers in raw format

@@ -3,7 +3,7 @@ package coingecko_prices
 import (
 	"testing"
 
-	cg "github.com/status-im/market-proxy/coingecko_common"
+	cg "github.com/status-im/market-proxy/interfaces"
 
 	"github.com/stretchr/testify/assert"
 )

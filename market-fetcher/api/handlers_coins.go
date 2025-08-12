@@ -1,13 +1,13 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/interfaces"
+
 	"github.com/status-im/market-proxy/coingecko_market_chart"
 )
 
@@ -34,7 +34,7 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 
 // handleCoinsMarkets implements CoinGecko-compatible /api/v3/coins/markets endpoint
 func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
-	params := coingecko_common.MarketsParams{}
+	params := interfaces.MarketsParams{}
 
 	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {
@@ -76,22 +76,19 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		params.PriceChangePercentage = splitParamLowercase(priceChangeParam)
 	}
 
-	data, err := s.marketsService.Markets(params)
+	data, cacheStatus, err := s.marketsService.Markets(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if data == nil {
-		http.Error(w, "No data available", http.StatusServiceUnavailable)
-		return
-	}
 
+	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, data)
 }
 
 // handleSimplePrice implements CoinGecko-compatible /api/v3/simple/price endpoint
 func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
-	params := coingecko_common.PriceParams{}
+	params := interfaces.PriceParams{}
 
 	idsParam := getParamLowercase(r, "ids")
 	if idsParam == "" {
@@ -131,12 +128,13 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := s.pricesService.SimplePrices(params)
+	response, cacheStatus, err := s.pricesService.SimplePrices(r.Context(), params)
 	if err != nil {
 		http.Error(w, "Failed to fetch prices: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, response)
 }
 
@@ -174,13 +172,8 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=60")
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	s.sendJSONResponse(w, data)
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers

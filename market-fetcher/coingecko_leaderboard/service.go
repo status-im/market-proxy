@@ -4,11 +4,13 @@ import (
 	"context"
 	"log"
 
-	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/interfaces"
 )
 
-// Service represents the CoinGecko service
+// Service keeps data for size-optimized list of tokens and prices:
+// api/v1/leaderboard/prices
+// api/v1/leaderboard/markets
 type Service struct {
 	config            *config.Config
 	onUpdate          func()
@@ -16,13 +18,9 @@ type Service struct {
 	topPricesUpdater  *TopPricesUpdater
 }
 
-// NewService creates a new CoinGecko service
-func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher, marketsFetcher coingecko_common.MarketsFetcher) *Service {
-	// Create top markets updater
-	topMarketsUpdater := NewTopMarketsUpdater(cfg, marketsFetcher)
-
-	// Create top prices updater
-	topPricesUpdater := NewTopPricesUpdater(cfg, priceFetcher)
+func NewService(cfg *config.Config, priceFetcher interfaces.IPricesService, marketsFetcher interfaces.IMarketsService) *Service {
+	topMarketsUpdater := NewTopMarketsUpdater(&cfg.CoingeckoLeaderboard, marketsFetcher)
+	topPricesUpdater := NewTopPricesUpdater(&cfg.CoingeckoLeaderboard, priceFetcher)
 
 	service := &Service{
 		config:            cfg,
@@ -34,12 +32,11 @@ func NewService(cfg *config.Config, priceFetcher coingecko_common.PriceFetcher, 
 }
 
 // SetOnUpdateCallback sets a callback function that will be called when data is updated
+// TODO: remove, along with binance fetcher (issue #43)
 func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 	s.onUpdate = onUpdate
 
-	// Set callback for top markets updater that will also update top tokens
 	s.topMarketsUpdater.SetOnUpdateCallback(func() {
-		s.updateTopTokensFromMarketsData()
 		if s.onUpdate != nil {
 			s.onUpdate()
 		}
@@ -48,7 +45,6 @@ func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 
 // GetTopPricesQuotes returns cached prices quotes for top tokens with default currency fallback
 func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
-	// Set default currency if not provided
 	if currency == "" {
 		currency = "usd"
 	}
@@ -56,24 +52,13 @@ func (s *Service) GetTopPricesQuotes(currency string) map[string]Quote {
 	return s.topPricesUpdater.GetTopPricesQuotes(currency)
 }
 
-// updateTopTokensFromMarketsData extracts token IDs from markets data and updates top prices updater
-func (s *Service) updateTopTokensFromMarketsData() {
-	tokenIDs := s.topMarketsUpdater.GetTopTokenIDs()
-	if len(tokenIDs) > 0 {
-		s.topPricesUpdater.SetTopTokenIDs(tokenIDs)
-		log.Printf("Updated top token IDs list with %d tokens", len(tokenIDs))
-	}
-}
-
 // Start starts the CoinGecko service
 func (s *Service) Start(ctx context.Context) error {
-	// Start top markets updater
 	if err := s.topMarketsUpdater.Start(ctx); err != nil {
 		log.Printf("Error starting top markets updater: %v", err)
 		return err
 	}
 
-	// Start top prices updater
 	if err := s.topPricesUpdater.Start(ctx); err != nil {
 		log.Printf("Error starting top prices updater: %v", err)
 		return err

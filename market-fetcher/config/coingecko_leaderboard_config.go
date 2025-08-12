@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type CoingeckoLeaderboardFetcher struct {
+type LeaderboardFetcherConfig struct {
 	TopMarketsUpdateInterval time.Duration `yaml:"top_markets_update_interval"`
 	TopMarketsLimit          int           `yaml:"top_markets_limit"`
 	Currency                 string        `yaml:"currency"`                   // Currency for market data

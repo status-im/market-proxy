@@ -176,7 +176,14 @@ func (mw *MetricsWriter) RecordServiceCoingeckoRequest(status string) {
 // RecordDataFetchCycle records the duration of a data fetch cycle
 func (mw *MetricsWriter) RecordDataFetchCycle(duration time.Duration) {
 	DataFetchCycleDuration.WithLabelValues(mw.serviceName).Observe(duration.Seconds())
-	log.Printf("Metrics: %s data fetch cycle took %.2fs", mw.serviceName, duration.Seconds())
+}
+
+// TrackDataFetchCycle returns a function that records the data fetch cycle duration
+func (mw *MetricsWriter) TrackDataFetchCycle() func() {
+	start := time.Now()
+	return func() {
+		mw.RecordDataFetchCycle(time.Since(start))
+	}
 }
 
 // RecordCacheSize records the number of items in service cache

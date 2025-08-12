@@ -2,20 +2,14 @@ import React from 'react';
 import styled from 'styled-components';
 
 const Container = styled.div`
-  padding: 20px;
-  background-color: #fff;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   min-height: 100vh;
-`;
-
-const Header = styled.h1`
-  font-size: 24px;
-  margin-bottom: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 `;
 
 function Layout({ children, title }) {
     return (
         <Container>
-            <Header>{title}</Header>
             {children}
         </Container>
     );

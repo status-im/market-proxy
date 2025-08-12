@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// HttpStatusHandler is an interface for handling HTTP request statuses
-type HttpStatusHandler interface {
+// IHttpStatusHandler is an interface for handling HTTP request statuses
+type IHttpStatusHandler interface {
 	// OnRequest handles a request with its status result
 	OnRequest(status string)
 	// OnRetry handles retry events
@@ -42,11 +42,11 @@ func DefaultRetryOptions() RetryOptions {
 type HTTPClientWithRetries struct {
 	Client        *http.Client
 	Opts          RetryOptions
-	StatusHandler HttpStatusHandler
+	StatusHandler IHttpStatusHandler
 }
 
 // NewHTTPClientWithRetries creates a new HTTP Client with retry capabilities
-func NewHTTPClientWithRetries(opts RetryOptions, handler HttpStatusHandler) *HTTPClientWithRetries {
+func NewHTTPClientWithRetries(opts RetryOptions, handler IHttpStatusHandler) *HTTPClientWithRetries {
 	client := &http.Client{
 		Timeout: opts.RequestTimeout,
 		Transport: &http.Transport{
@@ -64,7 +64,7 @@ func NewHTTPClientWithRetries(opts RetryOptions, handler HttpStatusHandler) *HTT
 }
 
 // SetStatusHandler sets the status handler for this Client
-func (c *HTTPClientWithRetries) SetStatusHandler(handler HttpStatusHandler) {
+func (c *HTTPClientWithRetries) SetStatusHandler(handler IHttpStatusHandler) {
 	c.StatusHandler = handler
 }
 

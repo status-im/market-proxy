@@ -1,5 +1,7 @@
 package coingecko_markets
 
+import "time"
+
 // Original CoinGecko response structure
 type CoinGeckoData struct {
 	ID                           string      `json:"id"`
@@ -33,4 +35,10 @@ type CoinGeckoData struct {
 // APIResponse represents the full response structure with all CoinGecko data
 type APIResponse struct {
 	Data []CoinGeckoData `json:"data"`
+}
+
+// TierDataWithTimestamp represents tier data with timestamp information
+type TierDataWithTimestamp struct {
+	Data      []CoinGeckoData `json:"data"`
+	Timestamp time.Time       `json:"timestamp"`
 }

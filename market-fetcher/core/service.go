@@ -4,26 +4,26 @@ import (
 	"context"
 )
 
-// Interface defines a common interface for all services
-type Interface interface {
+// IService defines a common interface for all services
+type IService interface {
 	Start(ctx context.Context) error
 	Stop()
 }
 
 // Registry manages all services
 type Registry struct {
-	services []Interface
+	services []IService
 }
 
 // NewRegistry creates a new core registry
 func NewRegistry() *Registry {
 	return &Registry{
-		services: make([]Interface, 0),
+		services: make([]IService, 0),
 	}
 }
 
 // Register adds a core to the registry
-func (sr *Registry) Register(service Interface) {
+func (sr *Registry) Register(service IService) {
 	sr.services = append(sr.services, service)
 }
 

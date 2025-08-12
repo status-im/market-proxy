@@ -21,45 +21,45 @@ import (
 func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry := NewRegistry()
 
-	// Create Cache service
+	// ICache service
 	cacheService := cache.NewService(cfg.Cache)
 	registry.Register(cacheService)
 
-	// Create CoinGecko Prices service with cache dependency
-	pricesService := coingecko_prices.NewService(cacheService, cfg)
-	registry.Register(pricesService)
-
-	// Create CoinGecko Markets service with cache dependency
-	marketsService := coingecko_markets.NewService(cacheService, cfg)
-	registry.Register(marketsService)
-
-	// Create CoinGecko Market Chart service with cache dependency
-	marketChartService := coingecko_market_chart.NewService(cacheService, cfg)
-	registry.Register(marketChartService)
-
-	// Create CoinGecko Assets Platforms service
-	assetsPlatformsService := coingecko_assets_platforms.NewService(cfg)
-	registry.Register(assetsPlatformsService)
-
-	// Create Binance core
-	binanceService := binance.NewService(cfg)
-	registry.Register(binanceService)
-
-	// Create CoinGecko core with callback and price fetcher
-	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
-	registry.Register(cgService)
-
-	// Create Tokens core
+	// Tokens service
 	tokensService := coingecko_tokens.NewService(cfg)
 	registry.Register(tokensService)
 
-	// Get port from environment or use default
+	// Markets service
+	marketsService := coingecko_markets.NewService(cacheService, cfg, tokensService)
+	registry.Register(marketsService)
+
+	// Prices service
+	pricesService := coingecko_prices.NewService(cacheService, cfg, marketsService, tokensService)
+	registry.Register(pricesService)
+
+	// MarketChart service
+	marketChartService := coingecko_market_chart.NewService(cacheService, cfg)
+	registry.Register(marketChartService)
+
+	// Assets Platforms service
+	assetsPlatformsService := coingecko_assets_platforms.NewService(cfg)
+	registry.Register(assetsPlatformsService)
+
+	// Binance service
+	// TODO: remove #43
+	binanceService := binance.NewService(cfg)
+	registry.Register(binanceService)
+
+	// Leaderboard service
+	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
+	registry.Register(cgService)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	// Create HTTP server and register it as a core
+	// HTTP Server
 	server := api.New(port, binanceService, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService)
 	registry.Register(server)
 
@@ -73,25 +73,19 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 
 // updateBinanceWatchlist updates Binance watchlist with data from CoinGecko
 func updateBinanceWatchlist(ctx context.Context, cgService *coingecko_leaderboard.Service, binanceService *binance.Service) {
-	// Check if context is cancelled
 	select {
 	case <-ctx.Done():
 		return // Context is cancelled, do nothing
 	default:
-		// Continue processing
 	}
 
-	// Get latest data from CoinGecko cache
 	cgData := cgService.GetCacheData()
 	if cgData != nil {
-		// Extract symbols
 		symbols := make([]string, 0, len(cgData.Data))
 		for _, coin := range cgData.Data {
-			// Convert symbols to uppercase as Binance API requires
 			symbols = append(symbols, strings.ToUpper(coin.Symbol))
 		}
 
-		// Update Binance watchlist with a specific name
 		binanceService.SetWatchList(symbols, "USDT")
 	}
 }

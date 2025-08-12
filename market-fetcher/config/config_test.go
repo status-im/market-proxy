@@ -43,6 +43,13 @@ coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
   currency: usd
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -64,13 +71,13 @@ coingecko_coinslist:
 					t.Errorf("TopMarketsLimit = %v, want 100", cfg.CoingeckoLeaderboard.TopMarketsLimit)
 				}
 				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
+					t.Errorf("CoinslistFetcherConfig.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 2 {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms length = %v, want 2", len(cfg.TokensFetcher.SupportedPlatforms))
 				}
 				if cfg.TokensFetcher.SupportedPlatforms[0] != "ethereum" || cfg.TokensFetcher.SupportedPlatforms[1] != "polygon-pos" {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms = %v, want [ethereum polygon-pos]", cfg.TokensFetcher.SupportedPlatforms)
 				}
 				if cfg.APITokens == nil {
 					t.Error("APITokens should not be nil")
@@ -88,6 +95,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: invalid
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: true,
 		},
@@ -97,6 +111,13 @@ coingecko_leaderboard:
 tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -113,6 +134,13 @@ coingecko_leaderboard:
   update_interval: 1m
   limit: 100
   request_delay: 0s
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 `,
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
@@ -128,6 +156,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:
@@ -139,16 +174,16 @@ coingecko_coinslist:
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if cfg.TokensFetcher.UpdateInterval != 30*time.Minute {
-					t.Errorf("CoingeckoCoinslistFetcher.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
+					t.Errorf("CoinslistFetcherConfig.UpdateInterval = %v, want 30m", cfg.TokensFetcher.UpdateInterval)
 				}
 				expectedPlatforms := []string{"ethereum", "optimistic-ethereum", "arbitrum-one", "base"}
 				if len(cfg.TokensFetcher.SupportedPlatforms) != len(expectedPlatforms) {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms length = %v, want %v",
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms length = %v, want %v",
 						len(cfg.TokensFetcher.SupportedPlatforms), len(expectedPlatforms))
 				}
 				for i, platform := range expectedPlatforms {
 					if i < len(cfg.TokensFetcher.SupportedPlatforms) && cfg.TokensFetcher.SupportedPlatforms[i] != platform {
-						t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms[%d] = %v, want %v",
+						t.Errorf("CoinslistFetcherConfig.SupportedPlatforms[%d] = %v, want %v",
 							i, cfg.TokensFetcher.SupportedPlatforms[i], platform)
 					}
 				}
@@ -161,6 +196,13 @@ tokens_file: "test_tokens.json"
 coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms: []
@@ -168,7 +210,7 @@ coingecko_coinslist:
 			wantErr: false,
 			validateCfg: func(t *testing.T, cfg *Config) {
 				if len(cfg.TokensFetcher.SupportedPlatforms) != 0 {
-					t.Errorf("CoingeckoCoinslistFetcher.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
+					t.Errorf("CoinslistFetcherConfig.SupportedPlatforms should be empty, got %v", cfg.TokensFetcher.SupportedPlatforms)
 				}
 			},
 		},
@@ -290,6 +332,13 @@ coingecko_leaderboard:
   top_markets_update_interval: 1m
   top_markets_limit: 100
   currency: usd
+coingecko_markets:
+  tiers:
+    - name: "test"
+      page_from: 1
+      page_to: 100
+      update_interval: 1m
+      ttl: 5m
 coingecko_coinslist:
   update_interval: 30m
   supported_platforms:

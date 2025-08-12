@@ -15,7 +15,7 @@ type RequestExecutor func(apiKey APIKey) (interface{}, bool, error)
 type OnFailedCallback func(apiKey APIKey)
 
 // CreateFailCallback creates a callback that marks keys as failed
-func CreateFailCallback(keyManager APIKeyManagerInterface) OnFailedCallback {
+func CreateFailCallback(keyManager IAPIKeyManager) OnFailedCallback {
 	return func(apiKey APIKey) {
 		if apiKey.Key != "" {
 			log.Printf("Marking key as failed and adding to backoff")

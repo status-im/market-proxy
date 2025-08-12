@@ -13,8 +13,15 @@ import (
 	"time"
 )
 
+// setCacheStatusHeader sets the Cache-Status header based on cache status
+func (s *Server) setCacheStatusHeader(w http.ResponseWriter, cacheStatus string) {
+	if cacheStatus != "" {
+		w.Header().Set("Cache-Status", cacheStatus)
+	}
+}
+
 // sendJSONResponse is a common wrapper for JSON responses that sets Content-Type,
-// Content-Length, and ETag headers
+// Content-Length and ETag headers
 func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
 	// Marshal the data to calculate content length and ETag
 	buffer := &bytes.Buffer{}

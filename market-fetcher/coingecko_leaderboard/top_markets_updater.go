@@ -4,31 +4,28 @@ import (
 	"context"
 	"log"
 	"sync"
-	"time"
 
-	"github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/events"
+	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
-	"github.com/status-im/market-proxy/scheduler"
 )
 
-// TopMarketsUpdater handles periodic updates of markets leaderboard data
+// TopMarketsUpdater handles subscription-based updates of markets leaderboard data
 type TopMarketsUpdater struct {
-	config         *config.Config
-	scheduler      *scheduler.Scheduler
-	marketsFetcher coingecko_common.MarketsFetcher
-	metricsWriter  *metrics.MetricsWriter
-	onUpdate       func()
+	config             *config.LeaderboardFetcherConfig
+	marketsFetcher     interfaces.IMarketsService
+	metricsWriter      *metrics.MetricsWriter
+	onUpdate           func()
+	updateSubscription events.ISubscription
 
-	// Cache for markets data
 	cache struct {
 		sync.RWMutex
 		data *APIResponse
 	}
 }
 
-// NewTopMarketsUpdater creates a new top markets updater
-func NewTopMarketsUpdater(cfg *config.Config, marketsFetcher coingecko_common.MarketsFetcher) *TopMarketsUpdater {
+func NewTopMarketsUpdater(cfg *config.LeaderboardFetcherConfig, marketsFetcher interfaces.IMarketsService) *TopMarketsUpdater {
 	updater := &TopMarketsUpdater{
 		config:         cfg,
 		marketsFetcher: marketsFetcher,
@@ -50,106 +47,56 @@ func (u *TopMarketsUpdater) GetCacheData() *APIResponse {
 	return u.cache.data
 }
 
-// GetTopTokenIDs extracts token IDs from cached data for use by other components
-func (u *TopMarketsUpdater) GetTopTokenIDs() []string {
-	cacheData := u.GetCacheData()
-	if cacheData == nil || cacheData.Data == nil {
-		return nil
-	}
-
-	// Extract token IDs from cached data
-	tokenIDs := make([]string, 0, len(cacheData.Data))
-	for _, coinData := range cacheData.Data {
-		if coinData.ID != "" {
-			tokenIDs = append(tokenIDs, coinData.ID)
-		}
-	}
-
-	return tokenIDs
-}
-
-// Start starts the top markets updater with periodic updates
+// Start starts the top markets updater by subscribing to market updates
 func (u *TopMarketsUpdater) Start(ctx context.Context) error {
-	updateInterval := u.config.CoingeckoLeaderboard.TopMarketsUpdateInterval
-
-	// If interval is 0 or negative, skip periodic updates
-	if updateInterval <= 0 {
-		log.Printf("Top markets updater: periodic updates disabled (interval: %v)", updateInterval)
-		return nil
-	}
-
-	// Create scheduler for periodic updates
-	u.scheduler = scheduler.New(
-		updateInterval,
-		func(ctx context.Context) {
+	u.updateSubscription = u.marketsFetcher.SubscribeTopMarketsUpdate().
+		Watch(ctx, func() {
 			if err := u.fetchAndUpdate(ctx); err != nil {
-				log.Printf("Error updating markets data: %v", err)
+				log.Printf("Error updating markets data on subscription signal: %v", err)
 			}
-		},
-	)
+		}, true)
 
-	// Start the scheduler with context
-	u.scheduler.Start(ctx, true)
-	log.Printf("Started top markets updater with update interval: %v", updateInterval)
+	log.Printf("Started top markets updater with subscription to market updates")
 
 	return nil
 }
 
 // Stop stops the top markets updater
 func (u *TopMarketsUpdater) Stop() {
-	if u.scheduler != nil {
-		u.scheduler.Stop()
+	if u.updateSubscription != nil {
+		u.updateSubscription.Cancel()
+		u.updateSubscription = nil
 	}
 }
 
 // fetchAndUpdate fetches markets data from markets service and updates cache
 func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
-	// Record start time for metrics
-	startTime := time.Now()
+	defer u.metricsWriter.TrackDataFetchCycle()()
 
-	// Get top tokens limit from config, use default if not set
-	limit := u.config.CoingeckoLeaderboard.TopPricesLimit
+	limit := u.config.TopMarketsLimit
 	if limit <= 0 {
-		limit = 500 // Default top tokens limit
+		limit = 500 // Default limit
 	}
-
-	// Use TopMarkets to get top markets data and cache individual tokens
-	// Get currency from config, use "usd" as default
-	currency := u.config.CoingeckoLeaderboard.Currency
-	if currency == "" {
-		currency = "usd"
-	}
-
-	data, err := u.marketsFetcher.TopMarkets(limit, currency)
+	data, err := u.marketsFetcher.TopMarkets(limit, u.config.Currency)
 	if err != nil {
 		log.Printf("Error fetching top markets data from fetcher: %v", err)
-		// Record metrics even on error
-		u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 		return err
 	}
 
-	// MarketsResponse is already []interface{}, no need for type assertion
 	marketsData := []interface{}(data)
-
-	// Convert raw markets data directly to CoinData using the new utility method
 	convertedData := ConvertMarketsResponseToCoinData(marketsData)
 
 	localData := &APIResponse{
 		Data: convertedData,
 	}
 
-	// Update cache
 	u.cache.Lock()
 	u.cache.data = localData
 	u.cache.Unlock()
 
-	// Record metrics after successful update
-	u.metricsWriter.RecordDataFetchCycle(time.Since(startTime))
 	u.metricsWriter.RecordCacheSize(len(localData.Data))
 
 	log.Printf("Updated top markets cache with %d tokens (limit: %d)", len(localData.Data), limit)
-
-	// Signal update through callback
 	if u.onUpdate != nil {
 		u.onUpdate()
 	}
@@ -164,7 +111,5 @@ func (u *TopMarketsUpdater) Healthy() bool {
 		return true
 	}
 
-	// Since MarketsFetcher doesn't have Healthy() method,
-	// we consider it healthy if we have a fetcher instance
 	return u.marketsFetcher != nil
 }
