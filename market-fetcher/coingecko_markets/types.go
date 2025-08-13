@@ -39,6 +39,7 @@ type APIResponse struct {
 
 // TierDataWithTimestamp represents tier data with timestamp information
 type TierDataWithTimestamp struct {
-	Data      []CoinGeckoData `json:"data"`
-	Timestamp time.Time       `json:"timestamp"`
+	Data            []CoinGeckoData `json:"data"`
+	Timestamp       time.Time       `json:"timestamp"`         // Last successful update time
+	UpdateStartTime *time.Time      `json:"update_start_time"` // Time when current update started (nil if not updating)
 }

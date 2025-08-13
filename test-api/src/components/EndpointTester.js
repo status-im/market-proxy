@@ -280,6 +280,13 @@ const EndpointTester = ({ onBack }) => {
       path: '/v1/asset_platforms',
       description: 'Get asset platforms',
       dependencies: []
+    },
+    {
+      id: 'coins-markets-by-ids',
+      name: 'Markets for Coins',
+      path: '/v1/coins/markets',
+      description: 'Get market data for coin IDs from coins/list (chunked)',
+      dependencies: ['coins-list']
     }
   ];
 
@@ -435,6 +442,91 @@ const EndpointTester = ({ onBack }) => {
     }
   };
 
+  const executeCoinsMarketsByIdsEndpoint = async () => {
+    if (!globalData.coinsList) {
+      addLog('coins-markets-by-ids - No coins/list data available. Run coins/list first.', 'error');
+      return;
+    }
+
+    const startTime = Date.now();
+    updateEndpointStatus('coins-markets-by-ids', { status: 'running', progress: 0 });
+    
+    try {
+      // Get all IDs from coins/list
+      const allIds = globalData.coinsList.map(coin => coin.id);
+      
+      addLog(`coins/markets for coin IDs - Processing ${allIds.length} IDs in chunks of 250`, 'info');
+      
+      // Split into chunks of 250
+      const chunkSize = 250;
+      const chunks = [];
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        chunks.push(allIds.slice(i, i + chunkSize));
+      }
+      
+      let allMarketsData = [];
+      let totalReceived = 0;
+      
+      // Process each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const progress = ((i + 1) / chunks.length) * 100;
+        
+        updateEndpointStatus('coins-markets-by-ids', { 
+          status: 'running', 
+          progress: Math.min(progress, 95) 
+        });
+        
+        addLog(`  Chunk ${i + 1}/${chunks.length}: ${chunk.length} IDs`, 'info');
+        
+        const idsParam = chunk.join(',');
+        const response = await proxyFetch(`/v1/coins/markets?ids=${idsParam}`);
+        
+        if (response.ok) {
+          const chunkData = await response.json();
+          const chunkCount = Array.isArray(chunkData) ? chunkData.length : 0;
+          allMarketsData = [...allMarketsData, ...chunkData];
+          totalReceived += chunkCount;
+          
+          addLog(`    Received: ${chunkCount}/${chunk.length} markets`, 'info');
+        } else {
+          throw new Error(`HTTP ${response.status} on chunk ${i + 1}`);
+        }
+        
+        // Small delay between chunks
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
+      const duration = Date.now() - startTime;
+      const isComplete = totalReceived === allIds.length;
+      const completionEmoji = isComplete ? '✅' : '⚠️';
+      
+      updateEndpointStatus('coins-markets-by-ids', { 
+        status: 'completed', 
+        progress: 100, 
+        responseTime: duration,
+        recordCount: totalReceived,
+        requestedCount: allIds.length,
+        isComplete 
+      });
+      
+      addLog(`coins/markets for coin IDs - ${totalReceived}/${allIds.length} markets received ${completionEmoji}`, 
+             isComplete ? 'success' : 'info');
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      updateEndpointStatus('coins-markets-by-ids', { 
+        status: 'error', 
+        progress: 100, 
+        responseTime: duration,
+        error: error.message 
+      });
+      addLog(`coins/markets for coin IDs - Error: ${error.message}`, 'error');
+    }
+  };
+
   const executeSimplePriceEndpoint = async (endpointId, sourceData, sourceType) => {
     if (!sourceData) {
       addLog(`${endpointId} - No ${sourceType} data available. Run ${sourceType} first.`, 'error');
@@ -553,6 +645,9 @@ const EndpointTester = ({ onBack }) => {
       case 'asset-platforms':
         await executeSimpleEndpoint(endpoint.id, endpoint.path, 'asset_platforms');
         break;
+      case 'coins-markets-by-ids':
+        await executeCoinsMarketsByIdsEndpoint();
+        break;
     }
   };
 
@@ -571,6 +666,7 @@ const EndpointTester = ({ onBack }) => {
       'leaderboard-simple-prices',
       'leaderboard-markets',
       'asset-platforms',
+      'coins-markets-by-ids',
       'simple-price-markets',
       'simple-price-coins'
     ];
@@ -598,8 +694,8 @@ const EndpointTester = ({ onBack }) => {
       case 'completed':
         let resultText = `${formatDuration(status.responseTime)} - ${status.recordCount} records`;
         
-        // Add emoji indicators for simple/price endpoints
-        if (endpoint.id === 'simple-price-markets' || endpoint.id === 'simple-price-coins') {
+        // Add emoji indicators for chunked endpoints
+        if (endpoint.id === 'simple-price-markets' || endpoint.id === 'simple-price-coins' || endpoint.id === 'coins-markets-by-ids') {
           if (status.requestedCount !== undefined) {
             const completionEmoji = status.isComplete ? '✅' : '⚠️';
             resultText = `${formatDuration(status.responseTime)} - ${status.recordCount}/${status.requestedCount} ${completionEmoji}`;

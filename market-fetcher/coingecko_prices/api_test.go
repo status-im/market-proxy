@@ -133,6 +133,7 @@ func TestCoinGeckoClient_FetchPrices_InvalidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("invalid json")); err != nil {
+			t.Errorf("Failed to write invalid json response: %v", err)
 			return
 		}
 	}))

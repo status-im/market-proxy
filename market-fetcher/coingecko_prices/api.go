@@ -41,7 +41,7 @@ func NewCoinGeckoClient(cfg *config.Config, metricsWriter *metrics.MetricsWriter
 	return &CoinGeckoClient{
 		config:     cfg,
 		keyManager: cg.NewAPIKeyManager(cfg.APITokens),
-		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter),
+		httpClient: cg.NewHTTPClientWithRetries(retryOpts, metricsWriter, cg.GetRateLimiterManagerInstance()),
 	}
 }
 

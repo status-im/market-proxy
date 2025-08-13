@@ -2,7 +2,9 @@ package api
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -167,6 +169,65 @@ func TestSplitParamLowercase(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := splitParamLowercase(tt.param)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestSendJSONResponse(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         interface{}
+		expectedJSON string
+	}{
+		{
+			name:         "simple object",
+			data:         map[string]string{"message": "hello"},
+			expectedJSON: `{"message":"hello"}`,
+		},
+		{
+			name:         "simple array",
+			data:         []string{"a", "b", "c"},
+			expectedJSON: `["a","b","c"]`,
+		},
+		{
+			name:         "complex object",
+			data:         map[string]interface{}{"count": 3, "items": []string{"x", "y"}},
+			expectedJSON: `{"count":3,"items":["x","y"]}`,
+		},
+		{
+			name:         "empty object",
+			data:         map[string]interface{}{},
+			expectedJSON: `{}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := &Server{}
+			recorder := httptest.NewRecorder()
+
+			server.sendJSONResponse(recorder, tt.data)
+
+			// Check status code
+			assert.Equal(t, http.StatusOK, recorder.Code)
+
+			// Check content type
+			assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+
+			// Check that response body doesn't end with newline
+			body := recorder.Body.String()
+			assert.Equal(t, tt.expectedJSON, body)
+			assert.False(t, strings.HasSuffix(body, "\n"), "Response should not end with newline")
+
+			// Check Content-Length header matches actual body length
+			expectedLength := len(tt.expectedJSON)
+			assert.Equal(t, expectedLength, recorder.Body.Len())
+
+			// Check ETag header is set
+			etag := recorder.Header().Get("ETag")
+			assert.True(t, len(etag) > 0, "ETag header should be set")
+			assert.True(t, strings.HasPrefix(etag, `"`), "ETag should start with quote")
+			assert.True(t, strings.HasSuffix(etag, `"`), "ETag should end with quote")
 		})
 	}
 }

@@ -1,8 +1,8 @@
 module github.com/status-im/market-proxy
 
-go 1.23
+go 1.23.0
 
-toolchain go1.23.8
+toolchain go1.23.11
 
 require (
 	github.com/gorilla/websocket v1.5.3
@@ -10,6 +10,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.2
+	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

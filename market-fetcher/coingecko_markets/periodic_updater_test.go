@@ -98,7 +98,7 @@ func TestNewPeriodicUpdater(t *testing.T) {
 		assert.NotNil(t, updater)
 		assert.Equal(t, cfg, updater.config)
 		assert.Equal(t, MockIAPIClient, updater.apiClient)
-		assert.Empty(t, updater.schedulers)
+		assert.Nil(t, updater.scheduler)
 		assert.Nil(t, updater.onUpdateTierPages)
 		assert.Nil(t, updater.GetCacheData())
 	})
@@ -435,7 +435,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 		err := updater.Start(ctx)
 
 		assert.NoError(t, err)
-		assert.NotEmpty(t, updater.schedulers)
+		assert.NotNil(t, updater.scheduler)
 
 		// Stop to clean up
 		updater.Stop()
@@ -485,14 +485,14 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 		// Start first
 		err := updater.Start(ctx)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, updater.schedulers)
+		assert.NotNil(t, updater.scheduler)
 
 		// Now stop
 		updater.Stop()
 		time.Sleep(10 * time.Millisecond) // Allow goroutines to stop
 
 		// Scheduler should still exist but be stopped
-		assert.NotEmpty(t, updater.schedulers)
+		assert.NotNil(t, updater.scheduler)
 	})
 
 	t.Run("Stop doesn't panic when scheduler is nil", func(t *testing.T) {
@@ -526,7 +526,7 @@ func TestPeriodicUpdater_StartStop(t *testing.T) {
 		err := updater.Start(ctx)
 
 		assert.NoError(t, err)
-		assert.NotEmpty(t, updater.schedulers)
+		assert.NotNil(t, updater.scheduler)
 
 		updater.Stop()
 		time.Sleep(10 * time.Millisecond) // Allow goroutines to stop
