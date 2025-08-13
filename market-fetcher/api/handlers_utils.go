@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -24,15 +23,11 @@ func (s *Server) setCacheStatusHeader(w http.ResponseWriter, cacheStatus string)
 // Content-Length and ETag headers
 func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
 	// Marshal the data to calculate content length and ETag
-	buffer := &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	err := encoder.Encode(data)
+	responseBytes, err := json.Marshal(data)
 	if err != nil {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
-
-	responseBytes := buffer.Bytes()
 
 	// Calculate ETag (MD5 hash of the response)
 	hash := md5.Sum(responseBytes)
