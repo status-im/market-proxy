@@ -13,16 +13,10 @@ import (
 	"github.com/status-im/market-proxy/scheduler"
 )
 
-// TierScheduler represents a scheduler for a specific tier
-type TierScheduler struct {
-	tier      config.MarketTier
-	scheduler *scheduler.Scheduler
-}
-
 // PeriodicUpdater handles periodic updates of markets data
 type PeriodicUpdater struct {
 	config                  *config.MarketsFetcherConfig
-	schedulers              []*TierScheduler // Multiple schedulers for different tiers
+	scheduler               *scheduler.Scheduler // Single scheduler for all tiers
 	apiClient               IAPIClient
 	metricsWriter           *metrics.MetricsWriter
 	onUpdateTierPages       func(ctx context.Context, tier config.MarketTier, pagesData []PageData)
@@ -127,43 +121,86 @@ func (u *PeriodicUpdater) Start(ctx context.Context) error {
 	return u.startAllTiers(ctx)
 }
 
-// startAllTiers starts multiple schedulers
+// startAllTiers starts a single scheduler that manages all tiers
 func (u *PeriodicUpdater) startAllTiers(ctx context.Context) error {
-	log.Printf("Starting markets periodic updater in tier mode with %d tiers", len(u.config.Tiers))
+	log.Printf("Starting markets periodic updater with single scheduler for %d tiers", len(u.config.Tiers))
 
-	u.schedulers = make([]*TierScheduler, 0, len(u.config.Tiers))
+	// Create single scheduler that runs every 2 seconds
+	u.scheduler = scheduler.New(
+		2*time.Second,
+		func(ctx context.Context) {
+			u.checkAndUpdateTiers(ctx)
+		},
+	)
 
-	for _, tier := range u.config.Tiers {
-		// Create a copy of the tier for closure
-		tierCopy := tier
-
-		tierScheduler := &TierScheduler{
-			tier: tierCopy,
-			scheduler: scheduler.New(
-				tierCopy.UpdateInterval,
-				func(ctx context.Context) {
-					if err := u.fetchAndUpdateTier(ctx, tierCopy); err != nil {
-						log.Printf("Error updating tier '%s' data: %v", tierCopy.Name, err)
-					}
-				},
-			),
-		}
-
-		u.schedulers = append(u.schedulers, tierScheduler)
-
-		tierScheduler.scheduler.Start(ctx, true)
-		log.Printf("Started tier '%s' scheduler: page [%d-%d], interval: %v",
-			tierCopy.Name, tierCopy.PageFrom, tierCopy.PageTo, tierCopy.UpdateInterval)
-	}
+	// Start the scheduler with context
+	u.scheduler.Start(ctx, true)
+	log.Printf("Started unified scheduler for all markets tiers, check interval: 2s")
 
 	return nil
 }
 
 // Stop stops the periodic updater
 func (u *PeriodicUpdater) Stop() {
-	for _, tierScheduler := range u.schedulers {
-		if tierScheduler.scheduler != nil {
-			tierScheduler.scheduler.Stop()
+	if u.scheduler != nil {
+		u.scheduler.Stop()
+	}
+}
+
+// checkAndUpdateTiers checks all tiers and starts updates if needed
+func (u *PeriodicUpdater) checkAndUpdateTiers(ctx context.Context) {
+	now := time.Now()
+
+	for _, tier := range u.config.Tiers {
+		shouldUpdate := false
+		var lastUpdate time.Time
+		var isUpdating bool
+
+		// Check tier cache status
+		u.cache.RLock()
+		tierData := u.cache.tiers[tier.Name]
+		if tierData == nil {
+			// Never updated before
+			shouldUpdate = true
+		} else {
+			lastUpdate = tierData.Timestamp
+			isUpdating = tierData.UpdateStartTime != nil
+
+			// Check for stuck updates
+			if isUpdating && tierData.UpdateStartTime != nil {
+				updateDuration := now.Sub(*tierData.UpdateStartTime)
+				// Consider stuck if running longer than max(10 minutes, 3x interval)
+				maxUpdateDuration := 10 * time.Minute
+				if tier.UpdateInterval*3 > maxUpdateDuration {
+					maxUpdateDuration = tier.UpdateInterval * 3
+				}
+
+				if updateDuration > maxUpdateDuration {
+					log.Printf("WARNING: Markets tier '%s' update stuck for %v (max: %v), resetting...",
+						tier.Name, updateDuration, maxUpdateDuration)
+					isUpdating = false
+					// Reset the stuck state
+					go u.setTierUpdateStartTime(tier.Name, nil)
+				}
+			}
+
+			// Check if enough time has passed since last update
+			if !isUpdating && now.Sub(lastUpdate) >= tier.UpdateInterval {
+				shouldUpdate = true
+			}
+		}
+		u.cache.RUnlock()
+
+		if shouldUpdate {
+			log.Printf("Starting update for markets tier '%s' (last update: %v, interval: %v, updating: %v)",
+				tier.Name, lastUpdate.Format("15:04:05"), tier.UpdateInterval, isUpdating)
+
+			// Start update in goroutine to avoid blocking other tiers
+			go func(t config.MarketTier) {
+				if err := u.fetchAndUpdateTier(ctx, t); err != nil {
+					log.Printf("Error updating markets tier '%s' data: %v", t.Name, err)
+				}
+			}(tier)
 		}
 	}
 }
@@ -171,6 +208,18 @@ func (u *PeriodicUpdater) Stop() {
 // fetchAndUpdateTier fetches markets data for a specific tier and updates cache
 func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.MarketTier) error {
 	defer u.metricsWriter.TrackDataFetchCycle()()
+
+	// Mark update start time
+	updateStartTime := time.Now()
+	u.setTierUpdateStartTime(tier.Name, &updateStartTime)
+
+	// Ensure we clear the update start time when done (with panic protection)
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("PANIC in fetchAndUpdateTier for markets tier '%s': %v", tier.Name, r)
+		}
+		u.setTierUpdateStartTime(tier.Name, nil)
+	}()
 
 	requestDelay := u.config.RequestDelay
 	requestDelayMs := int(requestDelay.Milliseconds())
@@ -204,8 +253,9 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ma
 
 	// Final cache update - replace with complete data to ensure consistency
 	localData := &TierDataWithTimestamp{
-		Data:      ConvertMarketsResponseToCoinGeckoData(tokensData),
-		Timestamp: time.Now(),
+		Data:            ConvertMarketsResponseToCoinGeckoData(tokensData),
+		Timestamp:       time.Now(),
+		UpdateStartTime: nil, // Will be cleared by defer
 	}
 
 	u.cache.Lock()
@@ -381,4 +431,24 @@ func (u *PeriodicUpdater) Healthy() bool {
 	}
 
 	return u.apiClient != nil && u.apiClient.Healthy()
+}
+
+// setTierUpdateStartTime sets or clears the update start time for a tier
+func (u *PeriodicUpdater) setTierUpdateStartTime(tierName string, startTime *time.Time) {
+	u.cache.Lock()
+	defer u.cache.Unlock()
+
+	tierData := u.cache.tiers[tierName]
+	if tierData == nil {
+		// Create empty tier data if it doesn't exist
+		tierData = &TierDataWithTimestamp{
+			Data:            make([]CoinGeckoData, 0),
+			Timestamp:       time.Time{}, // Zero time indicates never updated
+			UpdateStartTime: startTime,
+		}
+		u.cache.tiers[tierName] = tierData
+	} else {
+		// Update existing tier data
+		tierData.UpdateStartTime = startTime
+	}
 }
