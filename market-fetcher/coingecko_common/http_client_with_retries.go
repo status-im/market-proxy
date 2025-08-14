@@ -121,7 +121,7 @@ func (c *HTTPClientWithRetries) ExecuteRequest(req *http.Request) (*http.Respons
 			pageContext = page
 		}
 
-		responseBody, err := processResponse(resp, pageContext, requestDuration)
+		responseBody, err := processResponse(resp, req, pageContext, requestDuration)
 		if err != nil {
 			if isRetryableError(resp.StatusCode) {
 				lastErr = err
@@ -174,14 +174,29 @@ func extractPageFromRequest(req *http.Request) (int, bool) {
 }
 
 // processResponse reads and processes the HTTP response
-func processResponse(resp *http.Response, page int, requestDuration time.Duration) ([]byte, error) {
+func processResponse(resp *http.Response, req *http.Request, _page int, requestDuration time.Duration) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 
 		if resp.StatusCode == http.StatusTooManyRequests {
 			retryAfter := resp.Header.Get("Retry-After")
+			log.Printf("rate limit exceeded (status %d), retry after %s: %s",
+				resp.StatusCode, retryAfter, string(body))
 			return nil, fmt.Errorf("rate limit exceeded (status %d), retry after %s: %s",
 				resp.StatusCode, retryAfter, string(body))
+		}
+
+		// Special handling for 414 Request-URI Too Large to include URL length
+		if resp.StatusCode == 414 {
+			var urlLength int
+			if req != nil && req.URL != nil {
+				urlLength = len(req.URL.String())
+			}
+			log.Printf("API request failed with status %d after %.2fs (URL length: %d): %s",
+				resp.StatusCode, requestDuration.Seconds(), urlLength, string(body))
+
+			return nil, fmt.Errorf("API request failed with status %d after %.2fs (URL length: %d): %s",
+				resp.StatusCode, requestDuration.Seconds(), urlLength, string(body))
 		}
 
 		return nil, fmt.Errorf("API request failed with status %d after %.2fs: %s",
