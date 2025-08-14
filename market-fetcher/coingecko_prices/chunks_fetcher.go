@@ -81,7 +81,7 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 		return chunkData, nil
 	}
 
-	result, err := coingecko_common.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, f.requestDelay, fetchFunc)
+	result, err := coingecko_common.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, coingecko_common.MaxChunkStringLength, f.requestDelay, fetchFunc)
 	if err != nil {
 		return nil, err
 	}

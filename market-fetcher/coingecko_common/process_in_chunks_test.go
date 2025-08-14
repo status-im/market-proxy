@@ -10,17 +10,19 @@ import (
 
 func TestChunkMapFetcher(t *testing.T) {
 	tests := []struct {
-		name        string
-		items       []string
-		chunkLimit  int
-		fetchFunc   func(context.Context, []string) (map[string]int, error)
-		expected    map[string]int
-		expectedErr bool
+		name                   string
+		items                  []string
+		chunkElementsLimit     int
+		chunkStringLengthLimit int
+		fetchFunc              func(context.Context, []string) (map[string]int, error)
+		expected               map[string]int
+		expectedErr            bool
 	}{
 		{
-			name:       "empty items",
-			items:      []string{},
-			chunkLimit: 2,
+			name:                   "empty items",
+			items:                  []string{},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
 				result := make(map[string]int)
 				for i, item := range chunk {
@@ -32,9 +34,10 @@ func TestChunkMapFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "single chunk",
-			items:      []string{"a", "b"},
-			chunkLimit: 5,
+			name:                   "single chunk",
+			items:                  []string{"a", "b"},
+			chunkElementsLimit:     5,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
 				result := make(map[string]int)
 				for i, item := range chunk {
@@ -46,9 +49,10 @@ func TestChunkMapFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "multiple chunks",
-			items:      []string{"a", "b", "c", "d", "e"},
-			chunkLimit: 2,
+			name:                   "multiple chunks",
+			items:                  []string{"a", "b", "c", "d", "e"},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
 				result := make(map[string]int)
 				for _, item := range chunk {
@@ -60,9 +64,10 @@ func TestChunkMapFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "error in fetch function",
-			items:      []string{"a", "b", "c"},
-			chunkLimit: 2,
+			name:                   "error in fetch function",
+			items:                  []string{"a", "b", "c"},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
 				return nil, errors.New("fetch error")
 			},
@@ -70,9 +75,10 @@ func TestChunkMapFetcher(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name:       "zero chunk limit returns empty",
-			items:      []string{"a", "b"},
-			chunkLimit: 0,
+			name:                   "zero chunk limit returns empty",
+			items:                  []string{"a", "b"},
+			chunkElementsLimit:     0,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
 				result := make(map[string]int)
 				for i, item := range chunk {
@@ -83,6 +89,36 @@ func TestChunkMapFetcher(t *testing.T) {
 			expected:    map[string]int{},
 			expectedErr: false,
 		},
+		{
+			name:                   "string length limiting",
+			items:                  []string{"ab", "cd", "ef", "gh"},
+			chunkElementsLimit:     10,
+			chunkStringLengthLimit: 5,
+			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
+				result := make(map[string]int)
+				for _, item := range chunk {
+					result[item] = len(item)
+				}
+				return result, nil
+			},
+			expected:    map[string]int{"ab": 2, "cd": 2, "ef": 2, "gh": 2},
+			expectedErr: false,
+		},
+		{
+			name:                   "string length limiting forces single item chunks",
+			items:                  []string{"abcdef", "ghijkl", "mnopqr"},
+			chunkElementsLimit:     10,
+			chunkStringLengthLimit: 3,
+			fetchFunc: func(ctx context.Context, chunk []string) (map[string]int, error) {
+				result := make(map[string]int)
+				for _, item := range chunk {
+					result[item] = len(item)
+				}
+				return result, nil
+			},
+			expected:    map[string]int{"abcdef": 6, "ghijkl": 6, "mnopqr": 6},
+			expectedErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -90,7 +126,8 @@ func TestChunkMapFetcher(t *testing.T) {
 			result, err := ChunkMapFetcher[int](
 				context.Background(),
 				tt.items,
-				tt.chunkLimit,
+				tt.chunkElementsLimit,
+				tt.chunkStringLengthLimit,
 				0,
 				tt.fetchFunc,
 			)
@@ -116,17 +153,19 @@ func TestChunkMapFetcher(t *testing.T) {
 
 func TestChunkArrayFetcher(t *testing.T) {
 	tests := []struct {
-		name        string
-		items       []string
-		chunkLimit  int
-		fetchFunc   func(context.Context, []string) ([]string, error)
-		expected    []string
-		expectedErr bool
+		name                   string
+		items                  []string
+		chunkElementsLimit     int
+		chunkStringLengthLimit int
+		fetchFunc              func(context.Context, []string) ([]string, error)
+		expected               []string
+		expectedErr            bool
 	}{
 		{
-			name:       "empty items",
-			items:      []string{},
-			chunkLimit: 2,
+			name:                   "empty items",
+			items:                  []string{},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) ([]string, error) {
 				return chunk, nil
 			},
@@ -134,9 +173,10 @@ func TestChunkArrayFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "single chunk",
-			items:      []string{"a", "b"},
-			chunkLimit: 5,
+			name:                   "single chunk",
+			items:                  []string{"a", "b"},
+			chunkElementsLimit:     5,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) ([]string, error) {
 				result := make([]string, len(chunk))
 				for i, item := range chunk {
@@ -148,9 +188,10 @@ func TestChunkArrayFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "multiple chunks",
-			items:      []string{"a", "b", "c", "d", "e"},
-			chunkLimit: 2,
+			name:                   "multiple chunks",
+			items:                  []string{"a", "b", "c", "d", "e"},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) ([]string, error) {
 				result := make([]string, 0, len(chunk)*2)
 				for _, item := range chunk {
@@ -162,9 +203,10 @@ func TestChunkArrayFetcher(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:       "error in fetch function",
-			items:      []string{"a", "b", "c"},
-			chunkLimit: 2,
+			name:                   "error in fetch function",
+			items:                  []string{"a", "b", "c"},
+			chunkElementsLimit:     2,
+			chunkStringLengthLimit: 0,
 			fetchFunc: func(ctx context.Context, chunk []string) ([]string, error) {
 				return nil, errors.New("fetch error")
 			},
@@ -178,7 +220,8 @@ func TestChunkArrayFetcher(t *testing.T) {
 			result, err := ChunkArrayFetcher[string](
 				context.Background(),
 				tt.items,
-				tt.chunkLimit,
+				tt.chunkElementsLimit,
+				tt.chunkStringLengthLimit,
 				0,
 				tt.fetchFunc,
 			)
