@@ -76,6 +76,7 @@ func (s *Service) handleTopPricesUpdate(ctx context.Context, tier config.PriceTi
 		log.Printf("Failed to cache prices data by id: %v", err)
 	}
 
+	log.Printf("Prices service cache update complete: %d", len(pricesData))
 	s.subscriptionManager.Emit(ctx)
 }
 
@@ -85,9 +86,9 @@ func (s *Service) handleMissingExtraIdsUpdate(ctx context.Context, pricesData ma
 	err := s.cachePricesByID(pricesData)
 	if err != nil {
 		log.Printf("Failed to cache missing extra IDs: %v", err)
-	} else {
-		log.Printf("Successfully cached %d missing extra IDs", len(pricesData))
 	}
+
+	log.Printf("Prices service cache update complete: extra ids %d", len(pricesData))
 	s.subscriptionManager.Emit(ctx)
 }
 
@@ -126,8 +127,6 @@ func (s *Service) onMarketListChanged() {
 		return
 	}
 
-	log.Printf("Market list changed, updating periodic updater with %d top market IDs (max limit: %d)", len(topMarketIds), maxLimit)
-
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.SetTopMarketIds(topMarketIds)
 	}
@@ -140,8 +139,6 @@ func (s *Service) onTokenListChanged() {
 	}
 
 	tokenIDs := s.tokensService.GetTokenIds()
-
-	log.Printf("Token list changed, updating periodic updater with %d extra IDs", len(tokenIDs))
 
 	if s.periodicUpdater != nil {
 		s.periodicUpdater.SetExtraIds(tokenIDs)
@@ -169,7 +166,6 @@ func (s *Service) cachePricesByID(pricesData map[string][]byte) error {
 		return fmt.Errorf("failed to cache prices data: %w", err)
 	}
 
-	log.Printf("Successfully cached %d prices by their token id", len(cacheData))
 	return nil
 }
 
@@ -243,8 +239,6 @@ func (s *Service) Stop() {
 // SimplePrices fetches prices for the given parameters using cache only
 // Returns raw CoinGecko JSON response with cache status
 func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
-	log.Printf("Loading prices data for %d specific IDs from cache only", len(params.IDs))
-
 	if len(params.IDs) == 0 {
 		return interfaces.SimplePriceResponse{}, interfaces.CacheStatusFull, nil
 	}
@@ -276,19 +270,16 @@ func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParam
 
 	// Log missing keys but don't fetch from API - only return cached data
 	if len(missingKeys) > 0 {
-		log.Printf("Missing %d tokens in cache - service only returns pre-warmed data from periodic updater", len(missingKeys))
+		log.Printf("Missing %d tokens in cache", len(missingKeys))
 	}
 
 	// Determine cache status
 	if len(missingKeys) == 0 && len(cachedData) == len(cacheKeys) {
 		cacheStatus = interfaces.CacheStatusFull
-		log.Printf("Returning cached data for all %d tokens", len(fullResponse))
 	} else if len(cachedData) > 0 {
 		cacheStatus = interfaces.CacheStatusPartial
-		log.Printf("Returning partial cached data for %d tokens (requested %d, missing %d)", len(fullResponse), len(cacheKeys), len(missingKeys))
 	} else {
 		cacheStatus = interfaces.CacheStatusMiss
-		log.Printf("No tokens found in cache for %d requested tokens", len(cacheKeys))
 	}
 
 	// Filter the response according to user parameters
@@ -309,8 +300,6 @@ func (s *Service) getConfigCurrencies() []string {
 // TopPrices fetches prices for top tokens with specified limit and currencies
 // Similar to TopMarkets in markets service, provides clean interface for token price fetching
 func (s *Service) TopPrices(ctx context.Context, limit int, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
-	log.Printf("TopPrices called for %d tokens with %d currencies", limit, len(currencies))
-
 	// Get top market IDs based on the limit
 	if s.marketsService == nil {
 		return nil, interfaces.CacheStatusMiss, fmt.Errorf("markets service not available")

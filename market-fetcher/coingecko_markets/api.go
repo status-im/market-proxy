@@ -73,9 +73,6 @@ func (c *CoinGeckoClient) FetchPage(params interfaces.MarketsParams) ([][]byte, 
 		tokensData = append(tokensData, []byte(tokenData))
 	}
 
-	log.Printf("CoinGecko: Successfully processed page %d with %d items",
-		params.Page, len(tokensData))
-
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
 
@@ -118,19 +115,12 @@ func (c *CoinGeckoClient) executeFetchRequest(params interfaces.MarketsParams) (
 			return nil, false, err
 		}
 
-		// Log the attempt
-		log.Printf("CoinGecko: Attempting request for page %d with key type %v", params.Page, apiKey.Type)
-
 		// Execute the request with retries
-		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
+		resp, body, _, err := c.httpClient.ExecuteRequest(request)
 
 		if err != nil {
 			return nil, false, err
 		}
-
-		// If we got here, the request succeeded
-		log.Printf("CoinGecko: Raw request successful for page %d with key type %v in %.2fs",
-			params.Page, apiKey.Type, duration.Seconds())
 
 		// Return both response and body as a struct
 		result := struct {

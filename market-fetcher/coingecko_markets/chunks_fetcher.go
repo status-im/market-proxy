@@ -53,9 +53,6 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 	log.Printf("CoingeckoMarketsChunksFetcher: Fetching markets data for %d tokens in %d chunks", len(params.IDs), numChunks)
 
 	fetchFunc := func(ctx context.Context, chunk []string) ([][]byte, error) {
-		log.Printf("CoingeckoMarketsChunksFetcher: Fetching chunk with %d tokens", len(chunk))
-		chunkStartTime := time.Now()
-
 		chunkParams := interfaces.MarketsParams{
 			IDs:      chunk,
 			Currency: params.Currency,
@@ -73,9 +70,6 @@ func (f *ChunksFetcher) FetchMarkets(ctx context.Context, params interfaces.Mark
 			log.Printf("CoingeckoMarketsChunksFetcher: Error fetching chunk: %v", err)
 			return nil, err
 		}
-
-		duration := time.Since(chunkStartTime)
-		log.Printf("CoingeckoMarketsChunksFetcher: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
 
 		if onChunk != nil {
 			onChunk(chunkData)

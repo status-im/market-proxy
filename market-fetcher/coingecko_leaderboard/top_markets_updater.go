@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/events"
@@ -70,14 +71,18 @@ func (u *TopMarketsUpdater) Stop() {
 }
 
 // fetchAndUpdate fetches markets data from markets service and updates cache
-func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
+func (u *TopMarketsUpdater) fetchAndUpdate(_ context.Context) error {
 	defer u.metricsWriter.TrackDataFetchCycle()()
 
 	limit := u.config.TopMarketsLimit
 	if limit <= 0 {
 		limit = 500 // Default limit
 	}
+
+	startTime := time.Now()
 	data, err := u.marketsFetcher.TopMarkets(limit, u.config.Currency)
+	fetchDuration := time.Since(startTime)
+
 	if err != nil {
 		log.Printf("Error fetching top markets data from fetcher: %v", err)
 		return err
@@ -92,11 +97,15 @@ func (u *TopMarketsUpdater) fetchAndUpdate(ctx context.Context) error {
 
 	u.cache.Lock()
 	u.cache.data = localData
+	cacheSize := len(localData.Data)
 	u.cache.Unlock()
 
-	u.metricsWriter.RecordCacheSize(len(localData.Data))
+	u.metricsWriter.RecordCacheSize(cacheSize)
 
-	log.Printf("Updated top markets cache with %d tokens (limit: %d)", len(localData.Data), limit)
+	// Consolidated log with all diagnostic information in one line
+	log.Printf("Leaderboard markets service cache update complete - cached markets: %d (limit: %d) - fetch duration: %v",
+		cacheSize, limit, fetchDuration)
+
 	if u.onUpdate != nil {
 		u.onUpdate()
 	}

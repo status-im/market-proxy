@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -145,7 +144,6 @@ func RecordTokensByPlatform(tokensByPlatform map[string]int) {
 	// Record the count for each platform
 	for platform, count := range tokensByPlatform {
 		TokensByPlatformGauge.WithLabelValues(platform).Set(float64(count))
-		log.Printf("Metrics: Platform %s has %d tokens", platform, count)
 	}
 }
 
@@ -170,7 +168,6 @@ func (mw *MetricsWriter) GetServiceName() string {
 func (mw *MetricsWriter) RecordServiceCoingeckoRequest(status string) {
 	CoingeckoRequestsTotal.WithLabelValues(status).Inc()
 	ServiceCoingeckoRequestsTotal.WithLabelValues(mw.serviceName, status).Inc()
-	log.Printf("Metrics: %s Coingecko request recorded with status %s", mw.serviceName, status)
 }
 
 // RecordDataFetchCycle records the duration of a data fetch cycle
@@ -189,13 +186,11 @@ func (mw *MetricsWriter) TrackDataFetchCycle() func() {
 // RecordCacheSize records the number of items in service cache
 func (mw *MetricsWriter) RecordCacheSize(size int) {
 	ServiceCacheSizeGauge.WithLabelValues(mw.serviceName).Set(float64(size))
-	log.Printf("Metrics: %s cache size is %d items", mw.serviceName, size)
 }
 
 // RecordRetryAttempt records a retry attempt
 func (mw *MetricsWriter) RecordRetryAttempt() {
 	ServiceRetryCounter.WithLabelValues(mw.serviceName).Inc()
-	log.Printf("Metrics: %s recorded a retry attempt", mw.serviceName)
 }
 
 // ResetCycleMetrics resets all cycle-related metrics
@@ -211,8 +206,6 @@ func (mw *MetricsWriter) ResetCycleMetrics() {
 	for _, status := range statuses {
 		CycleRequestStatusGauge.WithLabelValues(mw.serviceName, status).Set(0)
 	}
-
-	log.Printf("Metrics: Reset cycle metrics for %s", mw.serviceName)
 }
 
 // Implement HttpStatusHandler interface for MetricsWriter

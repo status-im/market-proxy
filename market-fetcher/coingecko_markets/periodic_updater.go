@@ -78,7 +78,6 @@ func (u *PeriodicUpdater) SetExtraIds(ids []string) {
 	defer u.extraIds.Unlock()
 	u.extraIds.ids = make([]string, len(ids))
 	copy(u.extraIds.ids, ids)
-	log.Printf("Updated extra IDs list with %d tokens", len(ids))
 }
 
 // GetCacheData returns the current cached markets data
@@ -123,8 +122,6 @@ func (u *PeriodicUpdater) Start(ctx context.Context) error {
 
 // startAllTiers starts a single scheduler that manages all tiers
 func (u *PeriodicUpdater) startAllTiers(ctx context.Context) error {
-	log.Printf("Starting markets periodic updater with single scheduler for %d tiers", len(u.config.Tiers))
-
 	// Create single scheduler that runs every 2 seconds
 	u.scheduler = scheduler.New(
 		2*time.Second,
@@ -135,7 +132,6 @@ func (u *PeriodicUpdater) startAllTiers(ctx context.Context) error {
 
 	// Start the scheduler with context
 	u.scheduler.Start(ctx, true)
-	log.Printf("Started unified scheduler for all markets tiers, check interval: 2s")
 
 	return nil
 }

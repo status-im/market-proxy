@@ -57,9 +57,6 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 
 	// Create fetch function for chunks
 	fetchFunc := func(ctx context.Context, chunk []string) (map[string][]byte, error) {
-		log.Printf("IPricesService: Fetching chunk with %d tokens", len(chunk))
-		chunkStartTime := time.Now()
-
 		chunkParams := cg.PriceParams{
 			IDs:                  chunk,
 			Currencies:           params.Currencies,
@@ -75,9 +72,6 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 			log.Printf("IPricesService: Error fetching chunk: %v", err)
 			return nil, err
 		}
-
-		duration := time.Since(chunkStartTime)
-		log.Printf("IPricesService: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
 
 		// Call onChunk callback if provided
 		if onChunk != nil {
