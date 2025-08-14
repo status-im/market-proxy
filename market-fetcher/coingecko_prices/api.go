@@ -73,9 +73,6 @@ func (c *CoinGeckoClient) FetchPrices(params interfaces.PriceParams) (map[string
 		result[tokenId] = []byte(tokenData)
 	}
 
-	log.Printf("CoinGecko: Successfully fetched prices for %d tokens in %d currencies",
-		len(params.IDs), len(params.Currencies))
-
 	// Mark that we've had at least one successful fetch
 	c.successfulFetch.Store(true)
 
@@ -105,19 +102,12 @@ func (c *CoinGeckoClient) executeFetchRequest(params interfaces.PriceParams) (*h
 			return nil, false, err
 		}
 
-		// Log the attempt
-		log.Printf("CoinGecko: Attempting request for %d tokens with key type %v", len(params.IDs), apiKey.Type)
-
 		// Execute the request with retries
-		resp, body, duration, err := c.httpClient.ExecuteRequest(request)
+		resp, body, _, err := c.httpClient.ExecuteRequest(request)
 
 		if err != nil {
 			return nil, false, err
 		}
-
-		// If we got here, the request succeeded
-		log.Printf("CoinGecko: Raw request successful for %d tokens with key type %v in %.2fs",
-			len(params.IDs), apiKey.Type, duration.Seconds())
 
 		// Return both response and body as a struct
 		result := struct {

@@ -57,9 +57,6 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 
 	// Create fetch function for chunks
 	fetchFunc := func(ctx context.Context, chunk []string) (map[string][]byte, error) {
-		log.Printf("IPricesService: Fetching chunk with %d tokens", len(chunk))
-		chunkStartTime := time.Now()
-
 		chunkParams := cg.PriceParams{
 			IDs:                  chunk,
 			Currencies:           params.Currencies,
@@ -76,9 +73,6 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 			return nil, err
 		}
 
-		duration := time.Since(chunkStartTime)
-		log.Printf("IPricesService: Completed chunk with %d tokens in %.2fs", len(chunk), duration.Seconds())
-
 		// Call onChunk callback if provided
 		if onChunk != nil {
 			onChunk(chunkData)
@@ -87,7 +81,7 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 		return chunkData, nil
 	}
 
-	result, err := coingecko_common.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, f.requestDelay, fetchFunc)
+	result, err := coingecko_common.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, coingecko_common.MaxChunkStringLength, f.requestDelay, fetchFunc)
 	if err != nil {
 		return nil, err
 	}

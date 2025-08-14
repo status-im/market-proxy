@@ -140,9 +140,6 @@ func (pf *PaginatedFetcher) prepareFetchParams() *fetchParams {
 // Returns: page items, should continue fetching flag, error
 func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, currentItemsCount int, completedPages *int) ([][]byte, bool, error) {
 	pageLimit := pf.perPage
-	totalPages := params.pageTo - params.pageFrom + 1
-	log.Printf("MarketsFetcher: Fetching page %d (page %d/%d) with limit %d", page, page-params.pageFrom+1, totalPages, pageLimit)
-	pageStartTime := time.Now()
 
 	// Fetch the page
 	pageResponse, err := pf.fetchSinglePage(page, pageLimit)
@@ -150,16 +147,11 @@ func (pf *PaginatedFetcher) processSinglePage(page int, params *fetchParams, cur
 		return nil, false, err
 	}
 
-	pageTime := time.Since(pageStartTime)
-
 	if len(pageResponse) == 0 {
 		log.Printf("MarketsFetcher: Got empty page %d, stopping pagination", page)
 		return [][]byte{}, false, nil
 	}
 	(*completedPages)++
-
-	log.Printf("MarketsFetcher: Completed page %d with %d items in %.2fs",
-		page, len(pageResponse), pageTime.Seconds())
 
 	return pageResponse, true, nil
 }
@@ -197,10 +189,7 @@ func (pf *PaginatedFetcher) logPagesSummary(startTime time.Time, pages []PageDat
 func (pf *PaginatedFetcher) applyDelayIfNeeded(currentPage, totalPages int) {
 	// Only wait if requestDelay > 0
 	if currentPage < totalPages && pf.requestDelay > 0 {
-		log.Printf("MarketsFetcher: Waiting for %.2fs before fetching next page", pf.requestDelay.Seconds())
 		time.Sleep(pf.requestDelay)
-	} else if currentPage < totalPages {
-		log.Printf("MarketsFetcher: No delay configured, fetching next page immediately")
 	}
 }
 

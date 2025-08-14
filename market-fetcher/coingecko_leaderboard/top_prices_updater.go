@@ -2,8 +2,10 @@ package coingecko_leaderboard
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	cg "github.com/status-im/market-proxy/interfaces"
 
@@ -88,17 +90,23 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 		currency = "usd"
 	}
 	currencies := []string{currency}
+	limit := u.config.TopPricesLimit
 
 	var newPricesData map[string]PriceQuotes
+	var fetchStatus string
+	var fetchDuration time.Duration
 
 	if u.priceFetcher != nil {
 		newPricesData = make(map[string]PriceQuotes)
-		limit := u.config.TopPricesLimit
 
+		startTime := time.Now()
 		priceResponse, _, err := u.priceFetcher.TopPrices(ctx, limit, currencies)
+		fetchDuration = time.Since(startTime)
+
 		if err != nil {
-			log.Printf("Error fetching prices from price fetcher: %v", err)
+			fetchStatus = fmt.Sprintf("fetch error: %v", err)
 		} else if len(priceResponse) > 0 {
+			fetchStatus = "fetch successful"
 			// Parse response for each currency
 			for _, currency := range currencies {
 				currencyQuotes := ConvertPriceResponseToPriceQuotes(priceResponse, currency)
@@ -106,14 +114,18 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 					newPricesData[currency] = currencyQuotes
 				}
 			}
+		} else {
+			fetchStatus = "fetch successful but empty response"
 		}
 	} else {
-		log.Printf("No price fetcher available, skipping price update")
+		fetchStatus = "no price fetcher available"
 		newPricesData = make(map[string]PriceQuotes)
+		fetchDuration = 0
 	}
 
 	u.topPricesCache.Lock()
 	u.topPricesCache.data = newPricesData
+	currencyCount := len(newPricesData)
 	u.topPricesCache.Unlock()
 
 	totalTokens := 0
@@ -122,6 +134,9 @@ func (u *TopPricesUpdater) fetchAndUpdateTopPrices(ctx context.Context) error {
 	}
 	u.metricsWriter.RecordCacheSize(totalTokens)
 
-	log.Printf("Updated prices cache with %d currency-token pairs", totalTokens)
+	// Consolidated log with all diagnostic information in one line
+	log.Printf("Leaderboard prices service cache update complete - cached currencies: %d, total price entries: %d (limit: %d) - %s - fetch duration: %v",
+		currencyCount, totalTokens, limit, fetchStatus, fetchDuration)
+
 	return nil
 }

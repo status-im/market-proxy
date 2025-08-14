@@ -2,6 +2,7 @@ package coingecko_tokens
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/status-im/market-proxy/interfaces"
@@ -65,7 +66,12 @@ func (s *Service) onTokensUpdated(ctx context.Context, tokens []interfaces.Token
 	s.cache.Lock()
 	s.cache.tokens = tokens
 	s.cache.tokenIds = tokenIds
+	tokensCount := len(s.cache.tokens)
+	tokenIdsCount := len(s.cache.tokenIds)
 	s.cache.Unlock()
+
+	// Log cache statistics for tokens service
+	log.Printf("Tokens service cache update complete - cached tokens: %d, cached token IDs: %d", tokensCount, tokenIdsCount)
 
 	s.subscriptionManager.Emit(ctx)
 

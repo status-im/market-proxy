@@ -193,8 +193,6 @@ func processResponse(resp *http.Response, page int, requestDuration time.Duratio
 		return nil, fmt.Errorf("error reading response: %v", err)
 	}
 
-	log.Printf("%s: Response size for page %d: %.2f KB", resp.Request.Host, page, float64(len(responseBody))/1024)
-
 	return responseBody, nil
 }
 

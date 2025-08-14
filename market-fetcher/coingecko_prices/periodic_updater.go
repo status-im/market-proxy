@@ -94,7 +94,6 @@ func (u *PeriodicUpdater) SetTopMarketIds(ids []string) {
 	defer u.topMarketIds.Unlock()
 	u.topMarketIds.ids = make([]string, len(ids))
 	copy(u.topMarketIds.ids, ids)
-	log.Printf("Updated top market IDs list with %d tokens", len(ids))
 }
 
 // SetExtraIds sets the list of extra token IDs to fetch
@@ -103,7 +102,6 @@ func (u *PeriodicUpdater) SetExtraIds(ids []string) {
 	defer u.extraIds.Unlock()
 	u.extraIds.ids = make([]string, len(ids))
 	copy(u.extraIds.ids, ids)
-	log.Printf("Updated extra IDs list with %d tokens", len(ids))
 }
 
 // GetCacheData returns the current cached prices data
@@ -166,7 +164,6 @@ func (u *PeriodicUpdater) startAllTiers(ctx context.Context) error {
 
 	// Start the scheduler with context
 	u.scheduler.Start(ctx, true)
-	log.Printf("Started unified scheduler for all tiers, check interval: 2s")
 
 	return nil
 }
