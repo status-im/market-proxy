@@ -100,7 +100,6 @@ coingecko_token_list:
     - optimistic-ethereum  # Optimism
     - arbitrum-one         # Arbitrum
     - base
-    - status
     - linea
     - blast
     - zksync
