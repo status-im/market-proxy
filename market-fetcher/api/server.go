@@ -5,9 +5,11 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
 	"github.com/status-im/market-proxy/coingecko_markets"
+	"github.com/status-im/market-proxy/coingecko_token_list"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/status-im/market-proxy/binance"
@@ -25,10 +27,11 @@ type Server struct {
 	marketsService         *coingecko_markets.Service
 	marketChartService     *coingecko_market_chart.Service
 	assetsPlatformsService *coingecko_assets_platforms.Service
+	tokenListService       *coingecko_token_list.Service
 	server                 *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service) *Server {
+func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service, tokenListService *coingecko_token_list.Service) *Server {
 	return &Server{
 		port:                   port,
 		binanceService:         binanceService,
@@ -38,26 +41,32 @@ func New(port string, binanceService *binance.Service, cgService *coingecko.Serv
 		marketsService:         marketsService,
 		marketChartService:     marketChartService,
 		assetsPlatformsService: assetsPlatformsService,
+		tokenListService:       tokenListService,
 	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
-	mux.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
-	mux.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
-	mux.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
-	mux.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
+	router := mux.NewRouter()
+
+	// Existing endpoints
+	router.HandleFunc("/api/v1/leaderboard/prices", s.handleLeaderboardPrices)
+	router.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
+	router.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
+	router.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
+	router.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 
 	// All coins endpoints are handled by the coins router
-	mux.HandleFunc("/api/v1/coins/", s.handleCoinsRoutes)
+	router.PathPrefix("/api/v1/coins/").HandlerFunc(s.handleCoinsRoutes)
 
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.Handle("/metrics", promhttp.Handler())
+	// Token list endpoint
+	router.HandleFunc("/api/v1/token_lists/{platform}/all.json", s.TokenListHandler).Methods("GET")
+
+	router.HandleFunc("/health", s.handleHealth)
+	router.Handle("/metrics", promhttp.Handler())
 
 	s.server = &http.Server{
 		Addr:    ":" + s.port,
-		Handler: mux,
+		Handler: router,
 	}
 
 	log.Printf("Server starting at http://localhost:%s", s.port)
