@@ -287,6 +287,13 @@ const EndpointTester = ({ onBack }) => {
       path: '/v1/coins/markets',
       description: 'Get market data for coin IDs from coins/list (chunked)',
       dependencies: ['coins-list']
+    },
+    {
+      id: 'token-lists',
+      name: 'Token Lists',
+      path: '/v1/token_lists',
+      description: 'Get token lists for supported platforms',
+      dependencies: []
     }
   ];
 
@@ -527,6 +534,90 @@ const EndpointTester = ({ onBack }) => {
     }
   };
 
+  const executeTokenListsEndpoint = async () => {
+    const startTime = Date.now();
+    updateEndpointStatus('token-lists', { status: 'running', progress: 0 });
+    
+    try {
+      // Test known platforms from config
+      const platforms = [
+        'ethereum', 'optimistic-ethereum', 'arbitrum-one', 'base', 
+        'linea', 'blast', 'zksync', 'mantle', 'abstract', 
+        'unichain', 'binance-smart-chain', 'polygon-pos'
+      ];
+      
+      addLog(`token_lists - Testing ${platforms.length} platforms...`, 'info');
+      
+      let allTokenLists = {};
+      let totalTokens = 0;
+      let successfulPlatforms = 0;
+      
+      // Test each platform
+      for (let i = 0; i < platforms.length; i++) {
+        const platform = platforms[i];
+        const progress = ((i + 1) / platforms.length) * 100;
+        
+        updateEndpointStatus('token-lists', { 
+          status: 'running', 
+          progress: Math.min(progress, 95) 
+        });
+        
+        addLog(`  Testing platform: ${platform}`, 'info');
+        
+        try {
+          const response = await proxyFetch(`/v1/token_lists/${platform}/all.json`);
+          
+          if (response.ok) {
+            const tokenList = await response.json();
+            const tokenCount = tokenList.tokens ? tokenList.tokens.length : 0;
+            
+            allTokenLists[platform] = tokenList;
+            totalTokens += tokenCount;
+            successfulPlatforms++;
+            
+            addLog(`    ${platform}: ${tokenCount} tokens (${tokenList.name || 'Unknown'})`, 'success');
+          } else {
+            addLog(`    ${platform}: HTTP ${response.status}`, 'error');
+          }
+        } catch (error) {
+          addLog(`    ${platform}: Error - ${error.message}`, 'error');
+        }
+        
+        // Small delay between requests
+        if (i < platforms.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      const duration = Date.now() - startTime;
+      const isComplete = successfulPlatforms === platforms.length;
+      const completionEmoji = isComplete ? '✅' : '⚠️';
+      
+      updateEndpointStatus('token-lists', { 
+        status: 'completed', 
+        progress: 100, 
+        responseTime: duration,
+        recordCount: totalTokens,
+        platformCount: successfulPlatforms,
+        totalPlatforms: platforms.length,
+        isComplete 
+      });
+      
+      addLog(`token_lists - ${successfulPlatforms}/${platforms.length} platforms, ${totalTokens} total tokens ${completionEmoji}`, 
+             isComplete ? 'success' : 'info');
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      updateEndpointStatus('token-lists', { 
+        status: 'error', 
+        progress: 100, 
+        responseTime: duration,
+        error: error.message 
+      });
+      addLog(`token_lists - Error: ${error.message}`, 'error');
+    }
+  };
+
   const executeSimplePriceEndpoint = async (endpointId, sourceData, sourceType) => {
     if (!sourceData) {
       addLog(`${endpointId} - No ${sourceType} data available. Run ${sourceType} first.`, 'error');
@@ -648,6 +739,9 @@ const EndpointTester = ({ onBack }) => {
       case 'coins-markets-by-ids':
         await executeCoinsMarketsByIdsEndpoint();
         break;
+      case 'token-lists':
+        await executeTokenListsEndpoint();
+        break;
     }
   };
 
@@ -666,6 +760,7 @@ const EndpointTester = ({ onBack }) => {
       'leaderboard-simple-prices',
       'leaderboard-markets',
       'asset-platforms',
+      'token-lists',
       'coins-markets-by-ids',
       'simple-price-markets',
       'simple-price-coins'
@@ -699,6 +794,14 @@ const EndpointTester = ({ onBack }) => {
           if (status.requestedCount !== undefined) {
             const completionEmoji = status.isComplete ? '✅' : '⚠️';
             resultText = `${formatDuration(status.responseTime)} - ${status.recordCount}/${status.requestedCount} ${completionEmoji}`;
+          }
+        }
+        
+        // Special formatting for token-lists endpoint
+        if (endpoint.id === 'token-lists') {
+          if (status.platformCount !== undefined && status.totalPlatforms !== undefined) {
+            const completionEmoji = status.isComplete ? '✅' : '⚠️';
+            resultText = `${formatDuration(status.responseTime)} - ${status.platformCount}/${status.totalPlatforms} platforms, ${status.recordCount} tokens ${completionEmoji}`;
           }
         }
         

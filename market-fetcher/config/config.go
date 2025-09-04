@@ -15,6 +15,7 @@ type Config struct {
 	CoingeckoPrices      PricesFetcherConfig      `yaml:"coingecko_prices"`
 	CoingeckoMarketChart MarketChartFetcherConfig `yaml:"coingecko_market_chart"`
 	TokensFetcher        CoinslistFetcherConfig   `yaml:"coingecko_coinslist"`
+	TokenListFetcher     TokenListFetcherConfig   `yaml:"coingecko_token_list"`
 	TokensFile           string                   `yaml:"tokens_file"`
 	APITokens            *APITokens
 	Cache                cache.Config `yaml:"cache"`
