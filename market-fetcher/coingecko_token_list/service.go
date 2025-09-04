@@ -16,11 +16,8 @@ type Service struct {
 	client              IClient
 	metricsWriter       *metrics.MetricsWriter
 	subscriptionManager *events.SubscriptionManager
-	cache               struct {
-		sync.RWMutex
-		tokenLists map[string]*TokenListCache
-	}
-	periodicUpdater *PeriodicUpdater
+	cache               sync.Map // map[string]*TokenListCache
+	periodicUpdater     *PeriodicUpdater
 }
 
 func NewService(config *config.Config) *Service {
@@ -34,8 +31,6 @@ func NewService(config *config.Config) *Service {
 		metricsWriter:       metricsWriter,
 		subscriptionManager: events.NewSubscriptionManager(),
 	}
-
-	service.cache.tokenLists = make(map[string]*TokenListCache)
 
 	service.periodicUpdater = NewPeriodicUpdater(
 		config.TokenListFetcher,
@@ -51,15 +46,13 @@ func NewService(config *config.Config) *Service {
 func (s *Service) onTokenListsUpdated(ctx context.Context, tokenLists map[string]*TokenList) error {
 	now := time.Now().Unix()
 
-	s.cache.Lock()
 	for platform, tokenList := range tokenLists {
-		s.cache.tokenLists[platform] = &TokenListCache{
+		s.cache.Store(platform, &TokenListCache{
 			Platform:  platform,
 			TokenList: *tokenList,
 			UpdatedAt: now,
-		}
+		})
 	}
-	s.cache.Unlock()
 
 	s.subscriptionManager.Emit(ctx)
 
@@ -91,14 +84,13 @@ func (s *Service) GetTokenList(platform string) TokenListResponse {
 		}
 	}
 
-	s.cache.RLock()
-	defer s.cache.RUnlock()
-
-	if tokenListCache, exists := s.cache.tokenLists[platform]; exists {
-		tokenListCopy := tokenListCache.TokenList
-		return TokenListResponse{
-			TokenList: &tokenListCopy,
-			Error:     nil,
+	if value, exists := s.cache.Load(platform); exists {
+		if tokenListCache, ok := value.(*TokenListCache); ok {
+			tokenListCopy := tokenListCache.TokenList
+			return TokenListResponse{
+				TokenList: &tokenListCopy,
+				Error:     nil,
+			}
 		}
 	}
 
@@ -109,11 +101,13 @@ func (s *Service) GetTokenList(platform string) TokenListResponse {
 }
 
 func (s *Service) Healthy() bool {
-	s.cache.RLock()
-	tokenListsLen := len(s.cache.tokenLists)
-	s.cache.RUnlock()
+	empty := true
+	s.cache.Range(func(_, _ interface{}) bool {
+		empty = false
+		return false
+	})
 
-	return s.periodicUpdater.IsInitialized() && tokenListsLen > 0
+	return s.periodicUpdater.IsInitialized() && !empty
 }
 
 func (s *Service) SubscribeOnTokenListsUpdate() events.ISubscription {

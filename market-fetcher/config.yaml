@@ -84,27 +84,13 @@ coingecko_coinslist:
     - arbitrum-one         # Arbitrum
     - base
     - status
-    - linea
-    - blast
-    - zksync
-    - mantle
-    - abstract
-    - unichain
     - binance-smart-chain  # BSC
-    - polygon-pos          # Polygon
 
 coingecko_token_list:
-  update_interval: 5m         # 5 minutes as requested
+  update_interval: 5m      # 5 minutes as requested
   supported_platforms:
     - ethereum
     - optimistic-ethereum  # Optimism
     - arbitrum-one         # Arbitrum
     - base
-    - linea
-    - blast
-    - zksync
-    - mantle
-    - abstract
-    - unichain
     - binance-smart-chain  # BSC
-    - polygon-pos          # Polygon
