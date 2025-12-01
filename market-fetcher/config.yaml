@@ -111,10 +111,10 @@ coingecko_coins:
     - name: "top-500"
       id_from: 1
       id_to: 500
-      update_interval: 1d
+      update_interval: 24h
 
     - name: "top-501-10000"
       id_from: 501
       id_to: 10000
-      update_interval: 3d
+      update_interval: 72h
       fetch_coinslist_ids: true
