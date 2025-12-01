@@ -120,8 +120,10 @@ func (rb *CoingeckoRequestBuilder) BuildURL() string {
 
 // Build creates an http.Request object
 func (rb *CoingeckoRequestBuilder) Build() (*http.Request, error) {
-	finalURL := rb.BuildURL()
+	return rb.BuildWithURL(rb.BuildURL())
+}
 
+func (rb *CoingeckoRequestBuilder) BuildWithURL(finalURL string) (*http.Request, error) {
 	req, err := http.NewRequest(rb.httpMethod, finalURL, nil)
 	if err != nil {
 		return nil, err

@@ -9,6 +9,7 @@ import (
 	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
+	"github.com/status-im/market-proxy/coingecko_coins"
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
@@ -42,6 +43,10 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	marketsService := coingecko_markets.NewService(cacheService, cfg, tokensService)
 	registry.Register(marketsService)
 
+	// Coins service
+	coinsService := coingecko_coins.NewService(cfg, marketsService, cacheService)
+	registry.Register(coinsService)
+
 	// Prices service
 	pricesService := coingecko_prices.NewService(cacheService, cfg, marketsService, tokensService)
 	registry.Register(pricesService)
@@ -69,7 +74,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	}
 
 	// HTTP Server
-	server := api.New(port, binanceService, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService)
+	server := api.New(port, binanceService, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService, coinsService)
 	registry.Register(server)
 
 	// Set update callback directly to our watchlist update function

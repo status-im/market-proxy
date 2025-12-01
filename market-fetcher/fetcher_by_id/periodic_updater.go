@@ -13,7 +13,6 @@ import (
 	"github.com/status-im/market-proxy/scheduler"
 )
 
-// TierState holds the state for a tier
 type TierState struct {
 	LastUpdate      time.Time
 	UpdateStartTime *time.Time
@@ -30,20 +29,16 @@ type PeriodicUpdater struct {
 	scheduler     *scheduler.Scheduler
 	initialized   atomic.Bool
 
-	// IDs provider for fetching (from markets service)
 	idsProvider   IIdsProvider
 	idsProviderMu sync.RWMutex
 
-	// Extra IDs provider (from coinslist service)
 	extraIdsProvider   IIdsProvider
 	extraIdsProviderMu sync.RWMutex
 
-	// Tier states
 	tierStates   map[string]*TierState
 	tierStatesMu sync.RWMutex
 }
 
-// NewPeriodicUpdater creates a new periodic updater
 func NewPeriodicUpdater(
 	cfg *config.FetcherByIdConfig,
 	client *Client,
@@ -54,7 +49,7 @@ func NewPeriodicUpdater(
 		client,
 		cfg.Name,
 		cfg.GetChunkSize(),
-		ChunksDefaultRequestDelay, // Use default delay
+		ChunksDefaultRequestDelay,
 		cfg.IsBatchMode(),
 	)
 
@@ -67,7 +62,6 @@ func NewPeriodicUpdater(
 		tierStates:    make(map[string]*TierState),
 	}
 
-	// Initialize tier states
 	for _, tier := range cfg.Tiers {
 		u.tierStates[tier.Name] = &TierState{}
 	}
@@ -75,60 +69,25 @@ func NewPeriodicUpdater(
 	return u
 }
 
-// SetIdsProvider sets the main IDs provider (from markets service)
 func (u *PeriodicUpdater) SetIdsProvider(provider IIdsProvider) {
 	u.idsProviderMu.Lock()
 	defer u.idsProviderMu.Unlock()
 	u.idsProvider = provider
 }
 
-// SetExtraIdsProvider sets the extra IDs provider (from coinslist service)
 func (u *PeriodicUpdater) SetExtraIdsProvider(provider IIdsProvider) {
 	u.extraIdsProviderMu.Lock()
 	defer u.extraIdsProviderMu.Unlock()
 	u.extraIdsProvider = provider
 }
 
-// Start begins periodic updates
 func (u *PeriodicUpdater) Start(ctx context.Context) error {
 	if err := u.cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	if u.cfg.HasTiers() {
-		return u.startWithTiers(ctx)
-	}
-
-	return u.startSimple(ctx)
-}
-
-// startSimple starts the updater in simple mode (no tiers)
-func (u *PeriodicUpdater) startSimple(ctx context.Context) error {
-	updateInterval := u.cfg.UpdateInterval
-	if updateInterval <= 0 {
-		log.Printf("%s: Periodic updates disabled (interval: %v)", u.cfg.Name, updateInterval)
-		return nil
-	}
-
-	u.scheduler = scheduler.New(updateInterval, func(ctx context.Context) {
-		if err := u.fetchAndUpdate(ctx); err != nil {
-			log.Printf("%s: Error updating data: %v", u.cfg.Name, err)
-		} else {
-			u.initialized.Store(true)
-		}
-	})
-
-	u.scheduler.Start(ctx, true)
-
-	log.Printf("%s: Started periodic updater with interval %v", u.cfg.Name, updateInterval)
-	return nil
-}
-
-// startWithTiers starts the updater in tier-based mode
-func (u *PeriodicUpdater) startWithTiers(ctx context.Context) error {
 	log.Printf("%s: Starting periodic updater with %d tiers", u.cfg.Name, len(u.cfg.Tiers))
 
-	// Single scheduler that checks all tiers every 2 seconds
 	u.scheduler = scheduler.New(2*time.Second, func(ctx context.Context) {
 		u.checkAndUpdateTiers(ctx, false)
 	})
@@ -138,30 +97,22 @@ func (u *PeriodicUpdater) startWithTiers(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops periodic updates
 func (u *PeriodicUpdater) Stop() {
 	if u.scheduler != nil {
 		u.scheduler.Stop()
 	}
 }
 
-// IsInitialized returns true if updater has successfully fetched data at least once
 func (u *PeriodicUpdater) IsInitialized() bool {
 	return u.initialized.Load()
 }
 
-// ForceUpdate triggers an immediate update
 func (u *PeriodicUpdater) ForceUpdate(ctx context.Context) error {
-	if u.cfg.HasTiers() {
-		u.checkAndUpdateTiers(ctx, true)
-		return nil
-	}
-	return u.fetchAndUpdate(ctx)
+	u.checkAndUpdateTiers(ctx, true)
+	return nil
 }
 
-// checkAndUpdateTiers checks all tiers and updates those that need updating
 func (u *PeriodicUpdater) checkAndUpdateTiers(ctx context.Context, force bool) {
-	// Get all IDs
 	allIds, err := u.getAllIds()
 	if err != nil {
 		log.Printf("%s: Failed to get IDs: %v", u.cfg.Name, err)
@@ -178,7 +129,6 @@ func (u *PeriodicUpdater) checkAndUpdateTiers(ctx context.Context, force bool) {
 		shouldUpdate := false
 		var isUpdating bool
 
-		// Check tier state
 		u.tierStatesMu.RLock()
 		state := u.tierStates[tier.Name]
 		if state == nil {
@@ -188,7 +138,6 @@ func (u *PeriodicUpdater) checkAndUpdateTiers(ctx context.Context, force bool) {
 		lastUpdate := state.LastUpdate
 		isUpdating = state.IsUpdating
 
-		// Check for stuck updates
 		if isUpdating && state.UpdateStartTime != nil {
 			updateDuration := now.Sub(*state.UpdateStartTime)
 			maxUpdateDuration := 10 * time.Minute
@@ -221,19 +170,15 @@ func (u *PeriodicUpdater) checkAndUpdateTiers(ctx context.Context, force bool) {
 	}
 }
 
-// fetchAndUpdateTier fetches data for a specific tier
 func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.GenericTier, allIds []string) error {
 	defer u.metricsWriter.TrackDataFetchCycle()()
 
-	// Mark tier as updating
 	u.setTierUpdating(tier.Name, true)
 	defer u.setTierUpdating(tier.Name, false)
 
-	// Calculate ID range for this tier
-	fromIndex := tier.IdFrom - 1 // Convert to 0-based
+	fromIndex := tier.IdFrom - 1
 	toIndex := tier.IdTo - 1
 
-	// Validate indices
 	if fromIndex < 0 {
 		log.Printf("%s: Tier '%s' has invalid id_from (%d), must be >= 1",
 			u.cfg.Name, tier.Name, tier.IdFrom)
@@ -261,9 +206,7 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ge
 	log.Printf("%s: Fetching data for tier '%s' with %d IDs (range: %d-%d)",
 		u.cfg.Name, tier.Name, len(tierIds), tier.IdFrom, tier.IdTo)
 
-	// Fetch data using chunks fetcher with onChunk callback to cache immediately
 	data, err := u.chunksFetcher.FetchData(ctx, tierIds, func(chunkData map[string][]byte) {
-		// Cache each chunk immediately as it's fetched
 		if u.onUpdated != nil {
 			_ = u.onUpdated(ctx, chunkData)
 		}
@@ -272,14 +215,12 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ge
 		return err
 	}
 
-	// Fetch extra IDs from coinslist if enabled
 	if tier.FetchCoinslistIds {
 		extraData, extraErr := u.fetchExtraIds(ctx, data)
 		if extraErr != nil {
 			log.Printf("%s: Failed to fetch extra IDs for tier '%s': %v",
 				u.cfg.Name, tier.Name, extraErr)
 		} else if len(extraData) > 0 {
-			// Merge extra data
 			for id, d := range extraData {
 				data[id] = d
 			}
@@ -294,14 +235,12 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ge
 
 	u.metricsWriter.RecordCacheSize(len(data))
 
-	// Update tier timestamp
 	u.tierStatesMu.Lock()
 	if state, exists := u.tierStates[tier.Name]; exists {
 		state.LastUpdate = time.Now()
 	}
 	u.tierStatesMu.Unlock()
 
-	// Call the callback with updated data
 	if u.onUpdated != nil {
 		if err := u.onUpdated(ctx, data); err != nil {
 			return fmt.Errorf("callback failed: %w", err)
@@ -314,7 +253,6 @@ func (u *PeriodicUpdater) fetchAndUpdateTier(ctx context.Context, tier config.Ge
 	return nil
 }
 
-// fetchExtraIds fetches IDs from coinslist that are not in the current tier's data
 func (u *PeriodicUpdater) fetchExtraIds(ctx context.Context, existingData map[string][]byte) (map[string][]byte, error) {
 	u.extraIdsProviderMu.RLock()
 	provider := u.extraIdsProvider
@@ -324,8 +262,7 @@ func (u *PeriodicUpdater) fetchExtraIds(ctx context.Context, existingData map[st
 		return nil, nil
 	}
 
-	// Get extra IDs from provider (fresh data on each call)
-	extraIds, err := provider.GetIds(0) // 0 = all available
+	extraIds, err := provider.GetIds(0)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +271,6 @@ func (u *PeriodicUpdater) fetchExtraIds(ctx context.Context, existingData map[st
 		return nil, nil
 	}
 
-	// Filter to IDs that are not in the current tier's data
 	var missingIds []string
 	for _, id := range extraIds {
 		if _, exists := existingData[id]; !exists {
@@ -349,7 +285,6 @@ func (u *PeriodicUpdater) fetchExtraIds(ctx context.Context, existingData map[st
 
 	log.Printf("%s: Fetching %d extra IDs", u.cfg.Name, len(missingIds))
 
-	// Fetch with onChunk callback to cache immediately
 	return u.chunksFetcher.FetchData(ctx, missingIds, func(chunkData map[string][]byte) {
 		if u.onUpdated != nil {
 			_ = u.onUpdated(ctx, chunkData)
@@ -357,7 +292,6 @@ func (u *PeriodicUpdater) fetchExtraIds(ctx context.Context, existingData map[st
 	})
 }
 
-// setTierUpdating sets the updating state for a tier
 func (u *PeriodicUpdater) setTierUpdating(tierName string, updating bool) {
 	u.tierStatesMu.Lock()
 	defer u.tierStatesMu.Unlock()
@@ -377,7 +311,6 @@ func (u *PeriodicUpdater) setTierUpdating(tierName string, updating bool) {
 	}
 }
 
-// getAllIds retrieves IDs from the provider
 func (u *PeriodicUpdater) getAllIds() ([]string, error) {
 	u.idsProviderMu.RLock()
 	provider := u.idsProvider
@@ -388,69 +321,5 @@ func (u *PeriodicUpdater) getAllIds() ([]string, error) {
 	}
 
 	limit := u.cfg.GetMaxIdLimit()
-	return provider.GetIds(limit)
-}
-
-// fetchAndUpdate fetches data and calls the callback (simple mode)
-func (u *PeriodicUpdater) fetchAndUpdate(ctx context.Context) error {
-	u.metricsWriter.ResetCycleMetrics()
-	defer u.metricsWriter.TrackDataFetchCycle()()
-
-	// Get IDs to fetch
-	ids, err := u.getIds()
-	if err != nil {
-		return fmt.Errorf("failed to get IDs: %w", err)
-	}
-
-	if len(ids) == 0 {
-		log.Printf("%s: No IDs to fetch, skipping update", u.cfg.Name)
-		return nil
-	}
-
-	log.Printf("%s: Fetching data for %d IDs (mode: %s)", u.cfg.Name, len(ids), u.cfg.GetFetchMode())
-
-	// Fetch data using chunks fetcher with onChunk callback to cache immediately
-	data, err := u.chunksFetcher.FetchData(ctx, ids, func(chunkData map[string][]byte) {
-		// Cache each chunk immediately as it's fetched
-		if u.onUpdated != nil {
-			_ = u.onUpdated(ctx, chunkData)
-		}
-	})
-	if err != nil {
-		return err
-	}
-
-	if len(data) == 0 {
-		return fmt.Errorf("failed to fetch any data")
-	}
-
-	u.metricsWriter.RecordCacheSize(len(data))
-
-	// Call the callback with updated data
-	if u.onUpdated != nil {
-		if err := u.onUpdated(ctx, data); err != nil {
-			return fmt.Errorf("callback failed: %w", err)
-		}
-	}
-
-	log.Printf("%s: Updated cache with %d items", u.cfg.Name, len(data))
-	return nil
-}
-
-// getIds retrieves IDs from the provider (simple mode)
-func (u *PeriodicUpdater) getIds() ([]string, error) {
-	u.idsProviderMu.RLock()
-	provider := u.idsProvider
-	u.idsProviderMu.RUnlock()
-
-	if provider == nil {
-		return nil, fmt.Errorf("IDs provider not set")
-	}
-
-	limit := u.cfg.TopIdsLimit
-	if limit <= 0 {
-		limit = 1000 // default limit
-	}
-
 	return provider.GetIds(limit)
 }

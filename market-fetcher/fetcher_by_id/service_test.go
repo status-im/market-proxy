@@ -14,13 +14,19 @@ import (
 
 func createTestGenericConfig() *config.FetcherByIdConfig {
 	return &config.FetcherByIdConfig{
-		Name:           "test",
-		EndpointPath:   "/api/v3/coins/{{id}}",
-		TTL:            1 * time.Hour,
-		UpdateInterval: 30 * time.Minute,
-		TopIdsLimit:    100,
+		Name:         "test",
+		EndpointPath: "/api/v3/coins/{{id}}",
+		TTL:          1 * time.Hour,
 		ParamsOverride: map[string]interface{}{
 			"localization": false,
+		},
+		Tiers: []config.GenericTier{
+			{
+				Name:           "top-100",
+				IdFrom:         1,
+				IdTo:           100,
+				UpdateInterval: 30 * time.Minute,
+			},
 		},
 	}
 }

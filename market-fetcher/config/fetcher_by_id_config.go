@@ -54,21 +54,13 @@ type FetcherByIdConfig struct {
 	// TTL is the time-to-live for cached data
 	TTL time.Duration `yaml:"ttl"`
 
-	// UpdateInterval is how often to refresh the data (used when no tiers configured)
-	UpdateInterval time.Duration `yaml:"update_interval"`
-
-	// TopIdsLimit is the maximum number of IDs to fetch (from top markets)
-	// Used when no tiers configured
-	TopIdsLimit int `yaml:"top_ids_limit"`
-
 	// ChunkSize is the number of IDs per request in batch mode (default: 100)
 	ChunkSize int `yaml:"chunk_size"`
 
 	// ParamsOverride are query parameters for API requests
 	ParamsOverride map[string]interface{} `yaml:"params_override"`
 
-	// Tiers defines tier-based configuration for different token ranges
-	// When configured, UpdateInterval and TopIdsLimit are ignored
+	// Tiers defines tier-based configuration for different token ranges (required)
 	Tiers []GenericTier `yaml:"tiers"`
 }
 
@@ -111,24 +103,19 @@ func (c *FetcherByIdConfig) GetCacheKeyPrefix() string {
 	return c.Name
 }
 
-// BuildCacheKey creates a cache key for the given ID
 func (c *FetcherByIdConfig) BuildCacheKey(id string) string {
 	return fmt.Sprintf("%s:id:%s", c.GetCacheKeyPrefix(), id)
 }
 
-// GetMaxIdLimit returns the maximum ID limit from tiers or TopIdsLimit
 func (c *FetcherByIdConfig) GetMaxIdLimit() int {
-	if c.HasTiers() {
-		maxTo := 0
-		for _, tier := range c.Tiers {
-			if tier.IdTo > maxTo {
-				maxTo = tier.IdTo
-			}
+	maxTo := 0
+	for _, tier := range c.Tiers {
+		if tier.IdTo > maxTo {
+			maxTo = tier.IdTo
 		}
-		return maxTo
 	}
-	if c.TopIdsLimit > 0 {
-		return c.TopIdsLimit
+	if maxTo > 0 {
+		return maxTo
 	}
 	return 1000 // default
 }
@@ -152,30 +139,23 @@ func (c *FetcherByIdConfig) Validate() error {
 			TemplatePlaceholderID, TemplatePlaceholderIDsList)
 	}
 
-	// Cannot have both placeholders
 	if hasSinglePlaceholder && hasBatchPlaceholder {
 		return fmt.Errorf("endpoint_path cannot contain both %s and %s placeholders",
 			TemplatePlaceholderID, TemplatePlaceholderIDsList)
 	}
 
-	// Validate tiers if configured
-	if c.HasTiers() {
-		if err := c.validateTiers(); err != nil {
-			return fmt.Errorf("tier configuration validation failed: %w", err)
-		}
-	} else {
-		// When no tiers, UpdateInterval is required
-		if c.UpdateInterval <= 0 {
-			return fmt.Errorf("update_interval is required when no tiers configured")
-		}
+	if !c.HasTiers() {
+		return fmt.Errorf("tiers configuration is required")
+	}
+
+	if err := c.validateTiers(); err != nil {
+		return fmt.Errorf("tier configuration validation failed: %w", err)
 	}
 
 	return nil
 }
 
-// validateTiers validates that tier ranges don't overlap and are valid
 func (c *FetcherByIdConfig) validateTiers() error {
-	// Create a copy of tiers and sort by IdFrom for easier validation
 	tiers := make([]GenericTier, len(c.Tiers))
 	copy(tiers, c.Tiers)
 	sort.Slice(tiers, func(i, j int) bool {
@@ -183,7 +163,6 @@ func (c *FetcherByIdConfig) validateTiers() error {
 	})
 
 	for i, tier := range tiers {
-		// Validate individual tier
 		if tier.Name == "" {
 			return fmt.Errorf("tier at index %d: name cannot be empty", i)
 		}
@@ -211,7 +190,6 @@ func (c *FetcherByIdConfig) validateTiers() error {
 	return nil
 }
 
-// BuildQueryParams returns query parameters as string map
 func (c *FetcherByIdConfig) BuildQueryParams() map[string]string {
 	result := make(map[string]string)
 

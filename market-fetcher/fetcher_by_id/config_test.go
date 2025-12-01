@@ -17,30 +17,42 @@ func TestFetcherByIdConfig_Validate(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name: "valid single mode config",
+			name: "valid single mode config with tiers",
 			config: config.FetcherByIdConfig{
-				Name:           "coins",
-				EndpointPath:   "/api/v3/coins/{{id}}",
-				TTL:            24 * time.Hour,
-				UpdateInterval: 30 * time.Minute,
-				TopIdsLimit:    1000,
+				Name:         "coins",
+				EndpointPath: "/api/v3/coins/{{id}}",
+				TTL:          24 * time.Hour,
+				Tiers: []config.GenericTier{
+					{
+						Name:           "top-1000",
+						IdFrom:         1,
+						IdTo:           1000,
+						UpdateInterval: 30 * time.Minute,
+					},
+				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid batch mode config",
+			name: "valid batch mode config with tiers",
 			config: config.FetcherByIdConfig{
-				Name:           "prices",
-				EndpointPath:   "/api/v3/simple/price?ids={{ids_list}}",
-				TTL:            10 * time.Minute,
-				UpdateInterval: 30 * time.Second,
-				TopIdsLimit:    500,
-				ChunkSize:      100,
+				Name:         "prices",
+				EndpointPath: "/api/v3/simple/price?ids={{ids_list}}",
+				TTL:          10 * time.Minute,
+				ChunkSize:    100,
+				Tiers: []config.GenericTier{
+					{
+						Name:           "top-500",
+						IdFrom:         1,
+						IdTo:           500,
+						UpdateInterval: 30 * time.Second,
+					},
+				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid config with tiers",
+			name: "valid config with multiple tiers",
 			config: config.FetcherByIdConfig{
 				Name:         "coins",
 				EndpointPath: "/api/v3/coins/{{id}}",
@@ -65,8 +77,10 @@ func TestFetcherByIdConfig_Validate(t *testing.T) {
 		{
 			name: "missing name",
 			config: config.FetcherByIdConfig{
-				EndpointPath:   "/api/v3/coins/{{id}}",
-				UpdateInterval: 30 * time.Minute,
+				EndpointPath: "/api/v3/coins/{{id}}",
+				Tiers: []config.GenericTier{
+					{Name: "tier1", IdFrom: 1, IdTo: 100, UpdateInterval: time.Hour},
+				},
 			},
 			wantErr: true,
 			errMsg:  "name is required",
@@ -74,8 +88,10 @@ func TestFetcherByIdConfig_Validate(t *testing.T) {
 		{
 			name: "missing endpoint_path",
 			config: config.FetcherByIdConfig{
-				Name:           "coins",
-				UpdateInterval: 30 * time.Minute,
+				Name: "coins",
+				Tiers: []config.GenericTier{
+					{Name: "tier1", IdFrom: 1, IdTo: 100, UpdateInterval: time.Hour},
+				},
 			},
 			wantErr: true,
 			errMsg:  "endpoint_path is required",
@@ -83,9 +99,11 @@ func TestFetcherByIdConfig_Validate(t *testing.T) {
 		{
 			name: "missing placeholder in endpoint",
 			config: config.FetcherByIdConfig{
-				Name:           "coins",
-				EndpointPath:   "/api/v3/coins/bitcoin",
-				UpdateInterval: 30 * time.Minute,
+				Name:         "coins",
+				EndpointPath: "/api/v3/coins/bitcoin",
+				Tiers: []config.GenericTier{
+					{Name: "tier1", IdFrom: 1, IdTo: 100, UpdateInterval: time.Hour},
+				},
 			},
 			wantErr: true,
 			errMsg:  "must contain either",
@@ -93,21 +111,23 @@ func TestFetcherByIdConfig_Validate(t *testing.T) {
 		{
 			name: "both placeholders in endpoint",
 			config: config.FetcherByIdConfig{
-				Name:           "coins",
-				EndpointPath:   "/api/v3/coins/{{id}}?ids={{ids_list}}",
-				UpdateInterval: 30 * time.Minute,
+				Name:         "coins",
+				EndpointPath: "/api/v3/coins/{{id}}?ids={{ids_list}}",
+				Tiers: []config.GenericTier{
+					{Name: "tier1", IdFrom: 1, IdTo: 100, UpdateInterval: time.Hour},
+				},
 			},
 			wantErr: true,
 			errMsg:  "cannot contain both",
 		},
 		{
-			name: "missing update_interval without tiers",
+			name: "missing tiers",
 			config: config.FetcherByIdConfig{
 				Name:         "coins",
 				EndpointPath: "/api/v3/coins/{{id}}",
 			},
 			wantErr: true,
-			errMsg:  "update_interval is required",
+			errMsg:  "tiers configuration is required",
 		},
 		{
 			name: "overlapping tiers",
@@ -336,13 +356,7 @@ func TestFetcherByIdConfig_GetMaxIdLimit(t *testing.T) {
 	}
 	assert.Equal(t, 500, cfgWithTiers.GetMaxIdLimit())
 
-	// Without tiers, with TopIdsLimit
-	cfgWithLimit := &config.FetcherByIdConfig{
-		TopIdsLimit: 1000,
-	}
-	assert.Equal(t, 1000, cfgWithLimit.GetMaxIdLimit())
-
-	// Without tiers or limit
+	// Without tiers - returns default
 	cfgDefault := &config.FetcherByIdConfig{}
 	assert.Equal(t, 1000, cfgDefault.GetMaxIdLimit())
 }

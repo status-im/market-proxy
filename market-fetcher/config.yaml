@@ -21,13 +21,13 @@ api_key_settings:
 coingecko_leaderboard:
   top_markets_update_interval: 30m
   top_markets_limit: 5000
-  currency: usd                 # currency for market data
+  currency: usd
   top_prices_update_interval: 30s # 30 seconds interval for price updates
   top_prices_limit: 500         # maximum number of top tokens to track prices
 
 coingecko_markets:
-  ttl: 35m                    # default TTL
-  market_params_normalize:    # override user parameters to normalize cache keys
+  ttl: 35m
+  market_params_normalize:
     vs_currency: "usd"        # always use USD regardless of user request
     order: "market_cap_desc"  # always order by market cap
     per_page: 250             # always use max per page
@@ -35,40 +35,38 @@ coingecko_markets:
     price_change_percentage: "1h,24h"  # always include 1h and 24h price changes
     category: ""              # never filter by category
   
-  # Tier-based configuration for different token ranges
   tiers:
-    - name: "top-500"           # High-frequency tier for top tokens
-      page_from: 1              # Top 500 tokens (first two pages with per_page: 250)
+    - name: "top-500"
+      page_from: 1
       page_to: 2
-      update_interval: 30s      # Update every 30 seconds
+      update_interval: 30s
 
-    - name: "top-501-5000"      # Medium-frequency tier for mid-range tokens
-      page_from: 3              # from 501-5000
+    - name: "top-501-5000"
+      page_from: 3
       page_to: 20
-      update_interval: 30m      # Update every 30 minutes
-      fetch_coinslist_ids: true # fetch missing tokens from coinslist list filtered by platforms
+      update_interval: 30m
+      fetch_coinslist_ids: true # fetch extra prices (from coins/list)
 
 coingecko_prices:
   chunk_size: 500             # number of tokens to fetch in one request
-  ttl: 10m                    # time to live for cached price data
-  currencies:                 # default currencies to fetch
+  ttl: 10m
+  currencies:                 # default currencies
     - usd
     - eur
     - btc
     - eth
   
-  # Tier-based configuration for different token ranges
   tiers:
-    - name: "top-1000"          # High-frequency tier for top tokens
-      token_from: 1             # Top 1000 tokens
+    - name: "top-1000"
+      token_from: 1
       token_to: 1000
-      update_interval: 30s      # Update every 30 seconds
+      update_interval: 30s
 
-    - name: "top-1001-5000"     # Medium-frequency tier for mid-range tokens
-      token_from: 1001          # from 1001-5000
+    - name: "top-1001-5000"
+      token_from: 1001
       token_to: 5000
-      update_interval: 5m       # Update every 5 minutes
-      fetch_coinslist_ids: true # fetch missing tokens from coinslist list filtered by platforms
+      update_interval: 5m
+      fetch_coinslist_ids: true # fetch extra prices (from coins/list)
 
 coingecko_market_chart:
   hourly_ttl: 30m             # TTL for hourly data (requests with days <= daily_data_threshold)
@@ -77,20 +75,46 @@ coingecko_market_chart:
   try_free_api_first: true    # try free API (no key) first when no interval is specified
 
 coingecko_coinslist:
-  update_interval: 30m        # 30 minutes
+  update_interval: 30m
   supported_platforms:
     - ethereum
-    - optimistic-ethereum  # Optimism
-    - arbitrum-one         # Arbitrum
+    - optimistic-ethereum
+    - arbitrum-one
     - base
     - status
-    - binance-smart-chain  # BSC
+    - binance-smart-chain
 
 coingecko_token_list:
-  update_interval: 5m      # 5 minutes as requested
+  update_interval: 5m
   supported_platforms:
     - ethereum
-    - optimistic-ethereum  # Optimism
-    - arbitrum-one         # Arbitrum
+    - optimistic-ethereum
+    - arbitrum-one
     - base
-    - binance-smart-chain  # BSC
+    - binance-smart-chain
+
+coingecko_coins:
+  name: "coins"
+  endpoint_path: "/api/v3/coins/{{id}}"
+  ttl: 72h                     # 3 days cache for coin data
+  
+  # Query parameters for API requests (reduce response)
+  params_override:
+    localization: false
+    tickers: false
+    market_data: false
+    community_data: false
+    developer_data: false
+    sparkline: false
+  
+  tiers:
+    - name: "top-500"
+      id_from: 1
+      id_to: 500
+      update_interval: 1d
+
+    - name: "top-501-10000"
+      id_from: 501
+      id_to: 10000
+      update_interval: 3d
+      fetch_coinslist_ids: true

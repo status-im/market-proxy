@@ -16,6 +16,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 			"coingecko_markets":      "unknown",
 			"coingecko_market_chart": "unknown",
 			"coingecko_platforms":    "unknown",
+			"coingecko_coins":        "unknown",
 		},
 	}
 
@@ -45,6 +46,10 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	if s.assetsPlatformsService.Healthy() {
 		status["services"].(map[string]string)["coingecko_platforms"] = "up"
+	}
+
+	if s.coinsService.Healthy() {
+		status["services"].(map[string]string)["coingecko_coins"] = "up"
 	}
 
 	s.sendJSONResponse(w, status)

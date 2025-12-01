@@ -9,13 +9,11 @@ import (
 )
 
 const (
-	// ChunksDefaultChunkSize is the default chunk size for batch requests
-	ChunksDefaultChunkSize = 250
-	// ChunksDefaultRequestDelay is the default request delay in milliseconds
+	ChunksDefaultChunkSize    = 250
 	ChunksDefaultRequestDelay = 1000
 )
 
-// ChunksFetcher handles fetching data in chunks using the generic client
+// ChunksFetcher handles fetching data in chunks
 type ChunksFetcher struct {
 	client       *Client
 	name         string
@@ -24,13 +22,11 @@ type ChunksFetcher struct {
 	isBatchMode  bool
 }
 
-// NewChunksFetcher creates a new chunks fetcher
 func NewChunksFetcher(client *Client, name string, chunkSize int, requestDelayMs int, isBatchMode bool) *ChunksFetcher {
 	var requestDelay time.Duration
 	if requestDelayMs >= 0 {
 		requestDelay = time.Duration(requestDelayMs) * time.Millisecond
 	} else {
-		// Negative delay means use default
 		requestDelay = ChunksDefaultRequestDelay * time.Millisecond
 	}
 
@@ -47,8 +43,6 @@ func NewChunksFetcher(client *Client, name string, chunkSize int, requestDelayMs
 	}
 }
 
-// FetchData fetches data for all IDs in chunks
-// onChunk callback is called for each successfully fetched chunk with the chunk data
 func (f *ChunksFetcher) FetchData(ctx context.Context, ids []string, onChunk func(map[string][]byte)) (map[string][]byte, error) {
 	if len(ids) == 0 {
 		return make(map[string][]byte), nil
@@ -65,7 +59,7 @@ func (f *ChunksFetcher) fetchSingle(ctx context.Context, ids []string, onChunk f
 	startTime := time.Now()
 	log.Printf("%s: Fetching data for %d IDs in single mode", f.name, len(ids))
 
-	chunkSize := 1 // Single mode: one ID per request
+	chunkSize := 1
 
 	fetchFunc := func(ctx context.Context, chunk []string) (map[string][]byte, error) {
 		if len(chunk) == 0 {
@@ -81,7 +75,6 @@ func (f *ChunksFetcher) fetchSingle(ctx context.Context, ids []string, onChunk f
 
 		chunkData := map[string][]byte{id: result}
 
-		// Call onChunk callback if provided
 		if onChunk != nil {
 			onChunk(chunkData)
 		}
@@ -108,7 +101,6 @@ func (f *ChunksFetcher) fetchSingle(ctx context.Context, ids []string, onChunk f
 	return result, nil
 }
 
-// fetchBatch fetches data in batch mode
 func (f *ChunksFetcher) fetchBatch(ctx context.Context, ids []string, onChunk func(map[string][]byte)) (map[string][]byte, error) {
 	startTime := time.Now()
 	numChunks := (len(ids) + f.chunkSize - 1) / f.chunkSize
@@ -121,7 +113,6 @@ func (f *ChunksFetcher) fetchBatch(ctx context.Context, ids []string, onChunk fu
 			return nil, err
 		}
 
-		// Call onChunk callback if provided
 		if onChunk != nil {
 			onChunk(chunkData)
 		}

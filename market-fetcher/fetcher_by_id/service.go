@@ -12,7 +12,7 @@ import (
 	"github.com/status-im/market-proxy/metrics"
 )
 
-// Service manages data fetching with caching for a generic endpoint
+// Service manages id-parametrized data fetching with caching
 type Service struct {
 	cfg                 *config.FetcherByIdConfig
 	globalCfg           *config.Config
@@ -23,7 +23,6 @@ type Service struct {
 	periodicUpdater     *PeriodicUpdater
 }
 
-// NewService creates a new generic service
 func NewService(globalCfg *config.Config, fetcherCfg *config.FetcherByIdConfig, cacheService cache.ICache) *Service {
 	metricsWriter := metrics.NewMetricsWriter(fetcherCfg.Name)
 	client := NewClient(globalCfg, fetcherCfg, metricsWriter)
@@ -37,7 +36,6 @@ func NewService(globalCfg *config.Config, fetcherCfg *config.FetcherByIdConfig, 
 		subscriptionManager: events.NewSubscriptionManager(),
 	}
 
-	// Create periodic updater with callback
 	service.periodicUpdater = NewPeriodicUpdater(
 		fetcherCfg,
 		client,
@@ -48,18 +46,15 @@ func NewService(globalCfg *config.Config, fetcherCfg *config.FetcherByIdConfig, 
 	return service
 }
 
-// SetIdsProvider sets the main IDs provider for the service (from markets service)
 func (s *Service) SetIdsProvider(provider IIdsProvider) {
 	s.periodicUpdater.SetIdsProvider(provider)
 }
 
 // SetExtraIdsProvider sets the extra IDs provider (from coinslist service)
-// Used when fetch_coinslist_ids is enabled in tier configuration
 func (s *Service) SetExtraIdsProvider(provider IIdsProvider) {
 	s.periodicUpdater.SetExtraIdsProvider(provider)
 }
 
-// onDataUpdated is the callback called when data is updated
 func (s *Service) onDataUpdated(ctx context.Context, data map[string][]byte) error {
 	if err := s.cacheByID(data); err != nil {
 		log.Printf("%s: Failed to cache data: %v", s.cfg.Name, err)
@@ -72,7 +67,6 @@ func (s *Service) onDataUpdated(ctx context.Context, data map[string][]byte) err
 	return nil
 }
 
-// cacheByID stores data in cache with prefixed keys
 func (s *Service) cacheByID(data map[string][]byte) error {
 	if len(data) == 0 {
 		return nil
@@ -92,7 +86,6 @@ func (s *Service) cacheByID(data map[string][]byte) error {
 	return nil
 }
 
-// Start starts the service
 func (s *Service) Start(ctx context.Context) error {
 	if s.cache == nil {
 		return fmt.Errorf("cache dependency not provided")
@@ -102,13 +95,12 @@ func (s *Service) Start(ctx context.Context) error {
 	return s.periodicUpdater.Start(ctx)
 }
 
-// Stop stops the service
 func (s *Service) Stop() {
 	s.periodicUpdater.Stop()
 	log.Printf("%s: Service stopped", s.cfg.Name)
 }
 
-// GetByID returns cached data for a specific ID
+// GetByID returns cached data for a specific ID (for HTTP API)
 func (s *Service) GetByID(id string) ([]byte, interfaces.CacheStatus, error) {
 	cacheKey := s.cfg.BuildCacheKey(id)
 
@@ -129,13 +121,11 @@ func (s *Service) GetByID(id string) ([]byte, interfaces.CacheStatus, error) {
 	return data, interfaces.CacheStatusFull, nil
 }
 
-// GetMultiple returns cached data for multiple IDs
 func (s *Service) GetMultiple(ids []string) (map[string][]byte, []string, interfaces.CacheStatus) {
 	if len(ids) == 0 {
 		return make(map[string][]byte), nil, interfaces.CacheStatusFull
 	}
 
-	// Build cache keys
 	cacheKeys := make([]string, len(ids))
 	keyToID := make(map[string]string)
 	for i, id := range ids {
@@ -144,21 +134,18 @@ func (s *Service) GetMultiple(ids []string) (map[string][]byte, []string, interf
 		keyToID[cacheKey] = id
 	}
 
-	// Get from cache
 	cachedData, missingKeys, err := s.cache.Get(cacheKeys)
 	if err != nil {
 		log.Printf("%s: Failed to get from cache: %v", s.cfg.Name, err)
 		return nil, ids, interfaces.CacheStatusMiss
 	}
 
-	// Build result with original IDs
 	result := make(map[string][]byte)
 	for cacheKey, data := range cachedData {
 		id := keyToID[cacheKey]
 		result[id] = data
 	}
 
-	// Convert missing keys back to IDs
 	var missing []string
 	for _, cacheKey := range missingKeys {
 		if id, exists := keyToID[cacheKey]; exists {
@@ -166,7 +153,6 @@ func (s *Service) GetMultiple(ids []string) (map[string][]byte, []string, interf
 		}
 	}
 
-	// Determine cache status
 	var status interfaces.CacheStatus
 	if len(missing) == 0 {
 		status = interfaces.CacheStatusFull
@@ -179,27 +165,22 @@ func (s *Service) GetMultiple(ids []string) (map[string][]byte, []string, interf
 	return result, missing, status
 }
 
-// Healthy checks if service is initialized and has data
 func (s *Service) Healthy() bool {
 	return s.periodicUpdater.IsInitialized()
 }
 
-// SubscribeOnUpdate subscribes to data update notifications
 func (s *Service) SubscribeOnUpdate() events.ISubscription {
 	return s.subscriptionManager.Subscribe()
 }
 
-// ForceUpdate triggers an immediate update
 func (s *Service) ForceUpdate(ctx context.Context) error {
 	return s.periodicUpdater.ForceUpdate(ctx)
 }
 
-// GetName returns the service name
 func (s *Service) GetName() string {
 	return s.cfg.Name
 }
 
-// GetConfig returns the fetcher configuration
 func (s *Service) GetConfig() *config.FetcherByIdConfig {
 	return s.cfg
 }

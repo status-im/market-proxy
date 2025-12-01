@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestURLBuilder_BuildSingleURL(t *testing.T) {
+func TestRequestBuilder_BuildSingleURL(t *testing.T) {
 	tests := []struct {
 		name         string
 		baseURL      string
@@ -60,7 +60,7 @@ func TestURLBuilder_BuildSingleURL(t *testing.T) {
 				EndpointPath:   tt.endpointPath,
 				ParamsOverride: tt.params,
 			}
-			builder := NewURLBuilder(tt.baseURL, cfg)
+			builder := NewRequestBuilder(tt.baseURL, cfg)
 
 			url, err := builder.BuildSingleURL(tt.id)
 
@@ -76,7 +76,7 @@ func TestURLBuilder_BuildSingleURL(t *testing.T) {
 	}
 }
 
-func TestURLBuilder_BuildBatchURL(t *testing.T) {
+func TestRequestBuilder_BuildBatchURL(t *testing.T) {
 	tests := []struct {
 		name         string
 		baseURL      string
@@ -120,7 +120,7 @@ func TestURLBuilder_BuildBatchURL(t *testing.T) {
 				EndpointPath:   tt.endpointPath,
 				ParamsOverride: tt.params,
 			}
-			builder := NewURLBuilder(tt.baseURL, cfg)
+			builder := NewRequestBuilder(tt.baseURL, cfg)
 
 			url, err := builder.BuildBatchURL(tt.ids)
 
@@ -175,18 +175,18 @@ func TestRequestBuilder_BuildBatchRequest(t *testing.T) {
 	assert.Contains(t, req.URL.String(), "vs_currencies=usd")
 }
 
-func TestURLBuilder_TrailingSlash(t *testing.T) {
+func TestRequestBuilder_TrailingSlash(t *testing.T) {
 	// Base URL with trailing slash should be handled correctly
 	cfg := &config.FetcherByIdConfig{
 		EndpointPath: "/api/v3/coins/{{id}}",
 	}
 
-	builder1 := NewURLBuilder("https://api.coingecko.com/", cfg)
+	builder1 := NewRequestBuilder("https://api.coingecko.com/", cfg)
 	url1, err := builder1.BuildSingleURL("bitcoin")
 	assert.NoError(t, err)
 	assert.Contains(t, url1, "https://api.coingecko.com/api/v3/coins/bitcoin")
 
-	builder2 := NewURLBuilder("https://api.coingecko.com", cfg)
+	builder2 := NewRequestBuilder("https://api.coingecko.com", cfg)
 	url2, err := builder2.BuildSingleURL("bitcoin")
 	assert.NoError(t, err)
 
