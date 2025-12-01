@@ -197,13 +197,11 @@ func (s *Server) handleCoinsID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set cache status header
 	s.setCacheStatusHeader(w, cacheStatus.String())
 
-	// Send raw JSON response (already in JSON format)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers
