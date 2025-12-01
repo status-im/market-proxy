@@ -62,6 +62,20 @@ coingecko_coinslist:
   request_delay: 100ms      # short delay for tests
   supported_platforms: []   # array of supported blockchain platforms
 
+coingecko_coins:
+  name: "coins"
+  endpoint_path: "/api/v3/coins/{{id}}"
+  ttl: 1m
+  params_override:
+    localization: false
+    tickers: false
+    market_data: false
+  tiers:
+    - name: "test-tier"
+      id_from: 1
+      id_to: 10
+      update_interval: 1s
+
 tokens_file: "%s"           # path to tokens file will be inserted
 
 # URLs for API (mock)
