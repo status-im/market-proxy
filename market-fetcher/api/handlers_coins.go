@@ -176,6 +176,34 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 	s.sendJSONResponse(w, data)
 }
 
+// handleCoinsID implements CoinGecko-compatible /api/v3/coins/{id} endpoint
+func (s *Server) handleCoinsID(w http.ResponseWriter, r *http.Request) {
+	// Path format: /api/v1/coins/{id}
+	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathSegments) < 4 || pathSegments[3] == "" {
+		http.Error(w, "Missing coin ID in path", http.StatusBadRequest)
+		return
+	}
+
+	coinID := strings.ToLower(pathSegments[3])
+
+	data, cacheStatus, err := s.coinsService.GetCoin(coinID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, fmt.Sprintf("Coin not found: %s", coinID), http.StatusNotFound)
+		} else {
+			http.Error(w, fmt.Sprintf("Error fetching coin data: %v", err), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	s.setCacheStatusHeader(w, cacheStatus.String())
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers
 func (s *Server) handleCoinsRoutes(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -194,6 +222,9 @@ func (s *Server) handleCoinsRoutes(w http.ResponseWriter, r *http.Request) {
 				s.handleMarketChart(w, r)
 				return
 			}
+			// Otherwise, treat it as a coin ID request: /api/v1/coins/{id}
+			s.handleCoinsID(w, r)
+			return
 		}
 	}
 

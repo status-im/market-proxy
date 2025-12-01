@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/status-im/market-proxy/cache"
 	"gopkg.in/yaml.v3"
+
+	"github.com/status-im/market-proxy/cache"
 )
 
 type Config struct {
@@ -14,6 +15,7 @@ type Config struct {
 	CoingeckoMarkets     MarketsFetcherConfig     `yaml:"coingecko_markets"`
 	CoingeckoPrices      PricesFetcherConfig      `yaml:"coingecko_prices"`
 	CoingeckoMarketChart MarketChartFetcherConfig `yaml:"coingecko_market_chart"`
+	CoingeckoCoins       FetcherByIdConfig        `yaml:"coingecko_coins"`
 	TokensFetcher        CoinslistFetcherConfig   `yaml:"coingecko_coinslist"`
 	TokenListFetcher     TokenListFetcherConfig   `yaml:"coingecko_token_list"`
 	TokensFile           string                   `yaml:"tokens_file"`

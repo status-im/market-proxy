@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
+import useCoinDescription from '../hooks/useCoinDescription';
 
 const Table = styled.table`
   width: 100%;
@@ -35,8 +36,83 @@ const TokenInfo = styled.div`
   flex-direction: column;
 `;
 
+const TokenNameWrapper = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
 const TokenName = styled.span`
   font-weight: 500;
+  cursor: help;
+  border-bottom: 1px dotted #ccc;
+  
+  &:hover {
+    color: #3861FB;
+  }
+`;
+
+const Tooltip = styled.div`
+  position: fixed;
+  z-index: 9999;
+  max-width: 400px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #e8e8e8;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  opacity: ${props => props.$visible ? 1 : 0};
+  transform: translateY(${props => props.$visible ? '0' : '-5px'});
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 20px;
+    width: 12px;
+    height: 12px;
+    background: #1a1a2e;
+    transform: rotate(45deg);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const TooltipHeader = styled.div`
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+`;
+
+const TooltipContent = styled.div`
+  color: #b8b8b8;
+`;
+
+const TooltipLoading = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #888;
+  
+  &::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 2px solid #444;
+    border-top-color: #3861FB;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 `;
 
 const TokenSymbol = styled.span`
@@ -150,6 +226,23 @@ const PageInfo = styled.div`
 function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const [hoveredToken, setHoveredToken] = useState(null);
+    const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+    const { descriptions, loading, fetchDescription } = useCoinDescription();
+
+    const handleTokenHover = useCallback((e, tokenId, tokenName) => {
+        const rect = e.target.getBoundingClientRect();
+        setTooltipPosition({
+            x: rect.left,
+            y: rect.bottom + 10
+        });
+        setHoveredToken({ id: tokenId, name: tokenName });
+        fetchDescription(tokenId);
+    }, [fetchDescription]);
+
+    const handleTokenLeave = useCallback(() => {
+        setHoveredToken(null);
+    }, []);
 
     const formatNumber = (num) => {
         if (!num && num !== 0) return '—';
@@ -272,7 +365,14 @@ function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick 
                                 <TokenCell>
                                     <TokenImage src={imageUrl} alt={name} />
                                     <TokenInfo>
-                                        <TokenName>{name}</TokenName>
+                                        <TokenNameWrapper>
+                                            <TokenName 
+                                                onMouseEnter={(e) => handleTokenHover(e, id, name)}
+                                                onMouseLeave={handleTokenLeave}
+                                            >
+                                                {name}
+                                            </TokenName>
+                                        </TokenNameWrapper>
                                         <TokenSymbol>{symbol}</TokenSymbol>
                                         <DataSource $source={source}>{source}</DataSource>
                                     </TokenInfo>
@@ -386,6 +486,26 @@ function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick 
                     <option value="100">100 per page</option>
                 </PageSizeSelector>
             </PaginationContainer>
+
+            {/* Description Tooltip */}
+            {hoveredToken && (
+                <Tooltip 
+                    $visible={!!hoveredToken}
+                    style={{ 
+                        left: tooltipPosition.x, 
+                        top: tooltipPosition.y 
+                    }}
+                >
+                    <TooltipHeader>{hoveredToken.name}</TooltipHeader>
+                    <TooltipContent>
+                        {loading[hoveredToken.id] ? (
+                            <TooltipLoading>Loading description</TooltipLoading>
+                        ) : (
+                            descriptions[hoveredToken.id] || 'Hover to load description...'
+                        )}
+                    </TooltipContent>
+                </Tooltip>
+            )}
         </>
     );
 }
