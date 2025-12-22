@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2025-11-13T00:00:00.000Z",
+  "timestamp": "2025-12-22T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 0,
+    "minor": 1,
     "patch": 0
   },
   "tags": {},
@@ -243,8 +243,10 @@
       "logoURI": "https://assets.coingecko.com/coins/images/4324/thumb/U85xTl2.png?1608111978",
       "contracts": {
         "1": "0x8290333cef9e6d528dd5618fb97a76f268f3edd4",
+        "10": "0xaeaeed23478c3a4b798e4ed40d8b7f41366ae861",
         "56": "0xf307910a4c7bbc79691fd374889b36d8531b08e3",
-        "42161": "0x1bfc5d35bf0f7b9e15dc24c78b8c02dbc1e95447"
+        "42161": "0xaeaeed23478c3a4b798e4ed40d8b7f41366ae861",
+        "59144": "0xa8ae6365383eb907e6b4b1b7e82a35752cc5ef8c"
       }
     },
     {
@@ -640,7 +642,8 @@
         "1": "0x4fabb145d64652a948d72533023f6e7a623c7c53",
         "10": "0x9c9e5fd8bbc25984b178fdce6117defa39d2db39",
         "56": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
-        "42161": "0x31190254504622cefdfa55a7d3d272e6462629a2"
+        "42161": "0x31190254504622cefdfa55a7d3d272e6462629a2",
+        "59144": "0x7d43aabc515c356145049227cee54b608342c0ad"
       }
     },
     {
@@ -662,7 +665,10 @@
       "logoURI": "https://coin-images.coingecko.com/coins/images/12632/large/pancakeswap-cake-logo_%281%29.png?1696512440",
       "contracts": {
         "1": "0x152649ea73beab28c5b49b26eb48f7ead6d4c898",
-        "42161": "0xcdc343ebf71e38f003ed6c80171f5b8d7cf58860"
+        "42161": "0x1b896893dfc86bb67cf57767298b9073d2c1ba2c",
+        "8453": "0x3055913c90fcc1a6ce9a358911721eeb942013a1",
+        "59144": "0x0d1e753a25ebda689453309112904807625befbe",
+        "56": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82"
       }
     },
     {
@@ -959,6 +965,7 @@
         "56": "0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3",
         "8453": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",
         "42161": "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
+        "59144": "0x4af15ec2a0bd43db75dd04e62faa3b8ef36b00d5",
         "11155111": "0x3e622317f8c93f7328350cf0b56d9ed4c620c5d6"
       }
     },
@@ -1187,6 +1194,21 @@
       "contracts": {
         "1": "0xbbc2ae13b23d715c30720f079fcd9b4a74093505",
         "42161": "0x2354c8e9ea898c751f1a15addeb048714d667f96"
+      }
+    },
+    {
+      "crossChainId": "ethos-reserve-note",
+      "symbol": "ERN",
+      "name": "Ethos Reserve Note",
+      "decimals": 18,
+      "logoURI": "",
+      "contracts": {
+        "1": "0x91a69021b0baef3445e51726458a0ce601471846",
+        "10": "0xc5b001dc33727f8f26880b184090d3e252470d45",
+        "42161": "0xa334884bf6b0a066d553d19e507315e839409e62",
+        "8453": "0xa334884bf6b0a066d553d19e507315e839409e62",
+        "59144": "0xa334884bf6b0a066d553d19e507315e839409e62",
+        "56": "0xce1e3cc1950d2aaeb47de04de2dec2dc86380e0a"
       }
     },
     {
@@ -1784,12 +1806,26 @@
     },
     {
       "crossChainId": "kyber-network",
+      "symbol": "KNCL",
+      "name": "Kyber Network Crystal Legacy",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdd974D5C2e2928deA5F71b9825b8b646686BD200/logo.png",
+      "contracts": {
+        "1": "0xdd974d5c2e2928dea5f71b9825b8b646686bd200"
+      }
+    },
+    {
+      "crossChainId": "kyber-network-crystal",
       "symbol": "KNC",
       "name": "Kyber Network Crystal",
       "decimals": 18,
       "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdd974D5C2e2928deA5F71b9825b8b646686BD200/logo.png",
       "contracts": {
-        "1": "0xdd974d5c2e2928dea5f71b9825b8b646686bd200"
+        "1": "0xdefa4e8a7bcba345f687a2f1456f5edd9ce97202",
+        "10": "0xa00e3a3511aac35ca78530c85007afcd31753819",
+        "42161": "0xe4dddfe67e7164b0fe14e218d80dc4c08edc01cb",
+        "59144": "0x3b2f62d42db19b30588648bf1c184865d4c3b1d6",
+        "56": "0xfe56d5892bdffc7bf58f2e84be1b2c32d21c308b"
       }
     },
     {
@@ -1866,7 +1902,8 @@
       "logoURI": "https://assets.coingecko.com/coins/images/13573/thumb/Lido_DAO.png?1609873644",
       "contracts": {
         "1": "0x5a98fcbea516cf06857215779fd812ca3bef1b32",
-        "42161": "0x13ad51ed4f1b7e9dc168d8a00cb3f4ddd85efa60"
+        "42161": "0x13ad51ed4f1b7e9dc168d8a00cb3f4ddd85efa60",
+        "59144": "0x0e076aafd86a71dceac65508daf975425c9d0cb6"
       }
     },
     {
@@ -1880,7 +1917,8 @@
         "10": "0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6",
         "56": "0xf8a0bf9cf54bb92f17374d9e9a321e6a111a51bd",
         "8453": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
-        "42161": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4"
+        "42161": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4",
+        "59144": "0x5b16228b94b68c7ce33af2acc5663ebde4dcfa2d"
       }
     },
     {
@@ -2118,7 +2156,8 @@
       "contracts": {
         "1": "0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3",
         "56": "0xfe19f0b51438fd612f6fd59c1dbb3ea319f433ba",
-        "42161": "0xb20a02dffb172c474bc4bda3fd6f4ee70c04daf2"
+        "42161": "0xb20a02dffb172c474bc4bda3fd6f4ee70c04daf2",
+        "59144": "0xdd3b8084af79b9bae3d1b668c0de08ccc2c9429a"
       }
     },
     {
@@ -2247,7 +2286,8 @@
       "decimals": 18,
       "logoURI": "https://assets.coingecko.com/coins/images/11576/thumb/mStable_USD.png?1595591803",
       "contracts": {
-        "1": "0xe2f2a5c287993345a840db3b0845fbc70f5935a5"
+        "1": "0xe2f2a5c287993345a840db3b0845fbc70f5935a5",
+        "59144": "0xaca92e438df0b2401ff60da7e4337b687a2435da"
       }
     },
     {
@@ -3171,7 +3211,8 @@
       "contracts": {
         "1": "0xaf5191b0de278c7286d6c7cc6ab6bb8a73ba2cd6",
         "56": "0xb0d502e938ed5f4df2e681fe6e419ff29631d62b",
-        "42161": "0xe018c7a3d175fb0fe15d70da2c874d3ca16313ec"
+        "42161": "0xe018c7a3d175fb0fe15d70da2c874d3ca16313ec",
+        "59144": "0x808d7c71ad2ba3fa531b068a2417c63106bc0949"
       }
     },
     {
@@ -3538,7 +3579,8 @@
         "10": "0x6fd9d7ad17242c41f7131d257212c54a0e816691",
         "56": "0xbf5140a22578168fd562dccf235e5d43a02ce9b1",
         "42161": "0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0",
-        "8453": "0xc3de830ea07524a0761646a6a4e4be0e114a3c83"
+        "8453": "0xc3de830ea07524a0761646a6a4e4be0e114a3c83",
+        "59144": "0x636b22bc471c955a8db60f28d4795066a8201fa3"
       }
     },
     {
@@ -3584,6 +3626,7 @@
         "10": "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
         "8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
         "42161": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "59144": "0x176211869ca2b568f2a7d4ee941e073a821ee1ff",
         "84532": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "421614": "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
         "11155111": "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
@@ -3620,7 +3663,8 @@
       "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0x4c9edd5852cd905f086c759e8383e09bff1e68b3/logo.png",
       "contracts": {
         "1": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-        "42161": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
+        "42161": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+        "59144": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
       }
     },
     {
@@ -3696,7 +3740,8 @@
         "10": "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",
         "8453": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
         "42161": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
-        "56": "0x55d398326f99059ff775485246999027b3197955"
+        "56": "0x55d398326f99059ff775485246999027b3197955",
+        "59144": "0xa219439258ca9da29e9cc4ce5596924745e12b93"
       }
     },
     {
@@ -3788,7 +3833,8 @@
       "decimals": 18,
       "logoURI": "https://raw.githubusercontent.com/Uniswap/assets/master/blockchains/smartchain/assets/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c/logo.png",
       "contracts": {
-        "56": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+        "56": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+        "59144": "0xf5c6825015280cdfd0b56903f9f8b5a2233476f5"
       }
     },
     {
@@ -3800,7 +3846,8 @@
       "contracts": {
         "1": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
         "10": "0x68f180fcce6836688e9084f035309e29bf0a2095",
-        "42161": "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"
+        "42161": "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f",
+        "59144": "0x3aab2285ddcddad8edf438c1bab47e1a9d05a9b4"
       }
     },
     {
@@ -3843,17 +3890,9 @@
         "1": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         "10": "0x4200000000000000000000000000000000000006",
         "56": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
-        "42161": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
-      }
-    },
-    {
-      "crossChainId": "l2-standard-bridged-weth-base",
-      "symbol": "WETH",
-      "name": "Wrapped Ether",
-      "decimals": 18,
-      "logoURI": "https://ethereum-optimism.github.io/data/WETH/logo.png",
-      "contracts": {
-        "8453": "0x4200000000000000000000000000000000000006"
+        "42161": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+        "8453": "0x4200000000000000000000000000000000000006",
+        "59144": "0xe5d7c2a44ffddf6b295a15c148167daaaf5cf34f"
       }
     },
     {
@@ -3886,7 +3925,8 @@
       "contracts": {
         "1": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
         "56": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
-        "42161": "0xcafcd85d8ca7ad1e1c6f82f651fa15e33aefd07b"
+        "42161": "0xcafcd85d8ca7ad1e1c6f82f651fa15e33aefd07b",
+        "59144": "0xf3df0a31ec5ea438150987805e841f960b9471b6"
       }
     },
     {
