@@ -81,6 +81,7 @@ coingecko_coinslist:
     - optimistic-ethereum
     - arbitrum-one
     - base
+    - linea
     - status
     - binance-smart-chain
 
@@ -91,6 +92,7 @@ coingecko_token_list:
     - optimistic-ethereum
     - arbitrum-one
     - base
+    - linea
     - binance-smart-chain
 
 coingecko_coins:
