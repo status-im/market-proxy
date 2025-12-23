@@ -185,6 +185,47 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// CoinGecko token lists endpoint - /api/v3/token_lists/{platform}/all.json
+	if strings.Contains(path, "/api/v3/token_lists/") && strings.Contains(path, "/all.json") {
+		w.Header().Set("Content-Type", "application/json")
+		// Extract platform from path
+		parts := strings.Split(path, "/")
+		var platform string
+		for i, part := range parts {
+			if part == "token_lists" && i+1 < len(parts) {
+				platform = parts[i+1]
+				break
+			}
+		}
+		// Return mock token list data for any platform
+		tokenListResponse := fmt.Sprintf(`{
+			"name": "%s Token List",
+			"logoURI": "https://example.com/%s-logo.png",
+			"version": {"major": 1, "minor": 0, "patch": 0},
+			"tokens": [
+				{
+					"chainId": 59144,
+					"address": "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
+					"name": "Wrapped Ether",
+					"symbol": "WETH",
+					"decimals": 18,
+					"logoURI": "https://example.com/weth.png"
+				},
+				{
+					"chainId": 59144,
+					"address": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
+					"name": "USDC",
+					"symbol": "USDC",
+					"decimals": 6,
+					"logoURI": "https://example.com/usdc.png"
+				}
+			],
+			"timestamp": "2025-01-01T00:00:00.000Z"
+		}`, platform, platform)
+		fmt.Fprint(w, tokenListResponse)
+		return
+	}
+
 	// Binance API mock responses
 	if strings.Contains(path, "/api/v3/ticker/price") {
 		w.Header().Set("Content-Type", "application/json")

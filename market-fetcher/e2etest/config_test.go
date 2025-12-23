@@ -62,6 +62,16 @@ coingecko_coinslist:
   request_delay: 100ms      # short delay for tests
   supported_platforms: []   # array of supported blockchain platforms
 
+coingecko_token_list:
+  update_interval: 1s       # shorter interval for tests
+  supported_platforms:
+    - ethereum
+    - base
+    - arbitrum-one
+    - optimistic-ethereum
+    - linea
+    - binance-smart-chain
+
 coingecko_coins:
   name: "coins"
   endpoint_path: "/api/v3/coins/{{id}}"
