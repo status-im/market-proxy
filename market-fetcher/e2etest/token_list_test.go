@@ -58,7 +58,7 @@ func TestTokenListEndpoint(t *testing.T) {
 	for _, platform := range platforms {
 		resp, err := http.Get(env.ServerBaseURL + "/api/v1/token_lists/" + platform + "/all.json")
 		require.NoError(t, err, "Should be able to make a request for platform: %s", platform)
-		resp.Body.Close()
+		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode, "Should return status 200 OK for platform: %s", platform)
 	}
 }
