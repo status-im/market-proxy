@@ -9,7 +9,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	status := map[string]interface{}{
 		"status": "ok",
 		"services": map[string]string{
-			"binance":                "unknown",
 			"coingecko":              "unknown",
 			"tokens":                 "unknown",
 			"coingecko_prices":       "unknown",
@@ -18,10 +17,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 			"coingecko_platforms":    "unknown",
 			"coingecko_coins":        "unknown",
 		},
-	}
-
-	if s.binanceService.Healthy() {
-		status["services"].(map[string]string)["binance"] = "up"
 	}
 
 	if s.cgService.Healthy() {

@@ -13,7 +13,6 @@ import (
 	"github.com/status-im/market-proxy/coingecko_token_list"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/status-im/market-proxy/binance"
 	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/coingecko_prices"
 	"github.com/status-im/market-proxy/coingecko_tokens"
@@ -21,7 +20,6 @@ import (
 
 type Server struct {
 	port                   string
-	binanceService         *binance.Service
 	cgService              *coingecko.Service
 	tokensService          *coingecko_tokens.Service
 	pricesService          *coingecko_prices.Service
@@ -33,10 +31,9 @@ type Server struct {
 	server                 *http.Server
 }
 
-func New(port string, binanceService *binance.Service, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service, tokenListService *coingecko_token_list.Service, coinsService *coingecko_coins.Service) *Server {
+func New(port string, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service, tokenListService *coingecko_token_list.Service, coinsService *coingecko_coins.Service) *Server {
 	return &Server{
 		port:                   port,
-		binanceService:         binanceService,
 		cgService:              cgService,
 		tokensService:          tokensService,
 		pricesService:          pricesService,

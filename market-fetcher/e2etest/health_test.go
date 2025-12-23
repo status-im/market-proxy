@@ -37,7 +37,6 @@ func TestHealthEndpoint(t *testing.T) {
 	require.True(t, ok, "Response should contain 'services' object")
 
 	// Check that the response contains information about all services
-	assert.Contains(t, services, "binance", "Services should include 'binance'")
 	assert.Contains(t, services, "coingecko", "Services should include 'coingecko'")
 	assert.Contains(t, services, "tokens", "Services should include 'tokens'")
 }

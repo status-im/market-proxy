@@ -6,40 +6,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
-// Add this syncWSConn struct to encapsulate a WebSocket connection with mutex protection
-type syncWSConn struct {
-	conn *websocket.Conn
-	mu   sync.Mutex
-}
-
-// MockServer represents a mock server for testing HTTP and WebSocket requests
+// MockServer represents a mock server for testing HTTP requests
 type MockServer struct {
-	server         *httptest.Server
-	ExchangeData   *ExchangeMockData
-	CoinGeckoData  *CoinGeckoMockData
-	CoinGeckoMock  *CoinGeckoMock
-	BinanceMock    *BinanceMock
-	WebSocketPath  string
-	upgrader       websocket.Upgrader
-	mu             sync.RWMutex // Mutex to protect websocketConns
-	websocketConns []*syncWSConn
+	server        *httptest.Server
+	ExchangeData  *ExchangeMockData
+	CoinGeckoData *CoinGeckoMockData
+	CoinGeckoMock *CoinGeckoMock
 }
 
 // CoinGeckoMock contains mock data for CoinGecko API
 type CoinGeckoMock struct {
 	LeaderboardData string // JSON data for the leaderboard
 	TokensListData  string // JSON data for the token list
-}
-
-// BinanceMock contains mock data for Binance API
-type BinanceMock struct {
-	PriceData string // JSON data for prices
 }
 
 // CoinGeckoMockData contains structured test data for CoinGecko
@@ -54,7 +35,6 @@ type ExchangeMockData struct {
 }
 
 // NewMockServer creates and returns a new mock server
-// addr - optional parameter to specify the server address (ignored when using httptest.Server)
 func NewMockServer(addr ...string) *MockServer {
 	ms := &MockServer{
 		ExchangeData:  NewExchangeMockData(),
@@ -63,16 +43,6 @@ func NewMockServer(addr ...string) *MockServer {
 			LeaderboardData: defaultLeaderboardData(),
 			TokensListData:  defaultTokensListData(),
 		},
-		BinanceMock: &BinanceMock{
-			PriceData: defaultBinancePriceData(),
-		},
-		WebSocketPath: "/ws/!ticker@arr",
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true
-			},
-		},
-		websocketConns: make([]*syncWSConn, 0),
 	}
 
 	// Create HTTP server with request handler
@@ -80,29 +50,14 @@ func NewMockServer(addr ...string) *MockServer {
 	mux.HandleFunc("/", ms.handleRequest)
 
 	// Create server
-	// Note: httptest.Server automatically selects a free port
 	server := httptest.NewServer(mux)
 	ms.server = server
-
-	// Start goroutine to send test data to WebSocket clients
-	go ms.broadcastPriceUpdates()
 
 	return ms
 }
 
-// Close closes the mock server and all WebSocket connections
+// Close closes the mock server
 func (ms *MockServer) Close() {
-	// Close all WebSocket connections
-	ms.mu.Lock()
-	for _, syncConn := range ms.websocketConns {
-		syncConn.mu.Lock()
-		syncConn.conn.Close()
-		syncConn.mu.Unlock()
-	}
-	// Clear the connections list
-	ms.websocketConns = nil
-	ms.mu.Unlock()
-
 	if ms.server != nil {
 		ms.server.Close()
 	}
@@ -114,13 +69,6 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	log.Printf("MockServer: Received request for path: %s", path)
-
-	// WebSocket connection handling - any path containing /ws/
-	if strings.Contains(path, "/ws/") {
-		log.Printf("MockServer: Detected WebSocket path in request: %s", path)
-		ms.handleWebSocket(w, r)
-		return
-	}
 
 	// API endpoints for tests
 	if path == "/api/v1/leaderboard/prices" {
@@ -226,122 +174,14 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Binance API mock responses
-	if strings.Contains(path, "/api/v3/ticker/price") {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, ms.BinanceMock.PriceData)
-		return
-	}
-
 	// Return 404 for unknown paths
 	log.Printf("MockServer: Path not found: %s", path)
 	http.NotFound(w, r)
 }
 
-// handleWebSocket handles WebSocket connection requests
-func (ms *MockServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	log.Printf("MockServer: Received WebSocket connection request at path: %s", r.URL.Path)
-
-	conn, err := ms.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("WS Error: Could not open websocket connection: %v", err)
-		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("MockServer: Successfully established WebSocket connection")
-
-	// Create a synchronized wrapper for the connection
-	syncConn := &syncWSConn{conn: conn}
-
-	// Add new connection to list
-	ms.mu.Lock()
-	ms.websocketConns = append(ms.websocketConns, syncConn)
-	ms.mu.Unlock()
-
-	// Send initial data right after connection (with mutex protection)
-	syncConn.mu.Lock()
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(ms.BinanceMock.PriceData)); err != nil {
-		log.Printf("WS Error: Failed to send initial data: %v", err)
-		syncConn.mu.Unlock()
-	} else {
-		log.Printf("WS: Initial data sent successfully. First connection: %v", conn.LocalAddr())
-		syncConn.mu.Unlock()
-	}
-}
-
-// broadcastPriceUpdates sends periodic price updates via WebSocket
-func (ms *MockServer) broadcastPriceUpdates() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		// Create a copy of the connections slice to avoid issues with parallel modifications
-		ms.copyAndBroadcast()
-	}
-}
-
-// copyAndBroadcast creates a copy of connections and sends them data
-func (ms *MockServer) copyAndBroadcast() {
-	// Take a read lock to create a copy of connections
-	ms.mu.RLock()
-	connections := make([]*syncWSConn, len(ms.websocketConns))
-	copy(connections, ms.websocketConns)
-	ms.mu.RUnlock()
-
-	// Send data to all connected clients (outside the lock)
-	for i, syncConn := range connections {
-		if syncConn == nil {
-			continue
-		}
-
-		// Lock the individual connection before writing
-		syncConn.mu.Lock()
-		err := syncConn.conn.WriteMessage(websocket.TextMessage, []byte(ms.BinanceMock.PriceData))
-		syncConn.mu.Unlock()
-
-		if err != nil {
-			log.Printf("WS Error: Failed to send data: %v", err)
-
-			// Remove the failed connection from main list
-			ms.removeConnection(syncConn)
-		} else if i == 0 {
-			// Log only for the first connection to avoid cluttering the output
-			log.Printf("WS: Broadcast data sent successfully to %d connections", len(connections))
-		}
-	}
-}
-
-// removeConnection removes a closed connection from the websocketConns slice
-func (ms *MockServer) removeConnection(syncConn *syncWSConn) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-
-	for j, c := range ms.websocketConns {
-		if c == syncConn {
-			// Remove the connection from the slice
-			ms.websocketConns = append(ms.websocketConns[:j], ms.websocketConns[j+1:]...)
-
-			// Close the connection (with mutex protection)
-			syncConn.mu.Lock()
-			syncConn.conn.Close()
-			syncConn.mu.Unlock()
-			break
-		}
-	}
-}
-
 // GetURL returns the base URL of the mock server
 func (ms *MockServer) GetURL() string {
 	return ms.server.URL
-}
-
-// GetWSURL returns the WebSocket URL of the mock server
-func (ms *MockServer) GetWSURL() string {
-	// Replace http with ws in URL
-	wsURL := "ws" + strings.TrimPrefix(ms.server.URL, "http") + ms.WebSocketPath
-	log.Printf("MockServer: WebSocket URL is %s", wsURL)
-	return wsURL
 }
 
 // defaultLeaderboardData returns test data for CoinGecko leaderboard
@@ -431,60 +271,6 @@ func defaultTokensListData() string {
 ]`
 }
 
-// defaultBinancePriceData returns test data for Binance prices
-func defaultBinancePriceData() string {
-	return `[
-		{
-			"e": "24hrTicker", 
-			"E": 1587558973622,
-			"s": "BTCUSDT",
-			"p": "1000.00",
-			"P": "2.00",
-			"w": "49000.00",
-			"c": "50000.00",
-			"Q": "1.00000000",
-			"b": "49900.00",
-			"B": "1.00000000",
-			"a": "50100.00",
-			"A": "1.00000000",
-			"o": "49000.00",
-			"h": "51000.00",
-			"l": "49000.00",
-			"v": "100000.00000000",
-			"q": "4950000000.00000000",
-			"O": 1587472573622,
-			"C": 1587558973622,
-			"F": 100,
-			"L": 200,
-			"n": 100
-		},
-		{
-			"e": "24hrTicker", 
-			"E": 1587558973622,
-			"s": "ETHUSDT",
-			"p": "100.00",
-			"P": "3.33",
-			"w": "2900.00",
-			"c": "3000.00",
-			"Q": "1.00000000",
-			"b": "2950.00",
-			"B": "1.00000000",
-			"a": "3050.00",
-			"A": "1.00000000",
-			"o": "2900.00",
-			"h": "3100.00",
-			"l": "2900.00",
-			"v": "50000.00000000",
-			"q": "150000000.00000000",
-			"O": 1587472573622,
-			"C": 1587558973622,
-			"F": 300,
-			"L": 400,
-			"n": 100
-		}
-	]`
-}
-
 // generateMarketChartData generates market chart data with current timestamps
 // This ensures the data won't be filtered out by the strip function
 func generateMarketChartData() string {
@@ -531,12 +317,6 @@ func NewExchangeMockData() *ExchangeMockData {
 
 // AddProxyRulesToRealServer adds rules for redirecting requests from the real server to the mock server
 func (ms *MockServer) AddProxyRulesToRealServer(serverBaseURL string) {
-	// Add proxy routing for test API endpoints
-	// We could implement request redirection here,
-	// but in the current architecture it's not required since
-	// endpoints are already handled in handleRequest
-
 	log.Printf("MockServer: Added proxy rules for real server at %s", serverBaseURL)
 	log.Printf("MockServer: Mock server running at %s", ms.server.URL)
-	log.Printf("MockServer: WebSocket URL at %s", ms.GetWSURL())
 }

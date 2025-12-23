@@ -24,7 +24,6 @@ type Config struct {
 
 	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
 	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
-	OverrideBinanceWSURL       string `yaml:"override_binance_wsurl"`
 
 	APIKeySettings APIKeyConfig `yaml:"api_key_settings"`
 }
