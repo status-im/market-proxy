@@ -3,10 +3,8 @@ package core
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/status-im/market-proxy/api"
-	"github.com/status-im/market-proxy/binance"
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
 	"github.com/status-im/market-proxy/coingecko_coins"
@@ -59,11 +57,6 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	assetsPlatformsService := coingecko_assets_platforms.NewService(cfg)
 	registry.Register(assetsPlatformsService)
 
-	// Binance service
-	// TODO: remove #43
-	binanceService := binance.NewService(cfg)
-	registry.Register(binanceService)
-
 	// Leaderboard service
 	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
 	registry.Register(cgService)
@@ -74,32 +67,8 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	}
 
 	// HTTP Server
-	server := api.New(port, binanceService, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService, coinsService)
+	server := api.New(port, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService, coinsService)
 	registry.Register(server)
 
-	// Set update callback directly to our watchlist update function
-	cgService.SetOnUpdateCallback(func() {
-		// Create a new closure that captures the required variables
-		go updateBinanceWatchlist(ctx, cgService, binanceService)
-	})
 	return registry, nil
-}
-
-// updateBinanceWatchlist updates Binance watchlist with data from CoinGecko
-func updateBinanceWatchlist(ctx context.Context, cgService *coingecko_leaderboard.Service, binanceService *binance.Service) {
-	select {
-	case <-ctx.Done():
-		return // Context is cancelled, do nothing
-	default:
-	}
-
-	cgData := cgService.GetCacheData()
-	if cgData != nil {
-		symbols := make([]string, 0, len(cgData.Data))
-		for _, coin := range cgData.Data {
-			symbols = append(symbols, strings.ToUpper(coin.Symbol))
-		}
-
-		binanceService.SetWatchList(symbols, "USDT")
-	}
 }

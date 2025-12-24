@@ -9,7 +9,7 @@ import (
 )
 
 // createTestConfig creates a test configuration and returns the path to the file
-func createTestConfig(mockURL, mockWSURL string) (string, error) {
+func createTestConfig(mockURL string) (string, error) {
 	// Create a temporary directory for configuration
 	tempDir, err := os.MkdirTemp("", "market-proxy-test")
 	if err != nil {
@@ -91,7 +91,6 @@ tokens_file: "%s"           # path to tokens file will be inserted
 # URLs for API (mock)
 override_coingecko_public_url: "%s"  # URL for CoinGecko public API
 override_coingecko_pro_url: "%s"     # URL for CoinGecko Pro API
-override_binance_wsurl: "%s"         # URL for Binance WebSocket
 `
 
 	// Create tokens file
@@ -109,7 +108,7 @@ override_binance_wsurl: "%s"         # URL for Binance WebSocket
 	}
 
 	// Insert values into configuration
-	configContent = sprintf(configContent, tokensFilePath, mockURL, mockURL, mockWSURL)
+	configContent = sprintf(configContent, tokensFilePath, mockURL, mockURL)
 
 	// Create configuration file
 	configPath := filepath.Join(tempDir, "config.yaml")
@@ -122,8 +121,8 @@ override_binance_wsurl: "%s"         # URL for Binance WebSocket
 }
 
 // loadTestConfig creates and loads test configuration
-func loadTestConfig(mockURL, mockWSURL string) (*config.Config, string, error) {
-	configPath, err := createTestConfig(mockURL, mockWSURL)
+func loadTestConfig(mockURL string) (*config.Config, string, error) {
+	configPath, err := createTestConfig(mockURL)
 	if err != nil {
 		return nil, "", err
 	}

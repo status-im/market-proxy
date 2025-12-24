@@ -31,7 +31,7 @@ func SetupTest(t *testing.T) *TestEnv {
 	mockServer := NewMockServer()
 
 	// Load test configuration with URLs from the mock server
-	cfg, configPath, err := loadTestConfig(mockServer.GetURL(), mockServer.GetWSURL())
+	cfg, configPath, err := loadTestConfig(mockServer.GetURL())
 	if err != nil {
 		mockServer.Close()
 		cancel()
