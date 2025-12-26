@@ -17,5 +17,6 @@ ENV MARKET_BASE_URL="https://test.market.status.im"
 EXPOSE 8080
 
 # Nginx startup command with envsubst
-CMD sh -c "envsubst '\$MARKET_BASE_URL' < /usr/share/nginx/static/lists.json.template > /usr/share/nginx/static/lists.json && \
+CMD sh -c "set -e && \
+    envsubst '\$MARKET_BASE_URL' < /usr/share/nginx/static/lists.json.template > /usr/share/nginx/static/lists.json && \
     nginx -g 'daemon off;'" 
