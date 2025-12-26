@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-12-22T00:00:00.000Z",
+  "version": {
+    "major": 0,
+    "minor": 2,
+    "patch": 0
+  },
+  "tokenLists": [
+    {
+      "id": "status",
+      "sourceUrl": "${MARKET_BASE_URL}/static/token-list.json"
+    },
+    {
+      "id": "uniswap",
+      "sourceUrl": "https://ipfs.io/ipns/tokens.uniswap.org",
+      "schema": "https://uniswap.org/tokenlist.schema.json"
+    },
+    {
+      "id": "coingeckoEthereum",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/ethereum/all.json"
+    },
+    {
+      "id": "coingeckoOptimism",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/optimistic-ethereum/all.json"
+    },
+    {
+      "id": "coingeckoArbitrum",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/arbitrum-one/all.json"
+    },
+    {
+      "id": "coingeckoBsc",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/binance-smart-chain/all.json"
+    },
+    {
+      "id": "coingeckoBase",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/base/all.json"
+    },
+    {
+      "id": "coingeckoLinea",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/linea/all.json"
+    },
+    {
+      "id": "aave",
+      "sourceUrl": "https://raw.githubusercontent.com/bgd-labs/aave-address-book/main/tokenlist.json"
+    },
+    {
+      "id": "kleros",
+      "sourceUrl": "https://t2crtokens.eth.link"
+    },
+    {
+      "id": "superchain",
+      "sourceUrl": "https://static.optimism.io/optimism.tokenlist.json"
+    }
+  ]
+}
