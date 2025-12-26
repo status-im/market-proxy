@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/market-fetcher" # whitelist
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # test-api is only for local testing. It should not be run on a production deployment
+
