@@ -8,7 +8,7 @@
   "tokenLists": [
     {
       "id": "status",
-      "sourceUrl": "https://prod.market.status.im/static/token-list.json"
+      "sourceUrl": "${MARKET_BASE_URL}/static/token-list.json"
     },
     {
       "id": "uniswap",
@@ -17,27 +17,27 @@
     },
     {
       "id": "coingeckoEthereum",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/ethereum/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/ethereum/all.json"
     },
     {
       "id": "coingeckoOptimism",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/optimistic-ethereum/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/optimistic-ethereum/all.json"
     },
     {
       "id": "coingeckoArbitrum",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/arbitrum-one/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/arbitrum-one/all.json"
     },
     {
       "id": "coingeckoBsc",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/binance-smart-chain/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/binance-smart-chain/all.json"
     },
     {
       "id": "coingeckoBase",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/base/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/base/all.json"
     },
     {
       "id": "coingeckoLinea",
-      "sourceUrl": "https://prod.market.status.im/v1/token_lists/linea/all.json"
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/linea/all.json"
     },
     {
       "id": "aave",
