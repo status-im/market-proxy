@@ -29,8 +29,6 @@ services:
     container_name: 'market-proxy'
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
-    environment:
-      MARKET_BASE_URL: "https://prod.market.status.im"
     restart: unless-stopped
     ports:
       - "8080:8080"
