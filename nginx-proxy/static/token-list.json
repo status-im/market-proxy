@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2025-12-22T00:00:00.000Z",
+  "timestamp": "2026-01-20T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 1,
+    "minor": 2,
     "patch": 0
   },
   "tags": {},
@@ -246,7 +246,10 @@
         "10": "0xaeaeed23478c3a4b798e4ed40d8b7f41366ae861",
         "56": "0xf307910a4c7bbc79691fd374889b36d8531b08e3",
         "42161": "0xaeaeed23478c3a4b798e4ed40d8b7f41366ae861",
-        "59144": "0xa8ae6365383eb907e6b4b1b7e82a35752cc5ef8c"
+        "59144": "0xa8ae6365383eb907e6b4b1b7e82a35752cc5ef8c",
+        "1101": "0xdf474b7109b73b7d57926d43598d5934131136b2",
+        "534352": "0xdf474b7109b73b7d57926d43598d5934131136b2",
+        "81457": "0x3580ac35bed2981d6bdd671a5982c2467d301241"
       }
     },
     {
@@ -470,7 +473,8 @@
       "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xba100000625a3754423978a60c9317c58a424e3D/logo.png",
       "contracts": {
         "1": "0xba100000625a3754423978a60c9317c58a424e3d",
-        "42161": "0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8"
+        "42161": "0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8",
+        "1101": "0x120ef59b80774f02211563834d8e3b72cb1649d6"
       }
     },
     {
@@ -668,7 +672,9 @@
         "42161": "0x1b896893dfc86bb67cf57767298b9073d2c1ba2c",
         "8453": "0x3055913c90fcc1a6ce9a358911721eeb942013a1",
         "59144": "0x0d1e753a25ebda689453309112904807625befbe",
-        "56": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82"
+        "56": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+        "1101": "0x0d1e753a25ebda689453309112904807625befbe",
+        "324": "0x3a287a06c66f9e95a56327185ca2bdf5f031cecd"
       }
     },
     {
@@ -966,6 +972,7 @@
         "8453": "0x50c5725949a6f0c72e6c4a641f24049a917db0cb",
         "42161": "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
         "59144": "0x4af15ec2a0bd43db75dd04e62faa3b8ef36b00d5",
+        "130": "0x20cab320a855b39f724131c69424240519573f81",
         "11155111": "0x3e622317f8c93f7328350cf0b56d9ed4c620c5d6"
       }
     },
@@ -1150,7 +1157,10 @@
       "logoURI": "https://assets.coingecko.com/coins/images/36530/standard/ethena.png",
       "contracts": {
         "1": "0x57e114b691db790c35207b2e685d4a43181e6061",
-        "42161": "0xdf8f0c63d9335a0abd89f9f752d293a98ea977d8"
+        "42161": "0xdf8f0c63d9335a0abd89f9f752d293a98ea977d8",
+        "324": "0x686b311f82b407f0be842652a98e5619f64cc25f",
+        "534352": "0x58538e6a46e07434d7e7375bc268d3cb839c0133",
+        "81457": "0x58538e6a46e07434d7e7375bc268d3cb839c0133"
       }
     },
     {
@@ -1219,7 +1229,8 @@
       "logoURI": "https://assets.coingecko.com/coins/images/35958/standard/etherfi.jpeg",
       "contracts": {
         "1": "0xfe0c30065b384f05761f15d0cc899d4f9f9cc0eb",
-        "42161": "0x07d65c18cecba423298c0aeb5d2beded4dfd5736"
+        "42161": "0x07d65c18cecba423298c0aeb5d2beded4dfd5736",
+        "534352": "0x056a5fa5da84ceb7f93d36e545c5905607d8bd81"
       }
     },
     {
@@ -1229,7 +1240,8 @@
       "decimals": 18,
       "logoURI": "https://assets.coingecko.com/coins/images/26149/thumb/YCvKDfl8_400x400.jpeg?1656041509",
       "contracts": {
-        "1": "0xd9fcd98c322942075a5c3860693e9f4f03aae07b"
+        "1": "0xd9fcd98c322942075a5c3860693e9f4f03aae07b",
+        "130": "0xe9c43e09c5fa733bcc2aeaa96063a4a60147aa09"
       }
     },
     {
@@ -1418,7 +1430,8 @@
       "contracts": {
         "1": "0x853d955acef822db058eb8505911ed77f175b99e",
         "56": "0x90c97f71e18723b0cf0dfa30ee176ab653e89f40",
-        "42161": "0x7468a5d8e02245b00e8c0217fce021c70bc51305"
+        "42161": "0x7468a5d8e02245b00e8c0217fce021c70bc51305",
+        "1101": "0xff8544fed5379d9ffa8d47a74ce6b91e632ac44d"
       }
     },
     {
@@ -1452,7 +1465,8 @@
       "contracts": {
         "1": "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0",
         "56": "0xe48a3d7d0bc88d552f730b62c006bc925eadb9ee",
-        "42161": "0xd9f9d2ee2d3efe420699079f16d9e924afffdea4"
+        "42161": "0xd9f9d2ee2d3efe420699079f16d9e924afffdea4",
+        "1101": "0x6b856a14cea1d7dcfaf80fa6936c0b75972ccace"
       }
     },
     {
@@ -1825,7 +1839,9 @@
         "10": "0xa00e3a3511aac35ca78530c85007afcd31753819",
         "42161": "0xe4dddfe67e7164b0fe14e218d80dc4c08edc01cb",
         "59144": "0x3b2f62d42db19b30588648bf1c184865d4c3b1d6",
-        "56": "0xfe56d5892bdffc7bf58f2e84be1b2c32d21c308b"
+        "56": "0xfe56d5892bdffc7bf58f2e84be1b2c32d21c308b",
+        "1101": "0x6a80a465409ce8d36c513129c0feea61bed579ba",
+        "324": "0x6ee46cb7cd2f15ee1ec9534cf29a5b51c83283e6"
       }
     },
     {
@@ -1918,7 +1934,16 @@
         "56": "0xf8a0bf9cf54bb92f17374d9e9a321e6a111a51bd",
         "8453": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
         "42161": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4",
-        "59144": "0x5b16228b94b68c7ce33af2acc5663ebde4dcfa2d"
+        "59144": "0x5b16228b94b68c7ce33af2acc5663ebde4dcfa2d",
+        "1101": "0xdb7a504cf869484dd6ac5faf925c8386cbf7573d",
+        "130": "0xef66491eab4bbb582c57b14778afd8dfb70d8a1a",
+        "747474": "0xc2c447b04e0ed3476ddbdae8e9e39be7159d27b6",
+        "57073": "0x71052bae71c25c78e37fd12e5ff1101a71d9018f",
+        "2741": "0x2ea38d6cdb6774992d4a62fe622f4405663729dd",
+        "324": "0x52869bae3e091e36b0915941577f2d47d8d8b534",
+        "1868": "0x32d8f819c8080ae44375f8d383ffd39fc642f3ec",
+        "534352": "0x548c6944cba02b9d1c0570102c89de64d258d3ac",
+        "81457": "0x93202ec683288a9ea75bb829c6bacfb2bfea9013"
       }
     },
     {
@@ -2024,7 +2049,8 @@
       "logoURI": "https://assets.coingecko.com/coins/images/14666/thumb/Group_3.png?1617631327",
       "contracts": {
         "1": "0x5f98805a4e8be255a32880fdec7f6728c6568ba0",
-        "42161": "0x93b346b6bc2548da6a1e7d98e9a421b42541425b"
+        "42161": "0x93b346b6bc2548da6a1e7d98e9a421b42541425b",
+        "324": "0x503234f203fc7eb888eec8513210612a43cf6115"
       }
     },
     {
@@ -2233,7 +2259,8 @@
       "logoURI": "https://coin-images.coingecko.com/coins/images/29837/large/Morpho-token-icon.png?1726771230",
       "contracts": {
         "1": "0x58d97b57bb95320f9a05dc918aef65434969c2b2",
-        "42161": "0xe390c0b46bd723995be02640e6f1e1c802f620ac"
+        "42161": "0xe390c0b46bd723995be02640e6f1e1c802f620ac",
+        "747474": "0x1e5efca3d0db2c6d5c67a4491845c43253eb9e4e"
       }
     },
     {
@@ -2708,7 +2735,8 @@
       "contracts": {
         "1": "0xfb5c6815ca3ac72ce9f5006869ae67f18bf77006",
         "56": "0x4c882ec256823ee773b25b414d36f92ef58a7c0c",
-        "8453": "0x38815a4455921667d673b4cb3d48f0383ee93400"
+        "8453": "0x38815a4455921667d673b4cb3d48f0383ee93400",
+        "81457": "0xcbf7b47e9da345812e3bd732e3ee369a7203b5ae"
       }
     },
     {
@@ -3157,7 +3185,8 @@
       "contracts": {
         "1": "0xd31a59c85ae9d8edefec411d448f90841571b89c",
         "56": "0xfa54ff1a158b5189ebba6ae130ced6bbd3aea76e",
-        "42161": "0xb74da9fe2f96b9e0a5f4a3cf0b92dd2bec617124"
+        "42161": "0xb74da9fe2f96b9e0a5f4a3cf0b92dd2bec617124",
+        "130": "0xbde8a5331e8ac4831cf8ea9e42e229219eafab97"
       }
     },
     {
@@ -3213,7 +3242,8 @@
         "1": "0xaf5191b0de278c7286d6c7cc6ab6bb8a73ba2cd6",
         "56": "0xb0d502e938ed5f4df2e681fe6e419ff29631d62b",
         "42161": "0xe018c7a3d175fb0fe15d70da2c874d3ca16313ec",
-        "59144": "0x808d7c71ad2ba3fa531b068a2417c63106bc0949"
+        "59144": "0x808d7c71ad2ba3fa531b068a2417c63106bc0949",
+        "534352": "0x8731d54e9d02c286767d56ac03e8037c07e01e98"
       }
     },
     {
@@ -3280,7 +3310,8 @@
       "contracts": {
         "1": "0xe53ec727dbdeb9e2d5456c3be40cff031ab40a55",
         "56": "0x51ba0b044d96c3abfca52b64d733603ccc4f0d4d",
-        "42161": "0x7f9cf5a2630a0d58567122217df7609c26498956"
+        "42161": "0x7f9cf5a2630a0d58567122217df7609c26498956",
+        "1868": "0xf765356c901a064a74fa4560622f21c91048c3d7"
       }
     },
     {
@@ -3292,7 +3323,8 @@
       "contracts": {
         "1": "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2",
         "56": "0x947950bcc74888a40ffa2593c5798f11fc9124c4",
-        "42161": "0xd4d42f0b6def4ce0383636770ef773390d85c61a"
+        "42161": "0xd4d42f0b6def4ce0383636770ef773390d85c61a",
+        "747474": "0x17bff452dae47e07cea877ff0e1aba17eb62b0ab"
       }
     },
     {
@@ -3582,7 +3614,8 @@
         "56": "0xbf5140a22578168fd562dccf235e5d43a02ce9b1",
         "42161": "0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0",
         "8453": "0xc3de830ea07524a0761646a6a4e4be0e114a3c83",
-        "59144": "0x636b22bc471c955a8db60f28d4795066a8201fa3"
+        "59144": "0x636b22bc471c955a8db60f28d4795066a8201fa3",
+        "130": "0x8f187aa05619a017077f5308904739877ce9ea21"
       }
     },
     {
@@ -3635,7 +3668,16 @@
         "11155420": "0x5fd84259d66cd46123540766be93dfe6d43130d7",
         "1660990954": "0xc445a18ca49190578dad62fba3048c07efc07ffe",
         "59141": "0xfece4462d57bd51a6a552365a011b95f0e16d9b7",
-        "56": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
+        "56": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+        "1101": "0x37ea0ef3549a5bb7d431be78a3d99bd360d19e5",
+        "130": "0x078d782b760474a361dda0af3839290b0ef57ad6",
+        "131": "0x31d0220469e10c4e71834a79b1f276d740d3768f",
+        "57073": "0x2d270e6886d130d724215a266106e6832161eaed",
+        "763373": "0xfabab97dc620294d2b0b0e46c68964e326300ac4",
+        "324": "0x1d17cbcf0d6d143135ae902365d2e5e2a16538d4",
+        "300": "0xe045de5638162fa134807cb558e15a3f5a7f8535",
+        "1868": "0xba9986d2381edf1da03b0b9c1f8b00dc4aacc369",
+        "534352": "0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4"
       }
     },
     {
@@ -3667,7 +3709,10 @@
       "contracts": {
         "1": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
         "42161": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
-        "59144": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
+        "59144": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+        "324": "0x39fe7a0dacce31bd90418e3e659fb0b5f0b3db0d",
+        "534352": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+        "81457": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34"
       }
     },
     {
@@ -3677,7 +3722,8 @@
       "decimals": 6,
       "logoURI": "https://assets.coingecko.com/coins/images/51281/large/GDN_USDG_Token_200x200.png",
       "contracts": {
-        "1": "0xe343167631d89b6ffc58b88d6b7fb0228795491d"
+        "1": "0xe343167631d89b6ffc58b88d6b7fb0228795491d",
+        "57073": "0xe343167631d89b6ffc58b88d6b7fb0228795491d"
       }
     },
     {
@@ -3850,7 +3896,9 @@
         "1": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
         "10": "0x68f180fcce6836688e9084f035309e29bf0a2095",
         "42161": "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f",
-        "59144": "0x3aab2285ddcddad8edf438c1bab47e1a9d05a9b4"
+        "59144": "0x3aab2285ddcddad8edf438c1bab47e1a9d05a9b4",
+        "130": "0x0555e30da8f98308edb960aa94c0db47230d2b9c",
+        "1868": "0x0555e30da8f98308edb960aa94c0db47230d2b9c"
       }
     },
     {
@@ -3929,7 +3977,8 @@
         "1": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
         "56": "0x4691937a7508860f876c9c0a2a617e7d9e945d4b",
         "42161": "0xcafcd85d8ca7ad1e1c6f82f651fa15e33aefd07b",
-        "59144": "0xf3df0a31ec5ea438150987805e841f960b9471b6"
+        "59144": "0xf3df0a31ec5ea438150987805e841f960b9471b6",
+        "324": "0x9e22d758629761fc5708c171d06c2fabb60b5159"
       }
     },
     {
@@ -3993,7 +4042,8 @@
       "decimals": 18,
       "logoURI": "https://assets.coingecko.com/coins/images/17358/thumb/le1nzlO6_400x400.jpg?1632465691",
       "contracts": {
-        "1": "0x25f8087ead173b73d6e8b84329989a8eea16cf73"
+        "1": "0x25f8087ead173b73d6e8b84329989a8eea16cf73",
+        "2741": "0xa9053dc939d74222f7aa0b3a2be407abbfd56c6a"
       }
     },
     {

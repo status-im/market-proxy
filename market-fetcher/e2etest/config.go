@@ -70,6 +70,15 @@ coingecko_token_list:
     - arbitrum-one
     - optimistic-ethereum
     - linea
+    - polygon-zkevm
+    - unichain
+    - katana
+    - ink
+    - abstract
+    - zksync
+    - soneium
+    - scroll
+    - blast
     - binance-smart-chain
 
 coingecko_coins:
