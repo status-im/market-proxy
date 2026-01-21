@@ -55,5 +55,10 @@ func ApplyParamsOverride(params interfaces.MarketsParams, cfg *config.MarketsFet
 		normalizedParams.Category = *normalize.Category
 	}
 
+	// Override include_rehypothecated if configured
+	if normalize.IncludeRehypothecated != nil {
+		normalizedParams.IncludeRehypothecated = *normalize.IncludeRehypothecated
+	}
+
 	return normalizedParams
 }

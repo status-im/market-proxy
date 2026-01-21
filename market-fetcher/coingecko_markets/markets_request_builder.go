@@ -82,3 +82,12 @@ func (rb *MarketsRequestBuilder) WithPriceChangePercentage(percentages []string)
 	}
 	return rb
 }
+
+// WithIncludeRehypothecated adds include_rehypothecated parameter to include
+// rehypothecated tokens (e.g., stETH, WETH, WBTC) in the response
+func (rb *MarketsRequestBuilder) WithIncludeRehypothecated(enabled bool) *MarketsRequestBuilder {
+	if enabled {
+		rb.With("include_rehypothecated", strconv.FormatBool(enabled))
+	}
+	return rb
+}
