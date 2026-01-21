@@ -247,6 +247,43 @@ func TestMarketsRequestBuilder_SpecificBehavior(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "With include_rehypothecated enabled",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithIncludeRehypothecated(true)
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				if query.Get("include_rehypothecated") != "true" {
+					t.Errorf("Expected include_rehypothecated 'true', got %s", query.Get("include_rehypothecated"))
+				}
+			},
+		},
+		{
+			name: "With include_rehypothecated disabled",
+			configuration: func(rb *MarketsRequestBuilder) {
+				rb.WithIncludeRehypothecated(false)
+			},
+			checkURL: func(t *testing.T, urlStr string) {
+				parsedURL, err := url.Parse(urlStr)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %v", err)
+				}
+
+				query := parsedURL.Query()
+
+				// Disabled should not add the parameter
+				if query.Has("include_rehypothecated") {
+					t.Errorf("Expected no include_rehypothecated parameter when disabled, got %s", query.Get("include_rehypothecated"))
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

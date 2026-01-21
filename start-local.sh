@@ -22,6 +22,12 @@ if [ ! -f "./secrets/coingecko_api_tokens.json" ]; then
 EOL
 fi
 
+# Create .env file with proxy credentials for frontend (always recreate to ensure correct values)
+cat <<EOL > ./.env
+MARKET_PROXY_USER=test
+MARKET_PROXY_PASSWORD=test
+EOL
+
 # Stop and remove existing containers AND volumes
 docker compose -f docker-compose.local.yml down --volumes
 
