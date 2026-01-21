@@ -1,8 +1,8 @@
 {
-  "timestamp": "2025-12-22T00:00:00.000Z",
+  "timestamp": "2026-01-20T00:00:00.000Z",
   "version": {
     "major": 0,
-    "minor": 2,
+    "minor": 3,
     "patch": 0
   },
   "tokenLists": [
@@ -38,6 +38,42 @@
     {
       "id": "coingeckoLinea",
       "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/linea/all.json"
+    },
+    {
+      "id": "coingeckoPolygonZkevm",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/polygon-zkevm/all.json"
+    },
+    {
+      "id": "coingeckoUnichain",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/unichain/all.json"
+    },
+    {
+      "id": "coingeckoKatana",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/katana/all.json"
+    },
+    {
+      "id": "coingeckoInk",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/ink/all.json"
+    },
+    {
+      "id": "coingeckoAbstract",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/abstract/all.json"
+    },
+    {
+      "id": "coingeckoZksync",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/zksync/all.json"
+    },
+    {
+      "id": "coingeckoSoneium",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/soneium/all.json"
+    },
+    {
+      "id": "coingeckoScroll",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/scroll/all.json"
+    },
+    {
+      "id": "coingeckoBlast",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/blast/all.json"
     },
     {
       "id": "aave",
