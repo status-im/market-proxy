@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2026-03-12T00:00:00.000Z",
+  "timestamp": "2026-04-02T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 3,
+    "minor": 4,
     "patch": 0
   },
   "tags": {},
@@ -974,7 +974,8 @@
         "59144": "0x4af15ec2a0bd43db75dd04e62faa3b8ef36b00d5",
         "130": "0x20cab320a855b39f724131c69424240519573f81",
         "11155111": "0x3e622317f8c93f7328350cf0b56d9ed4c620c5d6",
-        "1301": "0x35f965903a85e7528437c3ce0b4bdfbc4e5fc27c"
+        "1301": "0x35f965903a85e7528437c3ce0b4bdfbc4e5fc27c",
+        "560048": "0xcafbbad55eb09efe7bec8408cff9932be7d9a7fa"
       }
     },
     {
@@ -3152,7 +3153,8 @@
         "10": "0x650af3c15af43dcb218406d30784416d64cfb6b2",
         "8453": "0x662015ec830df08c0fc45896fab726542e8ac09e",
         "42161": "0x707f635951193ddafbb40971a0fcaab8a6415160",
-        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8"
+        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8",
+        "560048": "0x0B5DAd18B8791ddb24252B433ec4f21f9e6e5Ed0"
       }
     },
     {
