@@ -10,6 +10,7 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 const (
@@ -27,7 +28,7 @@ type IClient interface {
 // CoinGeckoClient implements IClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
@@ -71,7 +72,7 @@ func (c *CoinGeckoClient) FetchTokenList(platform string) (*TokenList, error) {
 }
 
 func (c *CoinGeckoClient) executeFetchRequest(platform string) (*http.Response, []byte, error) {
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 		requestBuilder := NewTokensRequestBuilder(baseURL, platform)
 		requestBuilder.WithApiKey(apiKey.Key, apiKey.Type)
@@ -96,10 +97,10 @@ func (c *CoinGeckoClient) executeFetchRequest(platform string) (*http.Response, 
 		return result, true, nil
 	}
 
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, "CoinGecko-TokenList", executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, "CoinGecko-TokenList", executor, onFailed)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching token list for platform %s: %w", platform, err)
 	}
