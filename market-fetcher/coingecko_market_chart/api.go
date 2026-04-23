@@ -10,6 +10,7 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 type IAPIClient interface {
@@ -19,7 +20,7 @@ type IAPIClient interface {
 
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool
 }
@@ -38,10 +39,10 @@ func NewCoinGeckoClient(cfg *config.Config) *CoinGeckoClient {
 }
 
 // prependFreeKey moves the NoKey type to the beginning
-func prependFreeKey(keys []cg.APIKey) []cg.APIKey {
+func prependFreeKey(keys []apikeys.APIKey) []apikeys.APIKey {
 	for i, key := range keys {
 		if key.Type == cg.NoKey {
-			return append([]cg.APIKey{key}, append(keys[:i], keys[i+1:]...)...)
+			return append([]apikeys.APIKey{key}, append(keys[:i], keys[i+1:]...)...)
 		}
 	}
 	return keys
@@ -83,7 +84,7 @@ func (c *CoinGeckoClient) FetchMarketChart(params MarketChartParams) (map[string
 
 func (c *CoinGeckoClient) executeFetchRequest(params MarketChartParams) (*http.Response, []byte, error) {
 	// Create executor function that attempts to fetch with a given API key
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		requestBuilder := NewMarketChartRequestBuilder(baseURL, params.ID).
@@ -113,7 +114,7 @@ func (c *CoinGeckoClient) executeFetchRequest(params MarketChartParams) (*http.R
 	}
 
 	// Create the onFailed callback
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 
 	availableKeys := c.keyManager.GetAvailableKeys()
 
@@ -121,7 +122,7 @@ func (c *CoinGeckoClient) executeFetchRequest(params MarketChartParams) (*http.R
 		availableKeys = prependFreeKey(availableKeys)
 	}
 
-	result, err := cg.TryWithKeys(availableKeys, "CoinGecko-MarketChart", executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, "CoinGecko-MarketChart", executor, onFailed)
 	if err != nil {
 		return nil, nil, err
 	}

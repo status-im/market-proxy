@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/proxy-common/apikeys"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,7 +72,7 @@ func TestAssetsPlatformsRequestBuilder_Build(t *testing.T) {
 		baseURL         string
 		filter          string
 		apiKey          string
-		keyType         cg.KeyType
+		keyType         apikeys.KeyType
 		expectedPath    string
 		expectedQueries []string
 	}{

@@ -8,6 +8,7 @@ import (
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 const (
@@ -23,7 +24,7 @@ type RequestBuilder struct {
 	endpointPath string
 	queryParams  map[string]string
 	apiKey       string
-	keyType      cg.KeyType
+	keyType      apikeys.KeyType
 }
 
 func NewRequestBuilder(baseURL string, cfg *config.FetcherByIdConfig) *RequestBuilder {
@@ -35,7 +36,7 @@ func NewRequestBuilder(baseURL string, cfg *config.FetcherByIdConfig) *RequestBu
 	}
 }
 
-func (rb *RequestBuilder) WithAPIKey(apiKey string, keyType cg.KeyType) *RequestBuilder {
+func (rb *RequestBuilder) WithAPIKey(apiKey string, keyType apikeys.KeyType) *RequestBuilder {
 	rb.apiKey = apiKey
 	rb.keyType = keyType
 	rb.CoingeckoRequestBuilder.WithApiKey(apiKey, keyType)

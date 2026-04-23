@@ -9,6 +9,7 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 // Client handles API requests to CoinGecko for generic endpoints
@@ -16,7 +17,7 @@ type Client struct {
 	cfg             *config.Config
 	fetcherCfg      *config.FetcherByIdConfig
 	httpClient      *cg.HTTPClientWithRetries
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	metricsWriter   *metrics.MetricsWriter
 	successfulFetch atomic.Bool
 }
@@ -39,7 +40,7 @@ func (c *Client) Healthy() bool {
 }
 
 func (c *Client) FetchSingle(id string) ([]byte, error) {
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.cfg, apiKey.Type)
 
 		reqBuilder := NewRequestBuilder(baseURL, c.fetcherCfg).
@@ -59,10 +60,10 @@ func (c *Client) FetchSingle(id string) ([]byte, error) {
 		return body, true, nil
 	}
 
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, fmt.Sprintf("CoinGecko-%s", c.fetcherCfg.Name), executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, fmt.Sprintf("CoinGecko-%s", c.fetcherCfg.Name), executor, onFailed)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func (c *Client) FetchBatch(ids []string) (map[string][]byte, error) {
 		return make(map[string][]byte), nil
 	}
 
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.cfg, apiKey.Type)
 
 		reqBuilder := NewRequestBuilder(baseURL, c.fetcherCfg).
@@ -101,10 +102,10 @@ func (c *Client) FetchBatch(ids []string) (map[string][]byte, error) {
 		return result, true, nil
 	}
 
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, fmt.Sprintf("CoinGecko-%s", c.fetcherCfg.Name), executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, fmt.Sprintf("CoinGecko-%s", c.fetcherCfg.Name), executor, onFailed)
 	if err != nil {
 		return nil, err
 	}

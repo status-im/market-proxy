@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 const (
@@ -29,7 +31,7 @@ type CoingeckoRequestBuilder struct {
 	apiPath    string
 	params     map[string]string
 	apiKey     string
-	keyType    KeyType
+	keyType    apikeys.KeyType
 	userAgent  string
 	headers    map[string]string
 }
@@ -65,7 +67,7 @@ func (rb *CoingeckoRequestBuilder) WithCurrency(currency string) *CoingeckoReque
 }
 
 // WithApiKey sets the API key and its type
-func (rb *CoingeckoRequestBuilder) WithApiKey(apiKey string, keyType KeyType) *CoingeckoRequestBuilder {
+func (rb *CoingeckoRequestBuilder) WithApiKey(apiKey string, keyType apikeys.KeyType) *CoingeckoRequestBuilder {
 	if apiKey != "" {
 		rb.apiKey = apiKey
 		rb.keyType = keyType
@@ -86,7 +88,7 @@ func (rb *CoingeckoRequestBuilder) WithUserAgent(userAgent string) *CoingeckoReq
 }
 
 // GetApiKey returns the API key and its type
-func (rb *CoingeckoRequestBuilder) GetApiKey() (string, KeyType) {
+func (rb *CoingeckoRequestBuilder) GetApiKey() (string, apikeys.KeyType) {
 	return rb.apiKey, rb.keyType
 }
 

@@ -11,6 +11,7 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 //go:generate mockgen -destination=mocks/api_client.go . APIClient
@@ -27,7 +28,7 @@ type APIClient interface {
 // CoinGeckoClient implements APIClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool // Flag indicating if at least one fetch was successful
 }
@@ -80,7 +81,7 @@ func (c *CoinGeckoClient) FetchPrices(params interfaces.PriceParams) (map[string
 }
 
 func (c *CoinGeckoClient) executeFetchRequest(params interfaces.PriceParams) (*http.Response, []byte, error) {
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		// Get the appropriate base URL for this key type
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
@@ -119,10 +120,10 @@ func (c *CoinGeckoClient) executeFetchRequest(params interfaces.PriceParams) (*h
 	}
 
 	// Use TryWithKeys iterator
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, "CoinGecko", executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, "CoinGecko", executor, onFailed)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/proxy-common/apikeys"
 	"golang.org/x/time/rate"
 )
 
@@ -59,7 +60,7 @@ func (m *RateLimiterManager) SetConfig(newCfg config.APIKeyConfig) {
 
 	// Detect changes per key type
 	type change struct{ rpm, burst bool }
-	changed := map[KeyType]change{
+	changed := map[apikeys.KeyType]change{
 		ProKey:  {rpm: oldCfg.Pro.RateLimitPerMinute != newCfg.Pro.RateLimitPerMinute, burst: oldCfg.Pro.Burst != newCfg.Pro.Burst},
 		DemoKey: {rpm: oldCfg.Demo.RateLimitPerMinute != newCfg.Demo.RateLimitPerMinute, burst: oldCfg.Demo.Burst != newCfg.Demo.Burst},
 		NoKey:   {rpm: oldCfg.NoKey.RateLimitPerMinute != newCfg.NoKey.RateLimitPerMinute, burst: oldCfg.NoKey.Burst != newCfg.NoKey.Burst},
@@ -102,7 +103,7 @@ func (m *RateLimiterManager) GetLimiterForURL(u *url.URL) *rate.Limiter {
 }
 
 // getLimiterForKey returns a limiter for a given api key and type, creating it if missing
-func (m *RateLimiterManager) getLimiterForKey(key string, keyType KeyType) *rate.Limiter {
+func (m *RateLimiterManager) getLimiterForKey(key string, keyType apikeys.KeyType) *rate.Limiter {
 	mapKey := m.limiterMapKey(key, keyType)
 
 	m.mu.RLock()
@@ -126,11 +127,11 @@ func (m *RateLimiterManager) getLimiterForKey(key string, keyType KeyType) *rate
 	return limiter
 }
 
-func (m *RateLimiterManager) limiterMapKey(key string, keyType KeyType) string {
+func (m *RateLimiterManager) limiterMapKey(key string, keyType apikeys.KeyType) string {
 	return "type:" + m.keyTypeString(keyType) + "|key:" + key
 }
 
-func (m *RateLimiterManager) keyTypeString(keyType KeyType) string {
+func (m *RateLimiterManager) keyTypeString(keyType apikeys.KeyType) string {
 	switch keyType {
 	case ProKey:
 		return "pro"
@@ -143,7 +144,7 @@ func (m *RateLimiterManager) keyTypeString(keyType KeyType) string {
 	}
 }
 
-func (m *RateLimiterManager) parseKeyType(mapKey string) KeyType {
+func (m *RateLimiterManager) parseKeyType(mapKey string) apikeys.KeyType {
 	if strings.HasPrefix(mapKey, "type:") {
 		rest := strings.TrimPrefix(mapKey, "type:")
 		idx := strings.Index(rest, "|")
@@ -162,7 +163,7 @@ func (m *RateLimiterManager) parseKeyType(mapKey string) KeyType {
 	return NoKey
 }
 
-func (m *RateLimiterManager) limitForTypeLocked(keyType KeyType) rate.Limit {
+func (m *RateLimiterManager) limitForTypeLocked(keyType apikeys.KeyType) rate.Limit {
 	rpm := 0
 	switch keyType {
 	case ProKey:
@@ -186,7 +187,7 @@ func (m *RateLimiterManager) limitForTypeLocked(keyType KeyType) rate.Limit {
 	return rate.Limit(float64(rpm) / 60.0)
 }
 
-func (m *RateLimiterManager) burstForTypeWithDefaultFromLimit(keyType KeyType, limit rate.Limit) int {
+func (m *RateLimiterManager) burstForTypeWithDefaultFromLimit(keyType apikeys.KeyType, limit rate.Limit) int {
 	switch keyType {
 	case ProKey:
 		if m.config.Pro.Burst > 0 {
