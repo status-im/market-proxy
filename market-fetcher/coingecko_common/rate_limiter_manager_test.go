@@ -5,28 +5,24 @@ import (
 	"testing"
 
 	"github.com/status-im/market-proxy/config"
-	"golang.org/x/time/rate"
 )
 
 func TestRateLimiterManager_GetLimiterForURL(t *testing.T) {
 	// Create manager with test config
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config: config.APIKeyConfig{
-			Pro: config.RateLimit{
-				RateLimitPerMinute: 300,
-				Burst:              10,
-			},
-			Demo: config.RateLimit{
-				RateLimitPerMinute: 60,
-				Burst:              2,
-			},
-			NoKey: config.RateLimit{
-				RateLimitPerMinute: 30,
-				Burst:              1,
-			},
+	manager := newRateLimiterManager(config.APIKeyConfig{
+		Pro: config.RateLimit{
+			RateLimitPerMinute: 300,
+			Burst:              10,
 		},
-	}
+		Demo: config.RateLimit{
+			RateLimitPerMinute: 60,
+			Burst:              2,
+		},
+		NoKey: config.RateLimit{
+			RateLimitPerMinute: 30,
+			Burst:              1,
+		},
+	})
 
 	tests := []struct {
 		name            string
@@ -92,10 +88,7 @@ func TestRateLimiterManager_GetLimiterForURL(t *testing.T) {
 }
 
 func TestRateLimiterManager_GetLimiterForURL_NilChecks(t *testing.T) {
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config:       config.APIKeyConfig{},
-	}
+	manager := newRateLimiterManager(config.APIKeyConfig{})
 
 	// Test nil URL
 	limiter := manager.GetLimiterForURL(nil)
@@ -112,10 +105,7 @@ func TestRateLimiterManager_GetLimiterForURL_NilChecks(t *testing.T) {
 }
 
 func TestRateLimiterManager_SameLimiterForSameKey(t *testing.T) {
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config:       config.APIKeyConfig{},
-	}
+	manager := newRateLimiterManager(config.APIKeyConfig{})
 
 	// Create two URLs with the same pro key
 	url1, _ := url.Parse("https://pro-api.coingecko.com/api/v3/coins/markets?x_cg_pro_api_key=same-key")
@@ -134,10 +124,7 @@ func TestRateLimiterManager_SameLimiterForSameKey(t *testing.T) {
 }
 
 func TestRateLimiterManager_DifferentLimitersForDifferentKeys(t *testing.T) {
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config:       config.APIKeyConfig{},
-	}
+	manager := newRateLimiterManager(config.APIKeyConfig{})
 
 	// Create URLs with different keys
 	urlPro, _ := url.Parse("https://pro-api.coingecko.com/api/v3/coins/markets?x_cg_pro_api_key=pro-key")
@@ -159,15 +146,12 @@ func TestRateLimiterManager_DifferentLimitersForDifferentKeys(t *testing.T) {
 
 func TestRateLimiterManager_ConfiguredRates(t *testing.T) {
 	// Test with specific configuration
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config: config.APIKeyConfig{
-			Pro: config.RateLimit{
-				RateLimitPerMinute: 600, // 10 rps
-				Burst:              15,
-			},
+	manager := newRateLimiterManager(config.APIKeyConfig{
+		Pro: config.RateLimit{
+			RateLimitPerMinute: 600, // 10 rps
+			Burst:              15,
 		},
-	}
+	})
 
 	urlPro, _ := url.Parse("https://pro-api.coingecko.com/api/v3/coins/markets?x_cg_pro_api_key=test-key")
 	limiter := manager.GetLimiterForURL(urlPro)
@@ -192,10 +176,7 @@ func TestRateLimiterManager_ConfiguredRates(t *testing.T) {
 
 func TestRateLimiterManager_DefaultRates(t *testing.T) {
 	// Test with empty config to use defaults
-	manager := &RateLimiterManager{
-		keyToLimiter: make(map[string]*rate.Limiter),
-		config:       config.APIKeyConfig{},
-	}
+	manager := newRateLimiterManager(config.APIKeyConfig{})
 
 	urlPro, _ := url.Parse("https://pro-api.coingecko.com/api/v3/coins/markets?x_cg_pro_api_key=test-key")
 	urlDemo, _ := url.Parse("https://api.coingecko.com/api/v3/coins/markets?x_cg_demo_api_key=demo-key")
