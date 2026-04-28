@@ -9,6 +9,7 @@ import (
 
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/proxy-common/apikeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -18,9 +19,9 @@ type MockAPIKeyManager struct {
 	mock.Mock
 }
 
-func (m *MockAPIKeyManager) GetAvailableKeys() []cg.APIKey {
+func (m *MockAPIKeyManager) GetAvailableKeys() []apikeys.APIKey {
 	args := m.Called()
-	return args.Get(0).([]cg.APIKey)
+	return args.Get(0).([]apikeys.APIKey)
 }
 
 func (m *MockAPIKeyManager) MarkKeyAsFailed(key string) {
@@ -84,15 +85,15 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 		name            string
 		tryFreeApiFirst bool
 		interval        string
-		availableKeys   []cg.APIKey
-		expectedFirst   cg.KeyType
+		availableKeys   []apikeys.APIKey
+		expectedFirst   apikeys.KeyType
 		description     string
 	}{
 		{
 			name:            "TryFreeApiFirst enabled, no interval - NoKey should be first",
 			tryFreeApiFirst: true,
 			interval:        "",
-			availableKeys: []cg.APIKey{
+			availableKeys: []apikeys.APIKey{
 				{Key: "pro-key-1", Type: cg.ProKey},
 				{Key: "demo-key-1", Type: cg.DemoKey},
 				{Key: "", Type: cg.NoKey},
@@ -104,7 +105,7 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 			name:            "TryFreeApiFirst enabled, with interval - NoKey should stay at end",
 			tryFreeApiFirst: true,
 			interval:        "hourly",
-			availableKeys: []cg.APIKey{
+			availableKeys: []apikeys.APIKey{
 				{Key: "pro-key-1", Type: cg.ProKey},
 				{Key: "demo-key-1", Type: cg.DemoKey},
 				{Key: "", Type: cg.NoKey},
@@ -116,7 +117,7 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 			name:            "TryFreeApiFirst disabled, no interval - NoKey should stay at end",
 			tryFreeApiFirst: false,
 			interval:        "",
-			availableKeys: []cg.APIKey{
+			availableKeys: []apikeys.APIKey{
 				{Key: "pro-key-1", Type: cg.ProKey},
 				{Key: "demo-key-1", Type: cg.DemoKey},
 				{Key: "", Type: cg.NoKey},
@@ -128,7 +129,7 @@ func TestCoinGeckoClient_TryFreeApiFirst(t *testing.T) {
 			name:            "TryFreeApiFirst disabled, with interval - NoKey should stay at end",
 			tryFreeApiFirst: false,
 			interval:        "daily",
-			availableKeys: []cg.APIKey{
+			availableKeys: []apikeys.APIKey{
 				{Key: "pro-key-1", Type: cg.ProKey},
 				{Key: "demo-key-1", Type: cg.DemoKey},
 				{Key: "", Type: cg.NoKey},
@@ -217,7 +218,7 @@ func TestCoinGeckoClient_TryFreeApiFirst_NoKeyNotFound(t *testing.T) {
 
 	// Create mock key manager that returns keys without NoKey
 	mockKeyManager := new(MockAPIKeyManager)
-	availableKeys := []cg.APIKey{
+	availableKeys := []apikeys.APIKey{
 		{Key: "pro-key-1", Type: cg.ProKey},
 		{Key: "demo-key-1", Type: cg.DemoKey},
 		// No NoKey in the list
