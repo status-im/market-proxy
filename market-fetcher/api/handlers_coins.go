@@ -76,6 +76,12 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		params.PriceChangePercentage = splitParamLowercase(priceChangeParam)
 	}
 
+	if rehypothecatedParam := r.URL.Query().Get("include_rehypothecated"); rehypothecatedParam != "" {
+		if rehypothecated, err := strconv.ParseBool(rehypothecatedParam); err == nil {
+			params.IncludeRehypothecated = rehypothecated
+		}
+	}
+
 	data, cacheStatus, err := s.marketsService.Markets(params)
 	if err != nil {
 		http.Error(w, "Failed to fetch markets data: "+err.Error(), http.StatusInternalServerError)

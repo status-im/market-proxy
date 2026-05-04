@@ -14,6 +14,7 @@ type MarketParamsNormalize struct {
 	Sparkline             *bool   `yaml:"sparkline,omitempty"`
 	PriceChangePercentage *string `yaml:"price_change_percentage,omitempty"`
 	Category              *string `yaml:"category,omitempty"`
+	IncludeRehypothecated *bool   `yaml:"include_rehypothecated,omitempty"`
 }
 
 // MarketTier defines a tier configuration for token pages

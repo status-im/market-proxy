@@ -105,6 +105,7 @@ func (c *CoinGeckoClient) executeFetchRequest(params interfaces.MarketsParams) (
 			WithIDs(params.IDs).
 			WithSparkline(params.SparklineEnabled).
 			WithPriceChangePercentage(params.PriceChangePercentage).
+			WithIncludeRehypothecated(params.IncludeRehypothecated).
 			WithCurrency(params.Currency).
 			WithApiKey(apiKey.Key, apiKey.Type)
 

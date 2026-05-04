@@ -48,6 +48,9 @@ type MarketsParams struct {
 
 	// PriceChangePercentage includes price change percentages for specific time periods
 	PriceChangePercentage []string `json:"price_change_percentage,omitempty"`
+
+	// IncludeRehypothecated includes rehypothecated tokens (e.g., stETH, WETH, WBTC) in the response
+	IncludeRehypothecated bool `json:"include_rehypothecated,omitempty"`
 }
 
 // MarketsResponse represents markets data response structure
