@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2026-04-02T00:00:00.000Z",
+  "timestamp": "2026-05-04T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 4,
+    "minor": 5,
     "patch": 0
   },
   "tags": {},
@@ -247,7 +247,6 @@
         "56": "0xf307910a4c7bbc79691fd374889b36d8531b08e3",
         "42161": "0xaeaeed23478c3a4b798e4ed40d8b7f41366ae861",
         "59144": "0xa8ae6365383eb907e6b4b1b7e82a35752cc5ef8c",
-        "1101": "0xdf474b7109b73b7d57926d43598d5934131136b2",
         "534352": "0xdf474b7109b73b7d57926d43598d5934131136b2",
         "81457": "0x3580ac35bed2981d6bdd671a5982c2467d301241"
       }
@@ -473,8 +472,7 @@
       "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xba100000625a3754423978a60c9317c58a424e3D/logo.png",
       "contracts": {
         "1": "0xba100000625a3754423978a60c9317c58a424e3d",
-        "42161": "0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8",
-        "1101": "0x120ef59b80774f02211563834d8e3b72cb1649d6"
+        "42161": "0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8"
       }
     },
     {
@@ -673,7 +671,6 @@
         "8453": "0x3055913c90fcc1a6ce9a358911721eeb942013a1",
         "59144": "0x0d1e753a25ebda689453309112904807625befbe",
         "56": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
-        "1101": "0x0d1e753a25ebda689453309112904807625befbe",
         "324": "0x3a287a06c66f9e95a56327185ca2bdf5f031cecd"
       }
     },
@@ -1432,8 +1429,7 @@
       "contracts": {
         "1": "0x853d955acef822db058eb8505911ed77f175b99e",
         "56": "0x90c97f71e18723b0cf0dfa30ee176ab653e89f40",
-        "42161": "0x7468a5d8e02245b00e8c0217fce021c70bc51305",
-        "1101": "0xff8544fed5379d9ffa8d47a74ce6b91e632ac44d"
+        "42161": "0x7468a5d8e02245b00e8c0217fce021c70bc51305"
       }
     },
     {
@@ -1467,8 +1463,7 @@
       "contracts": {
         "1": "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0",
         "56": "0xe48a3d7d0bc88d552f730b62c006bc925eadb9ee",
-        "42161": "0xd9f9d2ee2d3efe420699079f16d9e924afffdea4",
-        "1101": "0x6b856a14cea1d7dcfaf80fa6936c0b75972ccace"
+        "42161": "0xd9f9d2ee2d3efe420699079f16d9e924afffdea4"
       }
     },
     {
@@ -1842,7 +1837,6 @@
         "42161": "0xe4dddfe67e7164b0fe14e218d80dc4c08edc01cb",
         "59144": "0x3b2f62d42db19b30588648bf1c184865d4c3b1d6",
         "56": "0xfe56d5892bdffc7bf58f2e84be1b2c32d21c308b",
-        "1101": "0x6a80a465409ce8d36c513129c0feea61bed579ba",
         "324": "0x6ee46cb7cd2f15ee1ec9534cf29a5b51c83283e6"
       }
     },
@@ -1937,7 +1931,6 @@
         "8453": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
         "42161": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4",
         "59144": "0x5b16228b94b68c7ce33af2acc5663ebde4dcfa2d",
-        "1101": "0xdb7a504cf869484dd6ac5faf925c8386cbf7573d",
         "130": "0xef66491eab4bbb582c57b14778afd8dfb70d8a1a",
         "747474": "0xc2c447b04e0ed3476ddbdae8e9e39be7159d27b6",
         "57073": "0x71052bae71c25c78e37fd12e5ff1101a71d9018f",
@@ -3673,7 +3666,6 @@
         "59141": "0xfece4462d57bd51a6a552365a011b95f0e16d9b7",
         "2741": "0x84a71ccd554cc1b02749b35d22F684cc8ec987e1",
         "11124": "0x572f4901f03055ffc1d936a60ccc3cbf13911be3",
-        "1101": "0xa8ce8aee21bc2a48a5ef670afcc9274c7bbbc035",
         "130": "0x078d782b760474a361dda0af3839290b0ef57ad6",
         "1301": "0x31d0220469e10c4e71834a79b1f276d740d3768f",
         "57073": "0x2d270e6886d130d724215a266106e6832161eaed",
