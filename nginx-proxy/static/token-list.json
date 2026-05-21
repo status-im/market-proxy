@@ -3766,17 +3766,6 @@
       }
     },
     {
-      "crossChainId": "usds",
-      "symbol": "USDS",
-      "name": "USDS Stablecoin",
-      "decimals": 18,
-      "logoURI": "https://assets.coingecko.com/coins/images/39926/large/usds.webp?1726666683",
-      "contracts": {
-        "1": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
-        "42161": "0x6491c05a82219b8d1479057361ff1654749b876b"
-      }
-    },
-    {
       "crossChainId": "tether-bsc",
       "symbol": "USDT",
       "name": "USDT (BSC)",
