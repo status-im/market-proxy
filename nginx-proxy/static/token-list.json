@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2026-05-04T00:00:00.000Z",
+  "timestamp": "2026-05-21T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 5,
+    "minor": 6,
     "patch": 0
   },
   "tags": {},
@@ -973,6 +973,18 @@
         "11155111": "0x3e622317f8c93f7328350cf0b56d9ed4c620c5d6",
         "1301": "0x35f965903a85e7528437c3ce0b4bdfbc4e5fc27c",
         "560048": "0xcafbbad55eb09efe7bec8408cff9932be7d9a7fa"
+      }
+    },
+    {
+      "crossChainId": "usds",
+      "symbol": "USDS",
+      "name": "USDS",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/39926/large/usds.webp?1726666683",
+      "contracts": {
+        "1": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+        "8453": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
+        "42161": "0x6491c05a82219b8d1479057361ff1654749b876b"
       }
     },
     {
