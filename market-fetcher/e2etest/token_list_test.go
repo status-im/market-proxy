@@ -30,6 +30,7 @@ func TestTokenListEndpoint(t *testing.T) {
 		"soneium",
 		"scroll",
 		"blast",
+		"robinhood",
 		"binance-smart-chain",
 	}
 
