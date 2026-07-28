@@ -91,6 +91,7 @@ coingecko_coinslist:
     - soneium
     - scroll
     - blast
+    - robinhood
     - status
     - binance-smart-chain
 
@@ -111,6 +112,7 @@ coingecko_token_list:
     - soneium
     - scroll
     - blast
+    - robinhood
     - binance-smart-chain
 
 coingecko_coins:

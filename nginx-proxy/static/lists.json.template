@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-05-04T00:00:00.000Z",
+  "timestamp": "2026-07-28T00:00:00.000Z",
   "version": {
     "major": 0,
-    "minor": 4,
+    "minor": 5,
     "patch": 0
   },
   "tokenLists": [
@@ -70,6 +70,10 @@
     {
       "id": "coingeckoBlast",
       "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/blast/all.json"
+    },
+    {
+      "id": "coingeckoRobinhood",
+      "sourceUrl": "${MARKET_BASE_URL}/v1/token_lists/robinhood/all.json"
     },
     {
       "id": "aave",
