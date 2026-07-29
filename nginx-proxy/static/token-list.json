@@ -1,9 +1,9 @@
 {
   "name": "Status Token List",
-  "timestamp": "2026-05-21T00:00:00.000Z",
+  "timestamp": "2026-07-29T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 6,
+    "minor": 8,
     "patch": 0
   },
   "tags": {},
@@ -3158,8 +3158,7 @@
         "10": "0x650af3c15af43dcb218406d30784416d64cfb6b2",
         "8453": "0x662015ec830df08c0fc45896fab726542e8ac09e",
         "42161": "0x707f635951193ddafbb40971a0fcaab8a6415160",
-        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8",
-        "560048": "0x0B5DAd18B8791ddb24252B433ec4f21f9e6e5Ed0"
+        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8"
       }
     },
     {
@@ -3286,7 +3285,8 @@
         "11155111": "0xe452027cdef746c7cd3db31cb700428b16cd8e51",
         "11155420": "0x0b5dad18b8791ddb24252b433ec4f21f9e6e5ed0",
         "1660990954": "0x1c3ac2a186c6149ae7cb4d716ebbd0766e4f898a",
-        "59141": "0x4f3b44bdddb0e2f94a85d75294d0a38e211be6a8"
+        "59141": "0x4f3b44bdddb0e2f94a85d75294d0a38e211be6a8",
+        "560048": "0x0B5DAd18B8791ddb24252B433ec4f21f9e6e5Ed0"
       }
     },
     {
@@ -4202,6 +4202,56 @@
         "1": "0x18084fba666a33d37592fa2633fd49a74dd93a88",
         "8453": "0x236aa50979d5f3de3bd1eeb40e81137f22ab794b",
         "42161": "0x7e2a1edee171c5b19e6c54d73752396c0a572594"
+      }
+    },
+    {
+      "crossChainId": "amd-robinhood-tokenized-stock",
+      "symbol": "AMD",
+      "name": "AMD",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/102174114/thumb/0x86923f96303d656e4aa86d9d42d1e57ad2023fdc.png?1782444575",
+      "contracts": {
+        "46630": "0x71178bac73cbeb415514eb542a8995b82669778d"
+      }
+    },
+    {
+      "crossChainId": "netflix-robinhood-tokenized-stock",
+      "symbol": "NFLX",
+      "name": "Netflix",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/102174165/thumb/0xe0444ef8bf4ed74f74fd73686e2ddf4c1c5591e8.png?1782444710",
+      "contracts": {
+        "46630": "0x3b8262a63d25f0477c4dde23f83cfe22cb768c93"
+      }
+    },
+    {
+      "crossChainId": "palantir-technologies-robinhood-tokenized-stock",
+      "symbol": "PLTR",
+      "name": "Palantir Technologies",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/102174117/thumb/0x894e1ec2d74ffe5aef8dc8a9e84686accb964f2a.png?1782444583",
+      "contracts": {
+        "46630": "0x1fbe1a0e43594b3455993b5de5fd0a7a266298d0"
+      }
+    },
+    {
+      "crossChainId": "amazon-robinhood-tokenized-stock",
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/102174126/thumb/0x12f190a9f9d7d37a250758b26824b97ce941bf54.png?1782444606",
+      "contracts": {
+        "46630": "0x5884ad2f920c162cfbbacc88c9c51aa75ec09e02"
+      }
+    },
+    {
+      "crossChainId": "tesla-robinhood-tokenized-stock",
+      "symbol": "TSLA",
+      "name": "Tesla",
+      "decimals": 18,
+      "logoURI": "https://assets.coingecko.com/coins/images/102174112/thumb/0x322f0929c4625ed5bad873c95208d54e1c003b2d.png?1782444570",
+      "contracts": {
+        "46630": "0xc9f9c86933092bbbfff3ccb4b105a4a94bf3bd4e"
       }
     }
   ]
