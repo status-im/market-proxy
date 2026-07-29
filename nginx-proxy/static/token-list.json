@@ -3,7 +3,7 @@
   "timestamp": "2026-07-29T00:00:00.000Z",
   "version": {
     "major": 1,
-    "minor": 7,
+    "minor": 8,
     "patch": 0
   },
   "tags": {},
@@ -3158,8 +3158,7 @@
         "10": "0x650af3c15af43dcb218406d30784416d64cfb6b2",
         "8453": "0x662015ec830df08c0fc45896fab726542e8ac09e",
         "42161": "0x707f635951193ddafbb40971a0fcaab8a6415160",
-        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8",
-        "560048": "0x0B5DAd18B8791ddb24252B433ec4f21f9e6e5Ed0"
+        "59144": "0xa3c26a308ac52520320ebcafdba0bb0aaa105ee8"
       }
     },
     {
@@ -3286,7 +3285,8 @@
         "11155111": "0xe452027cdef746c7cd3db31cb700428b16cd8e51",
         "11155420": "0x0b5dad18b8791ddb24252b433ec4f21f9e6e5ed0",
         "1660990954": "0x1c3ac2a186c6149ae7cb4d716ebbd0766e4f898a",
-        "59141": "0x4f3b44bdddb0e2f94a85d75294d0a38e211be6a8"
+        "59141": "0x4f3b44bdddb0e2f94a85d75294d0a38e211be6a8",
+        "560048": "0x0B5DAd18B8791ddb24252B433ec4f21f9e6e5Ed0"
       }
     },
     {
