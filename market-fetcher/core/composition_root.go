@@ -9,6 +9,7 @@ import (
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
 	"github.com/status-im/market-proxy/coingecko_coins"
 	cg "github.com/status-im/market-proxy/coingecko_common"
+	"github.com/status-im/market-proxy/coingecko_exchange_rates"
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
 	"github.com/status-im/market-proxy/coingecko_markets"
@@ -16,6 +17,7 @@ import (
 	"github.com/status-im/market-proxy/coingecko_token_list"
 	"github.com/status-im/market-proxy/coingecko_tokens"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/currency_ratios"
 )
 
 // Setup creates and registers all services
@@ -61,13 +63,21 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
 	registry.Register(cgService)
 
+	// Currency ratios service (source of realtime conversion Estimates)
+	currencyRatiosService := currency_ratios.NewService(cfg)
+	registry.Register(currencyRatiosService)
+
+	// Exchange rates service (independent Passthrough endpoint)
+	exchangeRatesService := coingecko_exchange_rates.NewService(cfg)
+	registry.Register(exchangeRatesService)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	// HTTP Server
-	server := api.New(port, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService, coinsService)
+	server := api.New(port, cgService, tokensService, pricesService, marketsService, marketChartService, assetsPlatformsService, tokenListService, coinsService, currencyRatiosService, exchangeRatesService)
 	registry.Register(server)
 
 	return registry, nil

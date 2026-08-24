@@ -45,6 +45,23 @@ func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
 	}
 }
 
+// sendJSONError writes a JSON error body with the given HTTP status
+func (s *Server) sendJSONError(w http.ResponseWriter, status int, message string) {
+	responseBytes, err := json.Marshal(map[string]string{"error": message})
+	if err != nil {
+		http.Error(w, message, status)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBytes)))
+	w.WriteHeader(status)
+
+	if _, err := w.Write(responseBytes); err != nil {
+		log.Printf("Error writing error response: %v", err)
+	}
+}
+
 // Stop gracefully shuts down the server
 func (s *Server) Stop() {
 	if s.server != nil {

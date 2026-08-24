@@ -22,6 +22,9 @@ type Config struct {
 	APITokens            *APITokens
 	Cache                cache.Config `yaml:"cache"`
 
+	CurrencyRatios         CurrencyRatiosConfig       `yaml:"currency_ratios"`
+	CoingeckoExchangeRates ExchangeRatesFetcherConfig `yaml:"coingecko_exchange_rates"`
+
 	OverrideCoingeckoPublicURL string `yaml:"override_coingecko_public_url"`
 	OverrideCoingeckoProURL    string `yaml:"override_coingecko_pro_url"`
 
@@ -59,9 +62,24 @@ func LoadConfig(filename string) (*Config, error) {
 		config.APITokens = apiTokens
 	}
 
+	// Set default currency ratios config if not provided
+	if config.CurrencyRatios.IsEmpty() {
+		config.CurrencyRatios = GetDefaultCurrencyRatiosConfig()
+	}
+
+	// Set default exchange rates config if not provided
+	if config.CoingeckoExchangeRates.UpdateInterval == 0 {
+		config.CoingeckoExchangeRates = GetDefaultExchangeRatesConfig()
+	}
+
 	// Validate coingecko markets configuration
 	if err := config.CoingeckoMarkets.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid coingecko_markets configuration: %w", err)
+	}
+
+	// Validate currency ratios configuration
+	if err := config.CurrencyRatios.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid currency_ratios configuration: %w", err)
 	}
 
 	return &config, nil
