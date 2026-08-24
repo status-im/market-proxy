@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/status-im/market-proxy/interfaces"
 
 	"github.com/status-im/market-proxy/coingecko_market_chart"
+	"github.com/status-im/market-proxy/coingecko_markets"
+	"github.com/status-im/market-proxy/coingecko_prices"
+	"github.com/status-im/market-proxy/currency_ratios"
 )
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -32,13 +36,47 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 	s.sendJSONResponse(w, tokens)
 }
 
+// marketsConversion assembles the ratios needed to convert a markets response,
+// including the 1h-ago spot ratio when the realtime history reaches back that far.
+func (s *Server) marketsConversion(currency string, ratio currency_ratios.Ratio) coingecko_markets.MarketsConversion {
+	conversion := coingecko_markets.MarketsConversion{Ratio: ratio}
+
+	if s.currencyRatiosService != nil {
+		if spot1hAgo, ok := s.currencyRatiosService.GetSpotRatioAgo(currency, time.Hour); ok {
+			conversion.Spot1hAgo = spot1hAgo
+			conversion.Has1hAgo = true
+		}
+	}
+
+	return conversion
+}
+
 // handleCoinsMarkets implements CoinGecko-compatible /api/v3/coins/markets endpoint
 func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 	params := interfaces.MarketsParams{}
 
+	convertCurrency, ratio, outcome := s.resolveConvertRatio(w, r)
+	switch outcome {
+	case convertRejected:
+		return
+	case convertUnavailable:
+		// No ratio yet: answer with the endpoint's empty shape rather than
+		// serving Passthrough usd values labelled as another currency.
+		s.sendJSONResponse(w, interfaces.MarketsResponse([]interface{}{}))
+		return
+	}
+
 	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {
 		params.Currency = currency
+	}
+
+	if outcome == convertReady {
+		// Cached rows are always normalized to the base currency by
+		// market_params_normalize, so vs_currency carries no information here.
+		// Whatever the client sent is ignored and the Estimate is computed from
+		// the base currency rows.
+		params.Currency = currency_ratios.BaseCurrency
 	}
 
 	order := getParamLowercase(r, "order")
@@ -82,6 +120,10 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if outcome == convertReady {
+		data = coingecko_markets.ConvertMarketsResponse(data, s.marketsConversion(convertCurrency, ratio))
+	}
+
 	s.setCacheStatusHeader(w, cacheStatus.String())
 	s.sendJSONResponse(w, data)
 }
@@ -103,6 +145,31 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params.Currencies = splitParamLowercase(currenciesParam)
+
+	// A currency cannot be both Passthrough (vs_currencies) and Estimate
+	// (convert_currency) in one response - the same keys would carry both.
+	requestedConvert := getParamLowercase(r, convertCurrencyParam)
+	if requestedConvert != "" && coingecko_prices.ContainsCurrency(params.Currencies, requestedConvert) {
+		s.sendJSONError(w, http.StatusBadRequest,
+			fmt.Sprintf("%s %s must not be listed in vs_currencies", convertCurrencyParam, requestedConvert))
+		return
+	}
+
+	convertCurrency, ratio, outcome := s.resolveConvertRatio(w, r)
+	switch outcome {
+	case convertRejected:
+		return
+	case convertUnavailable:
+		s.sendJSONResponse(w, interfaces.SimplePriceResponse{})
+		return
+	}
+
+	// Estimates are computed from the base currency values, so they have to be
+	// read from cache even when the caller did not ask for them.
+	requestedCurrencies := params.Currencies
+	if outcome == convertReady {
+		params.Currencies = coingecko_prices.SourceCurrencies(params.Currencies)
+	}
 
 	if marketCapParam := r.URL.Query().Get("include_market_cap"); marketCapParam != "" {
 		if marketCap, err := strconv.ParseBool(marketCapParam); err == nil {
@@ -132,6 +199,11 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Failed to fetch prices: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if outcome == convertReady {
+		keepBase := coingecko_prices.ContainsCurrency(requestedCurrencies, currency_ratios.BaseCurrency)
+		response = coingecko_prices.ConvertSimplePrices(response, convertCurrency, ratio, params.Precision, keepBase)
 	}
 
 	s.setCacheStatusHeader(w, cacheStatus.String())

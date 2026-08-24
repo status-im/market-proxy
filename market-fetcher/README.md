@@ -297,6 +297,68 @@ Returns top market data from CoinGecko:
 }
 ```
 
+### Currency conversion (`?convert_currency`)
+
+`/api/v1/leaderboard/markets`, `/api/v1/leaderboard/prices`, `/api/v1/coins/markets`
+and `/api/v1/simple/price` accept an optional `?convert_currency=<code>` parameter.
+Cached USD values are converted **at request time** using ratios derived from a
+single periodic `simple/price` call for a reference coin (see `currency_ratios` in
+`config.yaml`); the cache itself is never mutated. Percent changes are converted
+with both the spot and the window-start ratio, so a coin's change measured in `btc`
+comes out correctly rather than repeating the USD change.
+
+```bash
+curl "http://localhost:8080/api/v1/leaderboard/markets?convert_currency=eur"
+curl "http://localhost:8080/api/v1/leaderboard/prices?convert_currency=eur"
+curl "http://localhost:8080/api/v1/coins/markets?ids=bitcoin&convert_currency=eur"
+curl "http://localhost:8080/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=eur"
+```
+
+Shared rules:
+
+- A currency outside the configured `currency_ratios.currencies` list returns
+  `HTTP 400 {"error": "unsupported convert_currency: <code>"}` - never a silent
+  fallback to USD.
+- Before the first ratio snapshot exists, the endpoints return their usual empty
+  response shape.
+- `convert_currency=usd` is allowed and passes the values through numerically.
+- Snapshot staleness is exported as `market_fetcher_currency_ratios_snapshot_age_seconds`.
+
+Per endpoint:
+
+- **leaderboard** - `currency` keeps its original meaning (it selects a currency
+  already present in the cache); `convert_currency` is separate and always converts
+  from USD.
+- **`/coins/markets`** - money fields (`current_price`, `market_cap`,
+  `fully_diluted_valuation`, `total_volume`, `high_24h`, `low_24h`, `ath`, `atl`,
+  sparkline prices) are scaled by the spot ratio; `price_change_24h` and
+  `market_cap_change_24h` convert each end of the delta with the ratio that applied
+  then; 24h percentages use the honest formula.
+  `price_change_percentage_1h_in_currency` uses the ratio from one hour ago when the
+  in-memory ratio history reaches back that far, and is left unconverted otherwise.
+  `vs_currency` is ignored when converting, because cached rows are always
+  normalized to USD by `market_params_normalize`. `ath_change_percentage`,
+  `atl_change_percentage` and percentages over windows longer than 24h pass through
+  unchanged - honest values would need the exchange rate as it stood on those dates.
+- **`/simple/price`** - Estimate keys `x`, `x_market_cap`, `x_24h_vol` and
+  `x_24h_change` are added next to the requested `vs_currencies` Passthrough keys; a
+  key only appears when its USD source key was requested via the `include_*` flags.
+  Listing the same currency in both `vs_currencies` and `convert_currency` returns
+  `HTTP 400` - one key cannot be both Passthrough and Estimate.
+
+### GET /api/v1/exchange_rates
+Returns the CoinGecko `/api/v3/exchange_rates` body verbatim, refreshed on the
+interval configured in `coingecko_exchange_rates`. Currency conversion does **not**
+depend on this endpoint.
+```json
+{
+  "rates": {
+    "btc": { "name": "Bitcoin", "unit": "BTC", "value": 1.0, "type": "crypto" },
+    "usd": { "name": "US Dollar", "unit": "$", "value": 78126.0, "type": "fiat" }
+  }
+}
+```
+
 ### GET /api/v1/coins/markets
 CoinGecko-compatible markets endpoint with pagination and filtering:
 ```bash

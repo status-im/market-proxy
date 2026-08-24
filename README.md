@@ -159,13 +159,14 @@ This will:
 
 The proxy provides the following endpoints:
 
-- `/v1/simple/price` - CoinGecko-compatible simple price endpoint
-- `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination
+- `/v1/simple/price` - CoinGecko-compatible simple price endpoint (optional `?convert_currency=<code>`)
+- `/v1/coins/markets` - CoinGecko-compatible markets endpoint with caching and pagination (optional `?convert_currency=<code>`)
 - `/v1/coins/list` - Supported coins list with platform information
 - `/v1/asset_platforms` - CoinGecko-compatible asset platforms endpoint with 30-minute caching
 - `/v1/coins/{coin_id}/market_chart` - Historical price data with intelligent caching
-- `/v1/leaderboard/markets` - Top market data from leaderboard service
-- `/v1/leaderboard/prices` - Top price data from leaderboard service  
+- `/v1/exchange_rates` - CoinGecko-compatible exchange rates endpoint, served verbatim
+- `/v1/leaderboard/markets` - Top market data from leaderboard service (optional `?convert_currency=<code>`)
+- `/v1/leaderboard/prices` - Top price data from leaderboard service (optional `?convert_currency=<code>`)
 - `/v1/leaderboard/simpleprices` - Simple prices for top tokens
 - `/health` - Health check endpoint
 - `/metrics` - Prometheus metrics
