@@ -34,6 +34,7 @@ coingecko_markets:
     sparkline: false          # never include sparkline data
     price_change_percentage: "1h,24h"  # always include 1h and 24h price changes
     category: ""              # never filter by category
+    include_rehypothecated: true       # always fetch rehypothecated tokens (stETH, WETH, WBTC)
   
   tiers:
     - name: "top-500"
