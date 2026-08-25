@@ -56,6 +56,11 @@ func (s *stubRatiosProvider) GetSpotRatioAgo(currency string, _ time.Duration) (
 	return ratio, ok
 }
 
+// floatPtr builds the optional-value pointers the leaderboard response structs use
+func floatPtr(value float64) *float64 {
+	return &value
+}
+
 func supportedCurrencies() map[string]bool {
 	return map[string]bool{"usd": true, "eur": true, "btc": true}
 }
@@ -65,13 +70,13 @@ func testMarkets() *interfaces.LeaderboardResponse {
 		Data: []interfaces.LeaderboardCoinData{{
 			ID:           "bitcoin",
 			Symbol:       "btc",
-			CurrentPrice: 100000,
+			CurrentPrice: floatPtr(100000),
 		}},
 	}
 }
 
 func testQuotes() interfaces.LeaderboardQuotes {
-	return interfaces.LeaderboardQuotes{"bitcoin": {Price: 100000, PercentChange24h: 10}}
+	return interfaces.LeaderboardQuotes{"bitcoin": {Price: 100000, PercentChange24h: floatPtr(10)}}
 }
 
 func newTestServer(leaderboard interfaces.ILeaderboardService, ratios interfaces.ICurrencyRatiosProvider) *Server {

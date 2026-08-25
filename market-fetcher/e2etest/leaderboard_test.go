@@ -85,4 +85,3 @@ func TestLeaderboardPricesEndpoint(t *testing.T) {
 	assert.Contains(t, firstItem, "symbol", "Item should contain 'symbol'")
 	assert.Contains(t, firstItem, "price", "Item should contain 'price'")
 }
-

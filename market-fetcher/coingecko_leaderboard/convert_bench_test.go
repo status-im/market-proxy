@@ -16,10 +16,10 @@ func benchResponse(n int) *APIResponse {
 			Symbol:                   fmt.Sprintf("sym%d", i),
 			Name:                     fmt.Sprintf("Coin %d", i),
 			Image:                    "https://example.com/img.png",
-			CurrentPrice:             12345.678,
-			MarketCap:                9.8e10,
-			TotalVolume:              3.2e9,
-			PriceChangePercentage24h: 1.234,
+			CurrentPrice:             floatPtr(12345.678),
+			MarketCap:                floatPtr(9.8e10),
+			TotalVolume:              floatPtr(3.2e9),
+			PriceChangePercentage24h: floatPtr(1.234),
 		})
 	}
 	return resp
@@ -62,7 +62,7 @@ func BenchmarkMarshalOnly5000(b *testing.B) {
 func BenchmarkConvertQuotes500(b *testing.B) {
 	quotes := make(map[string]Quote, 500)
 	for i := 0; i < 500; i++ {
-		quotes[fmt.Sprintf("coin-%d", i)] = Quote{Price: 123.4, Volume24h: 1e8, MarketCap: 1e10, PercentChange24h: 2.5}
+		quotes[fmt.Sprintf("coin-%d", i)] = Quote{Price: 123.4, Volume24h: floatPtr(1e8), MarketCap: floatPtr(1e10), PercentChange24h: floatPtr(2.5)}
 	}
 	ratio := currency_ratios.Ratio{Now: 0.857, H24: 0.855}
 	b.ResetTimer()

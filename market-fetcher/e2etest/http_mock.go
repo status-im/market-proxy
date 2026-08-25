@@ -256,6 +256,17 @@ func defaultLeaderboardData() string {
 		"atl_change_percentage": 692968.2,
 		"atl_date": "2015-10-20T00:00:00.000Z",
 		"last_updated": "2023-04-20T12:34:56.789Z"
+	},
+	{
+		"id": "sparsecoin",
+		"symbol": "spc",
+		"name": "Sparse Coin",
+		"image": "https://assets.coingecko.com/coins/images/0/large/sparse.png",
+		"current_price": 2.5,
+		"market_cap": null,
+		"total_volume": null,
+		"price_change_percentage_24h": null,
+		"last_updated": "2023-04-20T12:34:56.789Z"
 	}
 ]`
 }

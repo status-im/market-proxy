@@ -20,19 +20,19 @@ func sampleAPIResponse() *APIResponse {
 				Symbol:                   "btc",
 				Name:                     "Bitcoin",
 				Image:                    "https://example.com/btc.png",
-				CurrentPrice:             100000,
-				MarketCap:                2000000000,
-				TotalVolume:              50000000,
-				PriceChangePercentage24h: 10,
+				CurrentPrice:             floatPtr(100000),
+				MarketCap:                floatPtr(2000000000),
+				TotalVolume:              floatPtr(50000000),
+				PriceChangePercentage24h: floatPtr(10),
 			},
 			{
 				ID:                       "ethereum",
 				Symbol:                   "eth",
 				Name:                     "Ethereum",
-				CurrentPrice:             4000,
-				MarketCap:                480000000,
-				TotalVolume:              20000000,
-				PriceChangePercentage24h: -5,
+				CurrentPrice:             floatPtr(4000),
+				MarketCap:                floatPtr(480000000),
+				TotalVolume:              floatPtr(20000000),
+				PriceChangePercentage24h: floatPtr(-5),
 			},
 		},
 	}
@@ -50,16 +50,16 @@ func TestConvertAPIResponse(t *testing.T) {
 	assert.Equal(t, "btc", btc.Symbol)
 	assert.Equal(t, "Bitcoin", btc.Name)
 	assert.Equal(t, "https://example.com/btc.png", btc.Image)
-	assert.InDelta(t, 90000.0, btc.CurrentPrice, 1e-9)
-	assert.InDelta(t, 1800000000.0, btc.MarketCap, 1e-3)
-	assert.InDelta(t, 45000000.0, btc.TotalVolume, 1e-3)
+	assert.InDelta(t, 90000.0, requireFloat(t, btc.CurrentPrice), 1e-9)
+	assert.InDelta(t, 1800000000.0, requireFloat(t, btc.MarketCap), 1e-3)
+	assert.InDelta(t, 45000000.0, requireFloat(t, btc.TotalVolume), 1e-3)
 	// ((1 + 0.10) * 0.9 / 0.825 - 1) * 100 = 20
-	assert.InDelta(t, 20.0, btc.PriceChangePercentage24h, 1e-9)
+	assert.InDelta(t, 20.0, requireFloat(t, btc.PriceChangePercentage24h), 1e-9)
 
 	eth := converted.Data[1]
-	assert.InDelta(t, 3600.0, eth.CurrentPrice, 1e-9)
+	assert.InDelta(t, 3600.0, requireFloat(t, eth.CurrentPrice), 1e-9)
 	// ((1 - 0.05) * 0.9 / 0.825 - 1) * 100 = 3.6363...
-	assert.InDelta(t, (0.95*0.9/0.825-1)*100, eth.PriceChangePercentage24h, 1e-9)
+	assert.InDelta(t, (0.95*0.9/0.825-1)*100, requireFloat(t, eth.PriceChangePercentage24h), 1e-9)
 }
 
 // TestConvertAPIResponse_DoesNotMutatePassthrough guards the ADR's core rule:
@@ -92,8 +92,8 @@ func TestConvertAPIResponse_NilAndEmpty(t *testing.T) {
 
 func sampleQuotes() map[string]Quote {
 	return map[string]Quote{
-		"bitcoin": {Price: 100000, Volume24h: 50000000, MarketCap: 2000000000, PercentChange24h: 10},
-		"tether":  {Price: 1, Volume24h: 1000000, MarketCap: 100000000, PercentChange24h: 0},
+		"bitcoin": {Price: 100000, Volume24h: floatPtr(50000000), MarketCap: floatPtr(2000000000), PercentChange24h: floatPtr(10)},
+		"tether":  {Price: 1, Volume24h: floatPtr(1000000), MarketCap: floatPtr(100000000), PercentChange24h: floatPtr(0)},
 	}
 }
 
@@ -105,14 +105,14 @@ func TestConvertQuotes(t *testing.T) {
 
 	btc := converted["bitcoin"]
 	assert.InDelta(t, 90000.0, btc.Price, 1e-9)
-	assert.InDelta(t, 45000000.0, btc.Volume24h, 1e-3)
-	assert.InDelta(t, 1800000000.0, btc.MarketCap, 1e-3)
-	assert.InDelta(t, 20.0, btc.PercentChange24h, 1e-9)
+	assert.InDelta(t, 45000000.0, requireFloat(t, btc.Volume24h), 1e-3)
+	assert.InDelta(t, 1800000000.0, requireFloat(t, btc.MarketCap), 1e-3)
+	assert.InDelta(t, 20.0, requireFloat(t, btc.PercentChange24h), 1e-9)
 
 	// A stablecoin flat in usd is not flat in eur when eur moved
 	usdt := converted["tether"]
 	assert.InDelta(t, 0.9, usdt.Price, 1e-9)
-	assert.InDelta(t, (0.9/0.825-1)*100, usdt.PercentChange24h, 1e-9)
+	assert.InDelta(t, (0.9/0.825-1)*100, requireFloat(t, usdt.PercentChange24h), 1e-9)
 }
 
 func TestConvertQuotes_DoesNotMutatePassthrough(t *testing.T) {
@@ -140,9 +140,9 @@ func TestConvertQuotes_BitcoinInBtcTerms(t *testing.T) {
 	btcRatio := currency_ratios.Ratio{Now: 1e-5, H24: 1.1e-5}
 
 	converted := ConvertQuotes(map[string]Quote{
-		"bitcoin": {Price: 100000, PercentChange24h: 10},
+		"bitcoin": {Price: 100000, PercentChange24h: floatPtr(10)},
 	}, btcRatio)
 
 	assert.InDelta(t, 1.0, converted["bitcoin"].Price, 1e-9)
-	assert.InDelta(t, 0.0, converted["bitcoin"].PercentChange24h, 1e-9)
+	assert.InDelta(t, 0.0, requireFloat(t, converted["bitcoin"].PercentChange24h), 1e-9)
 }

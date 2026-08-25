@@ -113,6 +113,49 @@ func TestExchangeRatesEndpoint(t *testing.T) {
 	assert.JSONEq(t, defaultExchangeRatesData(), string(body))
 }
 
+// TestLeaderboardMarketsAbsentFieldsAreNotFabricated walks a row CoinGecko
+// reported with nulls all the way through the stack: the fields must be absent
+// from both the Passthrough and the converted response, not zero and not a
+// percentage invented from a zero.
+func TestLeaderboardMarketsAbsentFieldsAreNotFabricated(t *testing.T) {
+	env := SetupTest(t)
+	defer env.TearDown()
+
+	waitForDataInitialization(t, env)
+	converted := waitForConvertedMarkets(t, env)
+
+	var passthrough map[string]interface{}
+	resp := getJSON(t, env.ServerBaseURL+"/api/v1/leaderboard/markets", &passthrough)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	findSparse := func(rows []interface{}) map[string]interface{} {
+		for _, row := range rows {
+			item, ok := row.(map[string]interface{})
+			if ok && item["id"] == "sparsecoin" {
+				return item
+			}
+		}
+		return nil
+	}
+
+	passthroughRows, ok := passthrough["data"].([]interface{})
+	require.True(t, ok)
+
+	sparsePassthrough := findSparse(passthroughRows)
+	require.NotNil(t, sparsePassthrough, "the fixture row with nulls should be served")
+	sparseConverted := findSparse(converted)
+	require.NotNil(t, sparseConverted)
+
+	for _, field := range []string{"market_cap", "total_volume", "price_change_percentage_24h"} {
+		assert.NotContains(t, sparsePassthrough, field, "%s was null upstream and must be omitted", field)
+		assert.NotContains(t, sparseConverted, field, "%s must not be invented by the conversion", field)
+	}
+
+	// the field that was reported still converts
+	assert.InDelta(t, 2.5, sparsePassthrough["current_price"], 1e-9)
+	assert.InDelta(t, 2.5*RatioFixtureEURNow, sparseConverted["current_price"], 1e-9)
+}
+
 // TestLeaderboardMarketsConvertCurrency checks the realtime Estimate on
 // /api/v1/leaderboard/markets
 func TestLeaderboardMarketsConvertCurrency(t *testing.T) {
@@ -138,20 +181,22 @@ func TestLeaderboardMarketsConvertCurrency(t *testing.T) {
 	assert.Equal(t, usdCoin["id"], eurCoin["id"])
 	assert.Equal(t, usdCoin["symbol"], eurCoin["symbol"])
 
-	usdPrice := usdCoin["current_price"].(float64)
-	eurPrice := eurCoin["current_price"].(float64)
-	assert.InDelta(t, usdPrice*RatioFixtureEURNow, eurPrice, 1e-6)
-
-	usdMarketCap := usdCoin["market_cap"].(float64)
-	assert.InDelta(t, usdMarketCap*RatioFixtureEURNow, eurCoin["market_cap"].(float64), 1e-3)
-
-	usdVolume := usdCoin["total_volume"].(float64)
-	assert.InDelta(t, usdVolume*RatioFixtureEURNow, eurCoin["total_volume"].(float64), 1e-3)
+	// Money fields the provider reported convert by the spot ratio; fields it
+	// did not report stay absent on both sides rather than becoming zero.
+	for _, field := range []string{"current_price", "market_cap", "total_volume"} {
+		usdValue, reported := usdCoin[field].(float64)
+		if !reported {
+			assert.NotContains(t, eurCoin, field, "an absent %s must stay absent", field)
+			continue
+		}
+		assert.InDelta(t, usdValue*RatioFixtureEURNow, eurCoin[field], 1e-3, "field %s", field)
+	}
 
 	// Honest percent change conversion
-	usdPct := usdCoin["price_change_percentage_24h"].(float64)
+	usdPct, reported := usdCoin["price_change_percentage_24h"].(float64)
+	require.True(t, reported, "the fixture reports a 24h change")
 	expectedPct := ((1+usdPct/100)*RatioFixtureEURNow/RatioFixtureEUR24h - 1) * 100
-	assert.InDelta(t, expectedPct, eurCoin["price_change_percentage_24h"].(float64), 1e-9)
+	assert.InDelta(t, expectedPct, eurCoin["price_change_percentage_24h"], 1e-9)
 
 	// The cached Passthrough response is untouched by the conversion request
 	var usdAfter map[string]interface{}
@@ -405,10 +450,25 @@ func TestLeaderboardPricesConvertCurrency(t *testing.T) {
 		require.True(t, ok, "token %s should be present in the converted response", tokenID)
 
 		assert.InDelta(t, usdQuote["price"]*RatioFixtureEURNow, eurQuote["price"], 1e-6)
-		assert.InDelta(t, usdQuote["volume_24h"]*RatioFixtureEURNow, eurQuote["volume_24h"], 1e-3)
-		assert.InDelta(t, usdQuote["market_cap"]*RatioFixtureEURNow, eurQuote["market_cap"], 1e-3)
 
-		expectedPct := ((1+usdQuote["percent_change_24h"]/100)*RatioFixtureEURNow/RatioFixtureEUR24h - 1) * 100
+		// Optional fields are omitted when upstream did not report them, so
+		// only compare the ones that are actually there on the usd side.
+		for _, field := range []string{"volume_24h", "market_cap"} {
+			usdValue, reported := usdQuote[field]
+			if !reported {
+				assert.NotContains(t, eurQuote, field, "an absent %s must stay absent", field)
+				continue
+			}
+			assert.InDelta(t, usdValue*RatioFixtureEURNow, eurQuote[field], 1e-3, "field %s", field)
+		}
+
+		usdPct, reported := usdQuote["percent_change_24h"]
+		if !reported {
+			assert.NotContains(t, eurQuote, "percent_change_24h",
+				"an absent 24h change must not be fabricated by the conversion")
+			continue
+		}
+		expectedPct := ((1+usdPct/100)*RatioFixtureEURNow/RatioFixtureEUR24h - 1) * 100
 		assert.InDelta(t, expectedPct, eurQuote["percent_change_24h"], 1e-9)
 	}
 }

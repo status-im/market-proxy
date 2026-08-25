@@ -7,6 +7,11 @@ import (
 
 // ConvertPriceResponseToPriceQuotes converts SimplePriceResponse to PriceQuotes for the given currency
 // Only includes tokens that have a valid price (> 0)
+//
+// Fields the provider did not report stay nil rather than becoming zero: the
+// per-currency market cap, volume and 24h change keys only exist when the
+// upstream request asked for them, and a substituted zero would survive into a
+// currency conversion as a fabricated value.
 func ConvertPriceResponseToPriceQuotes(priceResponse cg.SimplePriceResponse, currency string) PriceQuotes {
 	currencyQuotes := make(PriceQuotes)
 
@@ -16,29 +21,18 @@ func ConvertPriceResponseToPriceQuotes(priceResponse cg.SimplePriceResponse, cur
 			continue
 		}
 
-		quote := Quote{}
-
 		// Extract price for the currency - this is required
-		price := getFloatFromMap(tokenData, currency)
-		if price <= 0 {
+		price, ok := jsonutil.FloatField(tokenData, currency)
+		if !ok || price <= 0 {
 			continue // Only continue processing if we have a valid price
 		}
-		quote.Price = price
 
-		// Extract market cap for the currency
-		marketCapKey := currency + "_market_cap"
-		quote.MarketCap = getFloatFromMap(tokenData, marketCapKey)
-
-		// Extract 24h volume for the currency
-		volume24hKey := currency + "_24h_vol"
-		quote.Volume24h = getFloatFromMap(tokenData, volume24hKey)
-
-		// Extract 24h change for the currency
-		change24hKey := currency + "_24h_change"
-		quote.PercentChange24h = getFloatFromMap(tokenData, change24hKey)
-
-		// Add the quote since it has a valid price
-		currencyQuotes[tokenID] = quote
+		currencyQuotes[tokenID] = Quote{
+			Price:            price,
+			MarketCap:        optionalFloatField(tokenData, currency+"_market_cap"),
+			Volume24h:        optionalFloatField(tokenData, currency+"_24h_vol"),
+			PercentChange24h: optionalFloatField(tokenData, currency+"_24h_change"),
+		}
 	}
 
 	return currencyQuotes
@@ -46,6 +40,9 @@ func ConvertPriceResponseToPriceQuotes(priceResponse cg.SimplePriceResponse, cur
 
 // ConvertMarketsResponseToCoinData converts raw markets response data to CoinData slice
 // This function directly processes the interface{} slice from coins/markets API
+//
+// As above, a field CoinGecko returned as null stays nil instead of becoming a
+// zero that later reads as real data.
 func ConvertMarketsResponseToCoinData(marketsData []interface{}) []CoinData {
 	result := make([]CoinData, 0, len(marketsData))
 
@@ -55,16 +52,15 @@ func ConvertMarketsResponseToCoinData(marketsData []interface{}) []CoinData {
 			continue
 		}
 
-		// Convert map[string]interface{} to CoinData directly
 		coinData := CoinData{
 			ID:                       getStringFromMap(itemMap, "id"),
 			Symbol:                   getStringFromMap(itemMap, "symbol"),
 			Name:                     getStringFromMap(itemMap, "name"),
 			Image:                    getStringFromMap(itemMap, "image"),
-			CurrentPrice:             getFloatFromMap(itemMap, "current_price"),
-			MarketCap:                getFloatFromMap(itemMap, "market_cap"),
-			TotalVolume:              getFloatFromMap(itemMap, "total_volume"),
-			PriceChangePercentage24h: getFloatFromMap(itemMap, "price_change_percentage_24h"),
+			CurrentPrice:             optionalFloatField(itemMap, "current_price"),
+			MarketCap:                optionalFloatField(itemMap, "market_cap"),
+			TotalVolume:              optionalFloatField(itemMap, "total_volume"),
+			PriceChangePercentage24h: optionalFloatField(itemMap, "price_change_percentage_24h"),
 		}
 
 		result = append(result, coinData)
@@ -73,23 +69,23 @@ func ConvertMarketsResponseToCoinData(marketsData []interface{}) []CoinData {
 	return result
 }
 
+// optionalFloatField returns a pointer to the field's value, or nil when the
+// field is missing, null or not numeric
+func optionalFloatField(m map[string]interface{}, key string) *float64 {
+	value, ok := jsonutil.FloatField(m, key)
+	if !ok {
+		return nil
+	}
+	return &value
+}
+
 // getStringFromMap extracts a string field, falling back to "" when it is
 // missing or not a string.
 //
-// The fallback makes a missing field indistinguishable from an empty one. That
-// is the long-standing behaviour of this conversion and the response shape
-// depends on it, so the collapse is done here explicitly rather than changed.
+// Identity fields are not optional in the same way a price is: an empty id or
+// symbol is as useless as an absent one, and the response shape depends on
+// them always being present.
 func getStringFromMap(m map[string]interface{}, key string) string {
 	value, _ := jsonutil.StringField(m, key)
-	return value
-}
-
-// getFloatFromMap extracts a float64 field, falling back to 0 when it is
-// missing or not numeric.
-//
-// As above: a missing price and a real zero come out the same. Preserved
-// deliberately - changing it would change what these endpoints return.
-func getFloatFromMap(m map[string]interface{}, key string) float64 {
-	value, _ := jsonutil.FloatField(m, key)
 	return value
 }

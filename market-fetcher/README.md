@@ -247,8 +247,28 @@ The market chart service implements intelligent caching with adaptive TTL:
 
 ## API Endpoints
 
+### Optional fields on the leaderboard endpoints
+
+`/api/v1/leaderboard/prices`, `/api/v1/leaderboard/simpleprices` and
+`/api/v1/leaderboard/markets` **omit** a numeric field the provider did not
+report, rather than sending zero. CoinGecko returns null for a token with no
+market cap or no 24h change, and the per-currency market cap / volume / 24h
+change keys only exist when the upstream request asked for them.
+
+A zero would be indistinguishable from a real one, and with
+`?convert_currency` it would be worse than that: the honest 24h conversion of a
+substituted `0` is not `0`, it is whatever the exchange rate moved by over the
+window, so an unreported change would come back as a plausible-looking
+percentage the provider never published.
+
+Only `price` on a quote is guaranteed - a quote without a usable price is not
+emitted at all. Clients decoding into plain (non-pointer) numbers are
+unaffected: an omitted key decodes to zero, which is the intended "not
+reported" reading.
+
 ### GET /api/v1/leaderboard/prices
-Returns latest price data for top tokens:
+Returns latest price data for top tokens. `volume_24h`, `market_cap` and
+`percent_change_24h` are omitted when not reported:
 ```json
 {
   "BTC": {
@@ -279,7 +299,8 @@ Returns simple price data for top tokens in specified currency:
 ```
 
 ### GET /api/v1/leaderboard/markets
-Returns top market data from CoinGecko:
+Returns top market data from CoinGecko. The numeric fields are omitted when the
+provider did not report them (see above):
 ```json
 {
   "data": [

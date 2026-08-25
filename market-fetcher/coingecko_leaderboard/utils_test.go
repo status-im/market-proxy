@@ -32,16 +32,16 @@ func TestConvertPriceResponseToPriceQuotes(t *testing.T) {
 		// Check bitcoin
 		bitcoinQuote := result["bitcoin"]
 		assert.Equal(t, 50000.0, bitcoinQuote.Price)
-		assert.Equal(t, 950000000000.0, bitcoinQuote.MarketCap)
-		assert.Equal(t, 25000000000.0, bitcoinQuote.Volume24h)
-		assert.Equal(t, 2.5, bitcoinQuote.PercentChange24h)
+		assert.Equal(t, floatPtr(950000000000.0), bitcoinQuote.MarketCap)
+		assert.Equal(t, floatPtr(25000000000.0), bitcoinQuote.Volume24h)
+		assert.Equal(t, floatPtr(2.5), bitcoinQuote.PercentChange24h)
 
 		// Check ethereum
 		ethQuote := result["ethereum"]
 		assert.Equal(t, 3000.0, ethQuote.Price)
-		assert.Equal(t, 360000000000.0, ethQuote.MarketCap)
-		assert.Equal(t, 15000000000.0, ethQuote.Volume24h)
-		assert.Equal(t, -1.2, ethQuote.PercentChange24h)
+		assert.Equal(t, floatPtr(360000000000.0), ethQuote.MarketCap)
+		assert.Equal(t, floatPtr(15000000000.0), ethQuote.Volume24h)
+		assert.Equal(t, floatPtr(-1.2), ethQuote.PercentChange24h)
 	})
 
 	t.Run("Conversion with missing optional fields", func(t *testing.T) {
@@ -64,16 +64,16 @@ func TestConvertPriceResponseToPriceQuotes(t *testing.T) {
 		// Check bitcoin - only price should be set
 		bitcoinQuote := result["bitcoin"]
 		assert.Equal(t, 50000.0, bitcoinQuote.Price)
-		assert.Equal(t, 0.0, bitcoinQuote.MarketCap)
-		assert.Equal(t, 0.0, bitcoinQuote.Volume24h)
-		assert.Equal(t, 0.0, bitcoinQuote.PercentChange24h)
+		assert.Nil(t, bitcoinQuote.MarketCap)
+		assert.Nil(t, bitcoinQuote.Volume24h)
+		assert.Nil(t, bitcoinQuote.PercentChange24h)
 
 		// Check ethereum - price and market cap should be set
 		ethQuote := result["ethereum"]
 		assert.Equal(t, 3000.0, ethQuote.Price)
-		assert.Equal(t, 360000000000.0, ethQuote.MarketCap)
-		assert.Equal(t, 0.0, ethQuote.Volume24h)
-		assert.Equal(t, 0.0, ethQuote.PercentChange24h)
+		assert.Equal(t, floatPtr(360000000000.0), ethQuote.MarketCap)
+		assert.Nil(t, ethQuote.Volume24h)
+		assert.Nil(t, ethQuote.PercentChange24h)
 	})
 
 	t.Run("Skip tokens without valid price", func(t *testing.T) {
@@ -128,9 +128,9 @@ func TestConvertPriceResponseToPriceQuotes(t *testing.T) {
 		assert.Len(t, result, 1)
 		bitcoinQuote := result["bitcoin"]
 		assert.Equal(t, 42000.0, bitcoinQuote.Price)
-		assert.Equal(t, 798000000000.0, bitcoinQuote.MarketCap)
-		assert.Equal(t, 21000000000.0, bitcoinQuote.Volume24h)
-		assert.Equal(t, 1.8, bitcoinQuote.PercentChange24h)
+		assert.Equal(t, floatPtr(798000000000.0), bitcoinQuote.MarketCap)
+		assert.Equal(t, floatPtr(21000000000.0), bitcoinQuote.Volume24h)
+		assert.Equal(t, floatPtr(1.8), bitcoinQuote.PercentChange24h)
 	})
 
 	t.Run("Invalid token data structure", func(t *testing.T) {
@@ -165,9 +165,9 @@ func TestConvertPriceResponseToPriceQuotes(t *testing.T) {
 		assert.Len(t, result, 1)
 		bitcoinQuote := result["bitcoin"]
 		assert.Equal(t, 50000.0, bitcoinQuote.Price)
-		assert.Equal(t, 0.0, bitcoinQuote.MarketCap)        // Should be 0 due to invalid type
-		assert.Equal(t, 0.0, bitcoinQuote.Volume24h)        // Should be 0 due to invalid type
-		assert.Equal(t, 0.0, bitcoinQuote.PercentChange24h) // Should be 0 due to invalid type
+		assert.Nil(t, bitcoinQuote.MarketCap)        // absent, not zero
+		assert.Nil(t, bitcoinQuote.Volume24h)        // absent, not zero
+		assert.Nil(t, bitcoinQuote.PercentChange24h) // absent, not zero
 	})
 }
 
@@ -206,10 +206,10 @@ func TestConvertMarketsResponseToCoinData(t *testing.T) {
 		assert.Equal(t, "btc", bitcoin.Symbol)
 		assert.Equal(t, "Bitcoin", bitcoin.Name)
 		assert.Equal(t, "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png", bitcoin.Image)
-		assert.Equal(t, 50000.0, bitcoin.CurrentPrice)
-		assert.Equal(t, 950000000000.0, bitcoin.MarketCap)
-		assert.Equal(t, 25000000000.0, bitcoin.TotalVolume)
-		assert.Equal(t, 2.5, bitcoin.PriceChangePercentage24h)
+		assert.Equal(t, floatPtr(50000.0), bitcoin.CurrentPrice)
+		assert.Equal(t, floatPtr(950000000000.0), bitcoin.MarketCap)
+		assert.Equal(t, floatPtr(25000000000.0), bitcoin.TotalVolume)
+		assert.Equal(t, floatPtr(2.5), bitcoin.PriceChangePercentage24h)
 
 		// Check ethereum
 		ethereum := result[1]
@@ -217,10 +217,10 @@ func TestConvertMarketsResponseToCoinData(t *testing.T) {
 		assert.Equal(t, "eth", ethereum.Symbol)
 		assert.Equal(t, "Ethereum", ethereum.Name)
 		assert.Equal(t, "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png", ethereum.Image)
-		assert.Equal(t, 3000.0, ethereum.CurrentPrice)
-		assert.Equal(t, 360000000000.0, ethereum.MarketCap)
-		assert.Equal(t, 15000000000.0, ethereum.TotalVolume)
-		assert.Equal(t, -1.2, ethereum.PriceChangePercentage24h)
+		assert.Equal(t, floatPtr(3000.0), ethereum.CurrentPrice)
+		assert.Equal(t, floatPtr(360000000000.0), ethereum.MarketCap)
+		assert.Equal(t, floatPtr(15000000000.0), ethereum.TotalVolume)
+		assert.Equal(t, floatPtr(-1.2), ethereum.PriceChangePercentage24h)
 	})
 
 	t.Run("Conversion with missing fields", func(t *testing.T) {
@@ -251,10 +251,10 @@ func TestConvertMarketsResponseToCoinData(t *testing.T) {
 		assert.Equal(t, "btc", bitcoin.Symbol)
 		assert.Equal(t, "Bitcoin", bitcoin.Name)
 		assert.Equal(t, "", bitcoin.Image)
-		assert.Equal(t, 0.0, bitcoin.CurrentPrice)
-		assert.Equal(t, 0.0, bitcoin.MarketCap)
-		assert.Equal(t, 0.0, bitcoin.TotalVolume)
-		assert.Equal(t, 0.0, bitcoin.PriceChangePercentage24h)
+		assert.Nil(t, bitcoin.CurrentPrice)
+		assert.Nil(t, bitcoin.MarketCap)
+		assert.Nil(t, bitcoin.TotalVolume)
+		assert.Nil(t, bitcoin.PriceChangePercentage24h)
 
 		// Check ethereum - partial fields should be set
 		ethereum := result[1]
@@ -262,10 +262,10 @@ func TestConvertMarketsResponseToCoinData(t *testing.T) {
 		assert.Equal(t, "eth", ethereum.Symbol)
 		assert.Equal(t, "Ethereum", ethereum.Name)
 		assert.Equal(t, "", ethereum.Image)
-		assert.Equal(t, 3000.0, ethereum.CurrentPrice)
-		assert.Equal(t, 360000000000.0, ethereum.MarketCap)
-		assert.Equal(t, 0.0, ethereum.TotalVolume)
-		assert.Equal(t, 0.0, ethereum.PriceChangePercentage24h)
+		assert.Equal(t, floatPtr(3000.0), ethereum.CurrentPrice)
+		assert.Equal(t, floatPtr(360000000000.0), ethereum.MarketCap)
+		assert.Nil(t, ethereum.TotalVolume)
+		assert.Nil(t, ethereum.PriceChangePercentage24h)
 	})
 
 	t.Run("Skip invalid items", func(t *testing.T) {
@@ -334,10 +334,10 @@ func TestConvertMarketsResponseToCoinData(t *testing.T) {
 		assert.Equal(t, "", coin.Symbol)
 		assert.Equal(t, "", coin.Name)
 		assert.Equal(t, "", coin.Image)
-		assert.Equal(t, 0.0, coin.CurrentPrice)
-		assert.Equal(t, 0.0, coin.MarketCap)
-		assert.Equal(t, 0.0, coin.TotalVolume)
-		assert.Equal(t, 0.0, coin.PriceChangePercentage24h)
+		assert.Nil(t, coin.CurrentPrice)
+		assert.Nil(t, coin.MarketCap)
+		assert.Nil(t, coin.TotalVolume)
+		assert.Nil(t, coin.PriceChangePercentage24h)
 	})
 
 	t.Run("Mixed valid and invalid data", func(t *testing.T) {

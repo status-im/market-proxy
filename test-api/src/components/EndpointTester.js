@@ -177,7 +177,11 @@ const EndpointTester = ({ onBack }) => {
   // Checks that `converted` ≈ `usd` × ratio for every sampled value, where the
   // ratio is derived from the responses themselves (first non-zero pair).
   const checkConversion = (pairs, label) => {
-    const usable = pairs.filter(p => p.usd !== 0 && p.converted !== 0);
+    // Optional fields are omitted when the provider did not report them, so a
+    // value can legitimately be undefined here - skip those rather than turning
+    // them into NaN.
+    const usable = pairs.filter(p =>
+      typeof p.usd === 'number' && typeof p.converted === 'number' && p.usd !== 0 && p.converted !== 0);
     if (!usable.length) {
       log(`  ${label}: no non-zero values to validate`, 'info');
       return true;
@@ -538,11 +542,19 @@ const EndpointTester = ({ onBack }) => {
           return checkConversion(pairs, `coins/markets ${field}`);
         });
 
-        // status-go reads these fields, so make sure they survived the conversion
-        const missing = eur.filter(c => typeof c.price_change_24h !== 'number' ||
-          typeof c.price_change_percentage_24h !== 'number');
+        // status-go reads these fields, so flag rows where the usd response had
+        // them but the converted one lost them. A field the provider never
+        // reported is absent on both sides and is not an error.
+        const missing = eur.filter(c => {
+          const usdRow = byId[c.id];
+          if (!usdRow) {
+            return false;
+          }
+          return ['price_change_24h', 'price_change_percentage_24h'].some(
+            f => typeof usdRow[f] === 'number' && typeof c[f] !== 'number');
+        });
         if (missing.length) {
-          log(`  ${missing.length} rows are missing 24h change fields`, 'error');
+          log(`  ${missing.length} rows lost 24h change fields in conversion`, 'error');
         }
 
         upd('coins-markets-eur', {

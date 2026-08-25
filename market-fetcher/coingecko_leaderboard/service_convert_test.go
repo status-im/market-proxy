@@ -37,17 +37,17 @@ func newConvertingLeaderboard(t *testing.T, snapshot *interfaces.CurrencyRatiosS
 	service.topMarketsUpdater.cache.data = &APIResponse{Data: []CoinData{{
 		ID:                       "bitcoin",
 		Symbol:                   "btc",
-		CurrentPrice:             100000,
-		MarketCap:                2000000000,
-		TotalVolume:              50000000,
-		PriceChangePercentage24h: 10,
+		CurrentPrice:             floatPtr(100000),
+		MarketCap:                floatPtr(2000000000),
+		TotalVolume:              floatPtr(50000000),
+		PriceChangePercentage24h: floatPtr(10),
 	}}}
 	service.topMarketsUpdater.cache.Unlock()
 
 	service.topPricesUpdater.topPricesCache.Lock()
 	service.topPricesUpdater.topPricesCache.data = map[string]PriceQuotes{
-		"usd": {"bitcoin": {Price: 100000, Volume24h: 50000000, MarketCap: 2000000000, PercentChange24h: 10}},
-		"eur": {"bitcoin": {Price: 12345, Volume24h: 1, MarketCap: 2, PercentChange24h: 3}},
+		"usd": {"bitcoin": {Price: 100000, Volume24h: floatPtr(50000000), MarketCap: floatPtr(2000000000), PercentChange24h: floatPtr(10)}},
+		"eur": {"bitcoin": {Price: 12345, Volume24h: floatPtr(1), MarketCap: floatPtr(2), PercentChange24h: floatPtr(3)}},
 	}
 	service.topPricesUpdater.topPricesCache.Unlock()
 
@@ -61,15 +61,15 @@ func TestService_GetCacheData_ConvertCurrency(t *testing.T) {
 	require.NotNil(t, converted)
 	require.Len(t, converted.Data, 1)
 
-	assert.InDelta(t, 90000.0, converted.Data[0].CurrentPrice, 1e-9)
-	assert.InDelta(t, 1800000000.0, converted.Data[0].MarketCap, 1e-3)
-	assert.InDelta(t, 20.0, converted.Data[0].PriceChangePercentage24h, 1e-9)
+	assert.InDelta(t, 90000.0, requireFloat(t, converted.Data[0].CurrentPrice), 1e-9)
+	assert.InDelta(t, 1800000000.0, requireFloat(t, converted.Data[0].MarketCap), 1e-3)
+	assert.InDelta(t, 20.0, requireFloat(t, converted.Data[0].PriceChangePercentage24h), 1e-9)
 
 	// the cached Passthrough row is untouched
 	passthrough := service.GetCacheData("")
 	require.NotNil(t, passthrough)
-	assert.Equal(t, 100000.0, passthrough.Data[0].CurrentPrice)
-	assert.Equal(t, 10.0, passthrough.Data[0].PriceChangePercentage24h)
+	assert.Equal(t, floatPtr(100000.0), passthrough.Data[0].CurrentPrice)
+	assert.Equal(t, floatPtr(10.0), passthrough.Data[0].PriceChangePercentage24h)
 }
 
 func TestService_GetCacheData_ConvertCurrencyWithoutRatio(t *testing.T) {
@@ -109,8 +109,8 @@ func TestService_GetTopPricesQuotes_ConvertCurrency(t *testing.T) {
 
 	// Estimates come from the base currency rows, not from the cached eur ones
 	assert.InDelta(t, 90000.0, converted["bitcoin"].Price, 1e-9)
-	assert.InDelta(t, 45000000.0, converted["bitcoin"].Volume24h, 1e-3)
-	assert.InDelta(t, 20.0, converted["bitcoin"].PercentChange24h, 1e-9)
+	assert.InDelta(t, 45000000.0, requireFloat(t, converted["bitcoin"].Volume24h), 1e-3)
+	assert.InDelta(t, 20.0, requireFloat(t, converted["bitcoin"].PercentChange24h), 1e-9)
 }
 
 // TestService_GetTopPricesQuotes_CurrencyKeepsPassthroughSemantics pins that the
@@ -122,7 +122,7 @@ func TestService_GetTopPricesQuotes_CurrencyKeepsPassthroughSemantics(t *testing
 	passthrough := service.GetTopPricesQuotes("eur", "")
 	require.Contains(t, passthrough, "bitcoin")
 	assert.Equal(t, 12345.0, passthrough["bitcoin"].Price, "the cached eur row is served verbatim")
-	assert.Equal(t, 3.0, passthrough["bitcoin"].PercentChange24h)
+	assert.Equal(t, floatPtr(3.0), passthrough["bitcoin"].PercentChange24h)
 
 	defaulted := service.GetTopPricesQuotes("", "")
 	assert.Equal(t, 100000.0, defaulted["bitcoin"].Price, "an empty currency falls back to the base currency")
