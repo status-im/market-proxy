@@ -6,6 +6,8 @@ import "github.com/status-im/market-proxy/events"
 
 // ITokensService defines the interface for CoinGecko tokens service
 type ITokensService interface {
+	IHealthReporter
+
 	// GetTokens returns cached tokens
 	GetTokens() []Token
 

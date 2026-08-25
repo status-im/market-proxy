@@ -6,6 +6,8 @@ import "github.com/status-im/market-proxy/events"
 
 // IMarketsService defines the interface for CoinGecko markets service
 type IMarketsService interface {
+	IHealthReporter
+
 	// TopMarkets fetches top markets data for specified number of tokens,
 	// caches individual tokens by their coingecko id and returns the response
 	TopMarkets(limit int, currency string) (MarketsResponse, error)

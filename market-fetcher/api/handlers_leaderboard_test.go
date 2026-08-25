@@ -9,6 +9,7 @@ import (
 
 	"github.com/status-im/market-proxy/coingecko_leaderboard"
 	"github.com/status-im/market-proxy/currency_ratios"
+	"github.com/status-im/market-proxy/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,7 +35,7 @@ func (s *stubLeaderboardService) GetTopPricesQuotes(currency string) map[string]
 
 func (s *stubLeaderboardService) Healthy() bool { return true }
 
-// stubRatiosProvider is a currency_ratios.IProvider with a fixed snapshot
+// stubRatiosProvider is a interfaces.ICurrencyRatiosProvider with a fixed snapshot
 type stubRatiosProvider struct {
 	supported map[string]bool
 	snapshot  *currency_ratios.Snapshot
@@ -99,7 +100,7 @@ func testQuotes() map[string]coingecko_leaderboard.PriceQuotes {
 	}
 }
 
-func newTestServer(leaderboard ILeaderboardService, ratios currency_ratios.IProvider) *Server {
+func newTestServer(leaderboard interfaces.ILeaderboardService, ratios interfaces.ICurrencyRatiosProvider) *Server {
 	return &Server{cgService: leaderboard, currencyRatiosService: ratios}
 }
 
@@ -206,7 +207,7 @@ func TestHandleLeaderboardMarkets_UnknownCurrencyReturns400(t *testing.T) {
 func TestHandleLeaderboardMarkets_EmptyResponseBeforeFirstSnapshot(t *testing.T) {
 	tests := []struct {
 		name   string
-		ratios currency_ratios.IProvider
+		ratios interfaces.ICurrencyRatiosProvider
 	}{
 		{
 			name:   "no snapshot at all",

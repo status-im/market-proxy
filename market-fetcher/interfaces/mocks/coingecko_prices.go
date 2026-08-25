@@ -22,6 +22,7 @@ import (
 type MockIPricesService struct {
 	ctrl     *gomock.Controller
 	recorder *MockIPricesServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockIPricesServiceMockRecorder is the mock recorder for MockIPricesService.
@@ -41,10 +42,24 @@ func (m *MockIPricesService) EXPECT() *MockIPricesServiceMockRecorder {
 	return m.recorder
 }
 
-// SimplePrices mocks base method.
-func (m *MockIPricesService) SimplePrices(arg0 context.Context, arg1 interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+// Healthy mocks base method.
+func (m *MockIPricesService) Healthy() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SimplePrices", arg0, arg1)
+	ret := m.ctrl.Call(m, "Healthy")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Healthy indicates an expected call of Healthy.
+func (mr *MockIPricesServiceMockRecorder) Healthy() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Healthy", reflect.TypeOf((*MockIPricesService)(nil).Healthy))
+}
+
+// SimplePrices mocks base method.
+func (m *MockIPricesService) SimplePrices(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SimplePrices", ctx, params)
 	ret0, _ := ret[0].(interfaces.SimplePriceResponse)
 	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
@@ -52,9 +67,9 @@ func (m *MockIPricesService) SimplePrices(arg0 context.Context, arg1 interfaces.
 }
 
 // SimplePrices indicates an expected call of SimplePrices.
-func (mr *MockIPricesServiceMockRecorder) SimplePrices(arg0, arg1 any) *gomock.Call {
+func (mr *MockIPricesServiceMockRecorder) SimplePrices(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimplePrices", reflect.TypeOf((*MockIPricesService)(nil).SimplePrices), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SimplePrices", reflect.TypeOf((*MockIPricesService)(nil).SimplePrices), ctx, params)
 }
 
 // SubscribeTopPricesUpdate mocks base method.
@@ -72,9 +87,9 @@ func (mr *MockIPricesServiceMockRecorder) SubscribeTopPricesUpdate() *gomock.Cal
 }
 
 // TopPrices mocks base method.
-func (m *MockIPricesService) TopPrices(arg0 context.Context, arg1 int, arg2 []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+func (m *MockIPricesService) TopPrices(ctx context.Context, limit int, currencies []string) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopPrices", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "TopPrices", ctx, limit, currencies)
 	ret0, _ := ret[0].(interfaces.SimplePriceResponse)
 	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
@@ -82,7 +97,7 @@ func (m *MockIPricesService) TopPrices(arg0 context.Context, arg1 int, arg2 []st
 }
 
 // TopPrices indicates an expected call of TopPrices.
-func (mr *MockIPricesServiceMockRecorder) TopPrices(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockIPricesServiceMockRecorder) TopPrices(ctx, limit, currencies any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopPrices", reflect.TypeOf((*MockIPricesService)(nil).TopPrices), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopPrices", reflect.TypeOf((*MockIPricesService)(nil).TopPrices), ctx, limit, currencies)
 }

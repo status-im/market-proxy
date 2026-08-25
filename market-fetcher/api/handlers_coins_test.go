@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/status-im/market-proxy/coingecko_markets"
-	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
 	"github.com/stretchr/testify/assert"
@@ -112,7 +111,7 @@ func simplePriceRow() map[string]interface{} {
 	}
 }
 
-func newCoinsTestServer(markets *stubMarketsService, prices *stubPricesService, ratios currency_ratios.IProvider) *Server {
+func newCoinsTestServer(markets *stubMarketsService, prices *stubPricesService, ratios interfaces.ICurrencyRatiosProvider) *Server {
 	return &Server{marketsService: markets, pricesService: prices, currencyRatiosService: ratios}
 }
 

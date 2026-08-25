@@ -10,6 +10,8 @@ import (
 
 // IPricesService interface for fetching prices of top tokens
 type IPricesService interface {
+	IHealthReporter
+
 	// SimplePrices returns cached prices using PriceParams structure
 	SimplePrices(ctx context.Context, params PriceParams) (SimplePriceResponse, CacheStatus, error)
 

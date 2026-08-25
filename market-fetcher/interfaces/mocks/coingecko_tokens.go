@@ -21,6 +21,7 @@ import (
 type MockITokensService struct {
 	ctrl     *gomock.Controller
 	recorder *MockITokensServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockITokensServiceMockRecorder is the mock recorder for MockITokensService.
@@ -66,6 +67,20 @@ func (m *MockITokensService) GetTokens() []interfaces.Token {
 func (mr *MockITokensServiceMockRecorder) GetTokens() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTokens", reflect.TypeOf((*MockITokensService)(nil).GetTokens))
+}
+
+// Healthy mocks base method.
+func (m *MockITokensService) Healthy() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Healthy")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Healthy indicates an expected call of Healthy.
+func (mr *MockITokensServiceMockRecorder) Healthy() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Healthy", reflect.TypeOf((*MockITokensService)(nil).Healthy))
 }
 
 // SubscribeOnTokensUpdate mocks base method.

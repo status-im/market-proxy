@@ -22,6 +22,8 @@ func (s *stubExchangeRatesService) ExchangeRates() (coingecko_exchange_rates.Exc
 	return s.body, s.err
 }
 
+func (s *stubExchangeRatesService) Healthy() bool { return s.err == nil }
+
 const exchangeRatesBody = `{"rates":{"btc":{"name":"Bitcoin","unit":"BTC","value":1.0,"type":"crypto"},` +
 	`"eur":{"name":"Euro","unit":"€","value":92123.456789012345,"type":"fiat"}}}`
 
