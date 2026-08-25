@@ -7,6 +7,7 @@ import TokenDetails from './TokenDetails';
 import { Loading, Error } from './LoadingAndErrors';
 import useCoinGeckoData from '../hooks/useCoinGeckoData';
 import useCoinGeckoPriceData from '../hooks/useCoinGeckoPriceData';
+import { SUPPORTED_CURRENCIES, BASE_CURRENCY } from '../utils/currencies';
 import styled from 'styled-components';
 
 const Container = styled.div`
@@ -99,6 +100,18 @@ const ToggleButton = styled.button`
   }
 `;
 
+const CurrencySelect = styled.select`
+  padding: 8px 12px;
+  border: 1px solid #8b5cf6;
+  border-radius: 6px;
+  background: white;
+  color: #8b5cf6;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 120px;
+`;
+
 const ConfigDescription = styled.p`
   margin: 12px 0 0 0;
   font-size: 12px;
@@ -119,19 +132,22 @@ function Leaderboard({ onBack }) {
   // Selected token state
   const [selectedToken, setSelectedToken] = useState(null);
 
+  // Display currency, sent to the proxy as convert_currency
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
+
   // CoinGecko data with token endpoint parameter
   const {
     coinGeckoData,
     isLoading: isLoadingCoinGecko,
     error: coinGeckoError,
     stats: coinGeckoStats
-  } = useCoinGeckoData(tokenEndpoint);
+  } = useCoinGeckoData(tokenEndpoint, currency);
 
   const {
     coinGeckoPriceData,
     error: coinGeckoPriceError,
     stats: coinGeckoPriceStats
-  } = useCoinGeckoPriceData(priceEndpoint);
+  } = useCoinGeckoPriceData(priceEndpoint, currency);
 
   // Main tabs
   const mainTabs = ['CoinGecko'];
@@ -207,6 +223,37 @@ function Leaderboard({ onBack }) {
         </ConfigDescription>
       </ConfigSection>
 
+      {/* Currency switcher */}
+      <ConfigSection>
+        <SectionTitle>Display Currency</SectionTitle>
+        <ButtonGroup>
+          {['usd', 'eur', 'jpy', 'btc'].map(code => (
+            <ToggleButton
+              key={code}
+              onClick={() => setCurrency(code)}
+              active={currency === code}
+              color="#8b5cf6"
+            >
+              {code.toUpperCase()}
+            </ToggleButton>
+          ))}
+          <CurrencySelect
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            {SUPPORTED_CURRENCIES.map(code => (
+              <option key={code} value={code}>{code.toUpperCase()}</option>
+            ))}
+          </CurrencySelect>
+        </ButtonGroup>
+        <ConfigDescription>
+          {currency === BASE_CURRENCY
+            ? 'Passthrough data as CoinGecko returned it, no conversion parameter sent'
+            : `Sending convert_currency=${currency} - values converted by the proxy at request time`
+          }
+        </ConfigDescription>
+      </ConfigSection>
+
       {/* Price endpoint switcher */}
       <ConfigSection>
         <SectionTitle>Price Data Source</SectionTitle>
@@ -236,8 +283,8 @@ function Leaderboard({ onBack }) {
 
       {/* Show appropriate stats */}
       <>
-        <Stats stats={coinGeckoStats} title={`CoinGecko Data Stats (${tokenEndpoint})`} />
-        <Stats stats={coinGeckoPriceStats} title={`CoinGecko Price Data Stats (${priceEndpoint})`} />
+        <Stats stats={coinGeckoStats} title={`CoinGecko Data Stats (${tokenEndpoint}, ${currency})`} />
+        <Stats stats={coinGeckoPriceStats} title={`CoinGecko Price Data Stats (${priceEndpoint}, ${currency})`} />
       </>
 
       {/* Tabs navigation */}
@@ -257,6 +304,7 @@ function Leaderboard({ onBack }) {
           priceData={coinGeckoPriceData}
           source="CoinGecko"
           priceEndpoint={priceEndpoint}
+          currency={currency}
           onTokenClick={handleTokenClick}
         />
       </ErrorBoundary>

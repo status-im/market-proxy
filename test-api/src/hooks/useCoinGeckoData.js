@@ -1,14 +1,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import useApiRequest from './useApiRequest';
+import { BASE_CURRENCY, convertParam } from '../utils/currencies';
 
-export default function useCoinGeckoData(endpoint = 'leaderboard') {
+export default function useCoinGeckoData(endpoint = 'leaderboard', currency = BASE_CURRENCY) {
+  const convert = convertParam(currency);
   const [coinIds, setCoinIds] = useState([]);
   const [step, setStep] = useState(endpoint === 'coins' ? 'fetchingIds' : 'ready');
   const intervalRef = useRef(null);
   
   // For leaderboard endpoint - direct request
   const leaderboardRequest = useApiRequest({
-    url: '/v1/leaderboard/markets',
+    url: convert ? `/v1/leaderboard/markets?${convert}` : '/v1/leaderboard/markets',
     processData: (data) => data.data || [],
     validateData: (data) => {
       return data !== null && 
@@ -29,7 +31,8 @@ export default function useCoinGeckoData(endpoint = 'leaderboard') {
       `per_page=250&` +
       `page=1&` +
       `sparkline=false&` +
-      `price_change_percentage=1h,24h` : null,
+      `price_change_percentage=1h,24h` +
+      (convert ? `&${convert}` : '') : null,
     processData: (data) => data || [],
     validateData: (data) => data !== null && Array.isArray(data),
     silent: false
@@ -69,7 +72,7 @@ export default function useCoinGeckoData(endpoint = 'leaderboard') {
     } else {
       setStep('ready');
     }
-  }, [endpoint]);
+  }, [endpoint, currency]);
 
   // Fetch leaderboard data for coins endpoint to get IDs
   useEffect(() => {
@@ -122,7 +125,7 @@ export default function useCoinGeckoData(endpoint = 'leaderboard') {
         clearInterval(intervalRef.current);
       }
     };
-  }, [endpoint, coinIds.length]);
+  }, [endpoint, coinIds.length, currency]);
 
   // Return appropriate data based on endpoint
   const currentRequest = endpoint === 'leaderboard' ? leaderboardRequest : coinsRequest;
