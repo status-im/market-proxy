@@ -25,6 +25,67 @@ coingecko_leaderboard:
   top_prices_update_interval: 30s # 30 seconds interval for price updates
   top_prices_limit: 500         # maximum number of top tokens to track prices
 
+# Ratios used to convert leaderboard Passthrough (usd) values into realtime
+# Estimates for ?convert_currency=X. One CoinGecko simple/price call per cycle.
+currency_ratios:
+  update_interval: 1m
+  reference_coins:            # first complete row wins; the coin price cancels out
+    - bitcoin
+    - ethereum
+  currencies:                 # also the allow-list for ?convert_currency
+    - usd                     # base currency, must be present
+    - aed
+    - ars
+    - aud
+    - bdt
+    - bhd
+    - bmd
+    - brl
+    - cad
+    - chf
+    - clp
+    - cny
+    - czk
+    - dkk
+    - eur
+    - gbp
+    - gel
+    - hkd
+    - huf
+    - idr
+    - ils
+    - inr
+    - jpy
+    - krw
+    - kwd
+    - lkr
+    - mmk
+    - mxn
+    - myr
+    - ngn
+    - nok
+    - nzd
+    - php
+    - pkr
+    - pln
+    - rub
+    - sar
+    - sek
+    - sgd
+    - thb
+    - try
+    - twd
+    - uah
+    - vnd
+    - zar
+    - xdr
+    - btc
+    - eth
+
+# CoinGecko /exchange_rates served verbatim (Passthrough) at /api/v1/exchange_rates
+coingecko_exchange_rates:
+  update_interval: 5m
+
 coingecko_markets:
   ttl: 35m
   market_params_normalize:

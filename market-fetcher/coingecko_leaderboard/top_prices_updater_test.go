@@ -94,9 +94,9 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 		sampleQuotes := PriceQuotes{
 			"bitcoin": Quote{
 				Price:            42000.0,
-				MarketCap:        798000000000.0,
-				Volume24h:        21000000000.0,
-				PercentChange24h: 1.8,
+				MarketCap:        floatPtr(798000000000.0),
+				Volume24h:        floatPtr(21000000000.0),
+				PercentChange24h: floatPtr(1.8),
 			},
 		}
 
@@ -117,15 +117,15 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 		sampleQuotes := PriceQuotes{
 			"bitcoin": Quote{
 				Price:            50000.0,
-				MarketCap:        950000000000.0,
-				Volume24h:        25000000000.0,
-				PercentChange24h: 2.5,
+				MarketCap:        floatPtr(950000000000.0),
+				Volume24h:        floatPtr(25000000000.0),
+				PercentChange24h: floatPtr(2.5),
 			},
 			"ethereum": Quote{
 				Price:            3000.0,
-				MarketCap:        360000000000.0,
-				Volume24h:        15000000000.0,
-				PercentChange24h: -1.2,
+				MarketCap:        floatPtr(360000000000.0),
+				Volume24h:        floatPtr(15000000000.0),
+				PercentChange24h: floatPtr(-1.2),
 			},
 		}
 
@@ -138,8 +138,8 @@ func TestTopPricesUpdater_GetTopPricesQuotes(t *testing.T) {
 		assert.Len(t, result, 2)
 		assert.Equal(t, 50000.0, result["bitcoin"].Price)
 		assert.Equal(t, 3000.0, result["ethereum"].Price)
-		assert.Equal(t, 950000000000.0, result["bitcoin"].MarketCap)
-		assert.Equal(t, 360000000000.0, result["ethereum"].MarketCap)
+		assert.Equal(t, floatPtr(950000000000.0), result["bitcoin"].MarketCap)
+		assert.Equal(t, floatPtr(360000000000.0), result["ethereum"].MarketCap)
 	})
 
 	t.Run("Returns independent copy to avoid race conditions", func(t *testing.T) {

@@ -429,7 +429,7 @@ func TestCoinGeckoClient_FetchPage_InvalidJSON(t *testing.T) {
 
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
-	return s != "" && substr != "" && s != substr && len(s) > len(substr) && s != "" && bytes.Contains([]byte(s), []byte(substr))
+	return s != "" && substr != "" && s != substr && len(s) > len(substr) && bytes.Contains([]byte(s), []byte(substr))
 }
 
 // TestCoinGeckoClient_Healthy tests the Healthy method

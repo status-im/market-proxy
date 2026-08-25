@@ -28,7 +28,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
-		service := NewService(mockCache, createTestConfig(), mockTokensService)
+		service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
@@ -63,7 +63,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
-		service := NewService(mockCache, cfg, mockTokensService)
+		service := NewService(mockCache, cfg, mockTokensService, nil)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",
@@ -100,7 +100,7 @@ func TestService_getParamsOverride(t *testing.T) {
 		mockTokensService.EXPECT().GetTokens().Return([]interfaces.Token{}).AnyTimes()
 		mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(events.NewSubscriptionManager().Subscribe()).AnyTimes()
 
-		service := NewService(mockCache, cfg, mockTokensService)
+		service := NewService(mockCache, cfg, mockTokensService, nil)
 
 		originalParams := interfaces.MarketsParams{
 			Currency:              "eur",

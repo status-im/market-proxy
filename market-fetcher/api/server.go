@@ -9,29 +9,28 @@ import (
 	"github.com/status-im/market-proxy/coingecko_assets_platforms"
 	"github.com/status-im/market-proxy/coingecko_coins"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
-	"github.com/status-im/market-proxy/coingecko_markets"
 	"github.com/status-im/market-proxy/coingecko_token_list"
+	"github.com/status-im/market-proxy/interfaces"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	coingecko "github.com/status-im/market-proxy/coingecko_leaderboard"
-	"github.com/status-im/market-proxy/coingecko_prices"
-	"github.com/status-im/market-proxy/coingecko_tokens"
 )
 
 type Server struct {
 	port                   string
-	cgService              *coingecko.Service
-	tokensService          *coingecko_tokens.Service
-	pricesService          *coingecko_prices.Service
-	marketsService         *coingecko_markets.Service
+	cgService              interfaces.ILeaderboardService
+	tokensService          interfaces.ITokensService
+	pricesService          interfaces.IPricesService
+	marketsService         interfaces.IMarketsService
 	marketChartService     *coingecko_market_chart.Service
 	assetsPlatformsService *coingecko_assets_platforms.Service
 	tokenListService       *coingecko_token_list.Service
 	coinsService           *coingecko_coins.Service
+	currencyRatiosService  interfaces.ICurrencyRatiosProvider
+	exchangeRatesService   interfaces.IExchangeRatesService
 	server                 *http.Server
 }
 
-func New(port string, cgService *coingecko.Service, tokensService *coingecko_tokens.Service, pricesService *coingecko_prices.Service, marketsService *coingecko_markets.Service, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service, tokenListService *coingecko_token_list.Service, coinsService *coingecko_coins.Service) *Server {
+func New(port string, cgService interfaces.ILeaderboardService, tokensService interfaces.ITokensService, pricesService interfaces.IPricesService, marketsService interfaces.IMarketsService, marketChartService *coingecko_market_chart.Service, assetsPlatformsService *coingecko_assets_platforms.Service, tokenListService *coingecko_token_list.Service, coinsService *coingecko_coins.Service, currencyRatiosService interfaces.ICurrencyRatiosProvider, exchangeRatesService interfaces.IExchangeRatesService) *Server {
 	return &Server{
 		port:                   port,
 		cgService:              cgService,
@@ -42,6 +41,8 @@ func New(port string, cgService *coingecko.Service, tokensService *coingecko_tok
 		assetsPlatformsService: assetsPlatformsService,
 		tokenListService:       tokenListService,
 		coinsService:           coinsService,
+		currencyRatiosService:  currencyRatiosService,
+		exchangeRatesService:   exchangeRatesService,
 	}
 }
 
@@ -53,6 +54,7 @@ func (s *Server) Start(ctx context.Context) error {
 	router.HandleFunc("/api/v1/leaderboard/simpleprices", s.handleLeaderboardSimplePrices)
 	router.HandleFunc("/api/v1/leaderboard/markets", s.handleLeaderboardMarkets)
 	router.HandleFunc("/api/v1/asset_platforms", s.handleAssetsPlatforms)
+	router.HandleFunc("/api/v1/exchange_rates", s.handleExchangeRates)
 	router.HandleFunc("/api/v1/simple/price", s.handleSimplePrice)
 
 	// All coins endpoints are handled by the coins router

@@ -40,4 +40,3 @@ func TestHealthEndpoint(t *testing.T) {
 	assert.Contains(t, services, "coingecko", "Services should include 'coingecko'")
 	assert.Contains(t, services, "tokens", "Services should include 'tokens'")
 }
-

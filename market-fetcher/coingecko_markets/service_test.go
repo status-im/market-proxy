@@ -92,7 +92,7 @@ func TestNewService(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewService(tt.cache, tt.config, mockTokensService)
+			service := NewService(tt.cache, tt.config, mockTokensService, nil)
 			assert.NotNil(t, service)
 			assert.Equal(t, tt.cache, service.cache)
 			assert.Equal(t, tt.config, service.config)
@@ -180,7 +180,7 @@ func TestService_Stop(t *testing.T) {
 				// Add expectations for cache Set calls that may occur during async operations
 				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 				mockTokensService := createMockTokensService(ctrl)
-				service := NewService(mockCache, createTestConfig(), mockTokensService)
+				service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 				// Start the service to initialize the goroutine and cancelFunc
 				err := service.Start(context.Background())
@@ -196,7 +196,7 @@ func TestService_Stop(t *testing.T) {
 				mockCache := cache_mocks.NewMockICache(ctrl)
 				// Add expectations for cache Set calls that may occur during async operations
 				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-				service := NewService(mockCache, createTestConfig(), nil)
+				service := NewService(mockCache, createTestConfig(), nil, nil)
 
 				// Start the service
 				err := service.Start(context.Background())
@@ -211,7 +211,7 @@ func TestService_Stop(t *testing.T) {
 			setupService: func() *Service {
 				mockCache := cache_mocks.NewMockICache(ctrl)
 				mockTokensService := createMockTokensService(ctrl)
-				return NewService(mockCache, createTestConfig(), mockTokensService)
+				return NewService(mockCache, createTestConfig(), mockTokensService, nil)
 			},
 			expectCancel: false,
 		},
@@ -270,7 +270,7 @@ func TestService_onTokenListChanged(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockCache := cache_mocks.NewMockICache(ctrl)
-			service := NewService(mockCache, createTestConfig(), tt.tokensService)
+			service := NewService(mockCache, createTestConfig(), tt.tokensService, nil)
 
 			// Create a mock periodic updater to verify SetExtraIds is called
 			if tt.expectCall {
@@ -389,7 +389,7 @@ func TestService_cacheTokensByID(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
-			service := NewService(mockCache, createTestConfig(), mockTokensService)
+			service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 			if len(tt.tokensData) > 0 {
 				mockCache.EXPECT().Set(gomock.Any(), gomock.Any()).Return(tt.cacheSetError)
@@ -489,7 +489,7 @@ func TestService_Markets(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
-			service := NewService(mockCache, createTestConfig(), mockTokensService)
+			service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 			if tt.expectCall {
 				// Mock cache behavior for MarketsByIds - return cached data
@@ -568,7 +568,7 @@ func TestService_MarketsByIds(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
-			service := NewService(mockCache, createTestConfig(), mockTokensService)
+			service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 			// Setup cache mock
 			mockCache.EXPECT().Get(gomock.Any()).Return(
@@ -645,7 +645,7 @@ func TestService_TopMarkets(t *testing.T) {
 
 			mockCache := cache_mocks.NewMockICache(ctrl)
 			mockTokensService := createMockTokensService(ctrl)
-			service := NewService(mockCache, createTestConfig(), mockTokensService)
+			service := NewService(mockCache, createTestConfig(), mockTokensService, nil)
 
 			// Initialize TopIdsManager with test data if we have topMarketsIDs
 			if len(tt.topMarketsIDs) > 0 {
@@ -711,7 +711,7 @@ func TestService_MarketsByIds_DefaultParams(t *testing.T) {
 	}
 
 	mockTokensService := createMockTokensService(ctrl)
-	service := NewService(mockCache, cfg, mockTokensService)
+	service := NewService(mockCache, cfg, mockTokensService, nil)
 
 	// Test that service works with cached data and default parameters
 	params := interfaces.MarketsParams{
@@ -747,7 +747,7 @@ func TestService_TopMarketIds(t *testing.T) {
 
 		// Create config and service
 		cfg := createTestConfig()
-		service := NewService(mockCache, cfg, mockTokensService)
+		service := NewService(mockCache, cfg, mockTokensService, nil)
 
 		// Create test data for TopIdsManager
 		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
@@ -790,7 +790,7 @@ func TestService_TopMarketIds(t *testing.T) {
 
 		// Create config and service
 		cfg := createTestConfig()
-		service := NewService(mockCache, cfg, mockTokensService)
+		service := NewService(mockCache, cfg, mockTokensService, nil)
 
 		// Create test data for TopIdsManager
 		tokens := []string{"bitcoin", "ethereum", "ada", "sol", "dot"}
@@ -839,7 +839,7 @@ func TestMarketsByPageAndMarketsByIdsReturnSameFormat(t *testing.T) {
 	mockTokensService := interface_mocks.NewMockITokensService(ctrl)
 	mockTokensService.EXPECT().SubscribeOnTokensUpdate().Return(createMockSubscription()).AnyTimes()
 
-	service := NewService(mockCache, config, mockTokensService)
+	service := NewService(mockCache, config, mockTokensService, nil)
 
 	t.Run("should return same format for page and ids", func(t *testing.T) {
 		// Setup cache expectations for IDs

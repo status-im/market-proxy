@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import useCoinDescription from '../hooks/useCoinDescription';
+import { BASE_CURRENCY, formatAmount } from '../utils/currencies';
 
 const Table = styled.table`
   width: 100%;
@@ -223,7 +224,7 @@ const PageInfo = styled.div`
   color: #616E85;
 `;
 
-function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick }) {
+function CryptoDataTable({ data, priceData, source, priceEndpoint, currency = BASE_CURRENCY, onTokenClick }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [hoveredToken, setHoveredToken] = useState(null);
@@ -246,12 +247,7 @@ function CryptoDataTable({ data, priceData, source, priceEndpoint, onTokenClick 
 
     const formatNumber = (num) => {
         if (!num && num !== 0) return '—';
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(num);
+        return formatAmount(num, currency);
     };
 
     const formatPercentage = (value) => {

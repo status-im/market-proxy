@@ -105,6 +105,13 @@ const endpoints = [
   { id: 'leaderboard-prices', name: 'Leaderboard Prices', path: '/v1/leaderboard/prices', desc: 'Get leaderboard prices', deps: [] },
   { id: 'leaderboard-simple-prices', name: 'Leaderboard Simple Prices', path: '/v1/leaderboard/simpleprices', desc: 'Get simple prices', deps: [] },
   { id: 'leaderboard-markets', name: 'Leaderboard Markets', path: '/v1/leaderboard/markets', desc: 'Get leaderboard markets', deps: [] },
+  { id: 'exchange-rates', name: 'Exchange Rates', path: '/v1/exchange_rates', desc: 'CoinGecko exchange rates (passthrough)', deps: [] },
+  { id: 'leaderboard-markets-eur', name: 'Leaderboard Markets (EUR)', path: '/v1/leaderboard/markets', query: '?convert_currency=eur', desc: 'Markets converted to EUR', deps: [] },
+  { id: 'leaderboard-prices-eur', name: 'Leaderboard Prices (EUR)', path: '/v1/leaderboard/prices', query: '?convert_currency=eur', desc: 'Prices converted to EUR', deps: [] },
+  { id: 'convert-currency-invalid', name: 'Convert Currency (invalid)', path: '/v1/leaderboard/markets', query: '?convert_currency=xyz', desc: 'Unknown currency must return 400', deps: [] },
+  { id: 'coins-markets-eur', name: 'Coins Markets (EUR)', path: '/v1/coins/markets', query: '?ids=bitcoin,ethereum,tether&convert_currency=eur', desc: 'CoinGecko markets converted to EUR', deps: [] },
+  { id: 'simple-price-eur', name: 'Simple Price (EUR estimate)', path: '/v1/simple/price', query: '?ids=bitcoin,ethereum&vs_currencies=usd&convert_currency=eur', desc: 'USD passthrough + EUR estimate keys', deps: [] },
+  { id: 'simple-price-ambiguous', name: 'Simple Price (ambiguous)', path: '/v1/simple/price', query: '?ids=bitcoin&vs_currencies=usd&convert_currency=usd', desc: 'convert_currency in vs_currencies must return 400', deps: [] },
   { id: 'simple-price-markets', name: 'Simple Price (Markets)', path: '/v1/simple/price', desc: 'Prices for market IDs', deps: ['coins-markets'] },
   { id: 'simple-price-coins', name: 'Simple Price (Coins)', path: '/v1/simple/price', desc: 'Prices for coin IDs', deps: ['coins-list'] },
   { id: 'asset-platforms', name: 'Asset Platforms', path: '/v1/asset_platforms', desc: 'Get asset platforms', deps: [] },
@@ -156,7 +163,42 @@ const EndpointTester = ({ onBack }) => {
     }
     
     const auth = user && pass ? `${user}:${pass}@` : '';
-    return base.replace('://', `://${auth}`) + path + (samples[ep.id] || '');
+    return base.replace('://', `://${auth}`) + path + (ep.query || samples[ep.id] || '');
+  };
+
+  // Relative difference between two numbers, 0 when both are 0
+  const relDiff = (a, b) => {
+    if (a === 0 && b === 0) {
+      return 0;
+    }
+    return Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), Number.MIN_VALUE);
+  };
+
+  // Checks that `converted` ≈ `usd` × ratio for every sampled value, where the
+  // ratio is derived from the responses themselves (first non-zero pair).
+  const checkConversion = (pairs, label) => {
+    // Optional fields are omitted when the provider did not report them, so a
+    // value can legitimately be undefined here - skip those rather than turning
+    // them into NaN.
+    const usable = pairs.filter(p =>
+      typeof p.usd === 'number' && typeof p.converted === 'number' && p.usd !== 0 && p.converted !== 0);
+    if (!usable.length) {
+      log(`  ${label}: no non-zero values to validate`, 'info');
+      return true;
+    }
+
+    const ratio = usable[0].converted / usable[0].usd;
+    const bad = usable.filter(p => relDiff(p.converted, p.usd * ratio) > 0.01);
+
+    log(`  ${label}: derived ratio ${ratio.toFixed(6)}, ${usable.length - bad.length}/${usable.length} consistent`,
+      bad.length ? 'error' : 'success');
+
+    if (bad.length) {
+      const sample = bad[0];
+      log(`    e.g. ${sample.id}: usd=${sample.usd} converted=${sample.converted} expected≈${sample.usd * ratio}`, 'error');
+    }
+
+    return !bad.length;
   };
 
   const fetchChunked = async (id, ids, pathFn, chunkSize, extract, label) => {
@@ -340,6 +382,264 @@ const EndpointTester = ({ onBack }) => {
       }
     },
 
+    'exchange-rates': async () => {
+      const start = Date.now();
+      upd('exchange-rates', { status: 'running', progress: 50 });
+
+      try {
+        const res = await proxyFetch('/v1/exchange_rates');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const d = await res.json();
+        const rates = d.rates || {};
+        const count = Object.keys(rates).length;
+
+        if (!count) {
+          throw new Error('response contains no rates');
+        }
+        if (!rates.usd || !rates.eur) {
+          throw new Error('response is missing usd/eur rates');
+        }
+
+        upd('exchange-rates', { status: 'completed', progress: 100, time: Date.now() - start, count });
+        log(`exchange_rates - ${count} rates (usd=${rates.usd.value}, eur=${rates.eur.value})`, 'success');
+      } catch (e) {
+        upd('exchange-rates', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`exchange_rates - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'leaderboard-markets-eur': async () => {
+      const start = Date.now();
+      upd('leaderboard-markets-eur', { status: 'running', progress: 50 });
+
+      try {
+        const [usdRes, eurRes] = await Promise.all([
+          proxyFetch('/v1/leaderboard/markets'),
+          proxyFetch('/v1/leaderboard/markets?convert_currency=eur')
+        ]);
+        if (!usdRes.ok || !eurRes.ok) {
+          throw new Error(`HTTP ${usdRes.status}/${eurRes.status}`);
+        }
+
+        const usd = (await usdRes.json()).data || [];
+        const eur = (await eurRes.json()).data || [];
+
+        if (usd.length !== eur.length) {
+          throw new Error(`row count differs: usd=${usd.length} eur=${eur.length}`);
+        }
+
+        const byId = Object.fromEntries(usd.map(c => [c.id, c]));
+        const pairs = eur.slice(0, 50)
+          .filter(c => byId[c.id])
+          .map(c => ({ id: c.id, usd: byId[c.id].current_price, converted: c.current_price }));
+
+        const complete = checkConversion(pairs, 'markets current_price');
+
+        upd('leaderboard-markets-eur', {
+          status: 'completed', progress: 100, time: Date.now() - start,
+          count: eur.length, requested: usd.length, complete
+        });
+        log(`leaderboard/markets?convert_currency=eur - ${eur.length} rows ${complete ? '✅' : '⚠️'}`, complete ? 'success' : 'error');
+      } catch (e) {
+        upd('leaderboard-markets-eur', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`leaderboard/markets?convert_currency=eur - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'leaderboard-prices-eur': async () => {
+      const start = Date.now();
+      upd('leaderboard-prices-eur', { status: 'running', progress: 50 });
+
+      try {
+        const [usdRes, eurRes] = await Promise.all([
+          proxyFetch('/v1/leaderboard/prices'),
+          proxyFetch('/v1/leaderboard/prices?convert_currency=eur')
+        ]);
+        if (!usdRes.ok || !eurRes.ok) {
+          throw new Error(`HTTP ${usdRes.status}/${eurRes.status}`);
+        }
+
+        const usd = await usdRes.json();
+        const eur = await eurRes.json();
+        const ids = Object.keys(usd);
+
+        if (ids.length !== Object.keys(eur).length) {
+          throw new Error(`quote count differs: usd=${ids.length} eur=${Object.keys(eur).length}`);
+        }
+
+        const pairs = ids.slice(0, 50)
+          .filter(id => eur[id])
+          .map(id => ({ id, usd: usd[id].price, converted: eur[id].price }));
+
+        const complete = checkConversion(pairs, 'prices price');
+
+        upd('leaderboard-prices-eur', {
+          status: 'completed', progress: 100, time: Date.now() - start,
+          count: Object.keys(eur).length, requested: ids.length, complete
+        });
+        log(`leaderboard/prices?convert_currency=eur - ${Object.keys(eur).length} quotes ${complete ? '✅' : '⚠️'}`, complete ? 'success' : 'error');
+      } catch (e) {
+        upd('leaderboard-prices-eur', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`leaderboard/prices?convert_currency=eur - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'convert-currency-invalid': async () => {
+      const start = Date.now();
+      upd('convert-currency-invalid', { status: 'running', progress: 50 });
+
+      try {
+        const res = await proxyFetch('/v1/leaderboard/markets?convert_currency=xyz', {
+          validateStatus: () => true
+        });
+
+        if (res.status !== 400) {
+          throw new Error(`expected HTTP 400, got ${res.status}`);
+        }
+
+        const d = await res.json();
+        if (!d.error) {
+          throw new Error('expected an error field in the body');
+        }
+
+        upd('convert-currency-invalid', { status: 'completed', progress: 100, time: Date.now() - start, count: 1 });
+        log(`convert_currency=xyz - HTTP 400 "${d.error}" ✅`, 'success');
+      } catch (e) {
+        upd('convert-currency-invalid', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`convert_currency=xyz - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'coins-markets-eur': async () => {
+      const start = Date.now();
+      upd('coins-markets-eur', { status: 'running', progress: 50 });
+
+      const ids = 'bitcoin,ethereum,tether';
+
+      try {
+        const [usdRes, eurRes] = await Promise.all([
+          proxyFetch(`/v1/coins/markets?ids=${ids}`),
+          proxyFetch(`/v1/coins/markets?ids=${ids}&convert_currency=eur`)
+        ]);
+        if (!usdRes.ok || !eurRes.ok) {
+          throw new Error(`HTTP ${usdRes.status}/${eurRes.status}`);
+        }
+
+        const usd = await usdRes.json();
+        const eur = await eurRes.json();
+
+        if (usd.length !== eur.length) {
+          throw new Error(`row count differs: usd=${usd.length} eur=${eur.length}`);
+        }
+
+        const byId = Object.fromEntries(usd.map(c => [c.id, c]));
+        const complete = ['current_price', 'market_cap', 'high_24h', 'low_24h'].every(field => {
+          const pairs = eur
+            .filter(c => byId[c.id] && typeof byId[c.id][field] === 'number')
+            .map(c => ({ id: c.id, usd: byId[c.id][field], converted: c[field] }));
+          return checkConversion(pairs, `coins/markets ${field}`);
+        });
+
+        // status-go reads these fields, so flag rows where the usd response had
+        // them but the converted one lost them. A field the provider never
+        // reported is absent on both sides and is not an error.
+        const missing = eur.filter(c => {
+          const usdRow = byId[c.id];
+          if (!usdRow) {
+            return false;
+          }
+          return ['price_change_24h', 'price_change_percentage_24h'].some(
+            f => typeof usdRow[f] === 'number' && typeof c[f] !== 'number');
+        });
+        if (missing.length) {
+          log(`  ${missing.length} rows lost 24h change fields in conversion`, 'error');
+        }
+
+        upd('coins-markets-eur', {
+          status: 'completed', progress: 100, time: Date.now() - start,
+          count: eur.length, requested: usd.length, complete: complete && !missing.length
+        });
+        log(`coins/markets?convert_currency=eur - ${eur.length} rows ${complete && !missing.length ? '✅' : '⚠️'}`,
+          complete && !missing.length ? 'success' : 'error');
+      } catch (e) {
+        upd('coins-markets-eur', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`coins/markets?convert_currency=eur - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'simple-price-eur': async () => {
+      const start = Date.now();
+      upd('simple-price-eur', { status: 'running', progress: 50 });
+
+      const base = '/v1/simple/price?ids=bitcoin,ethereum&vs_currencies=usd' +
+        '&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true';
+
+      try {
+        const res = await proxyFetch(`${base}&convert_currency=eur`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const d = await res.json();
+        const ids = Object.keys(d);
+        if (!ids.length) {
+          throw new Error('empty response');
+        }
+
+        // Both key sets must be present: usd passthrough and eur estimate
+        const incomplete = ids.filter(id => typeof d[id].usd !== 'number' || typeof d[id].eur !== 'number');
+        if (incomplete.length) {
+          throw new Error(`missing usd/eur keys for: ${incomplete.slice(0, 3).join(', ')}`);
+        }
+
+        const pairs = ids.map(id => ({ id, usd: d[id].usd, converted: d[id].eur }));
+        const complete = checkConversion(pairs, 'simple/price eur');
+
+        const capPairs = ids
+          .filter(id => typeof d[id].usd_market_cap === 'number' && typeof d[id].eur_market_cap === 'number')
+          .map(id => ({ id, usd: d[id].usd_market_cap, converted: d[id].eur_market_cap }));
+        const capComplete = checkConversion(capPairs, 'simple/price eur_market_cap');
+
+        const ok = complete && capComplete;
+        upd('simple-price-eur', {
+          status: 'completed', progress: 100, time: Date.now() - start, count: ids.length, complete: ok
+        });
+        log(`simple/price?convert_currency=eur - ${ids.length} tokens with usd+eur keys ${ok ? '✅' : '⚠️'}`,
+          ok ? 'success' : 'error');
+      } catch (e) {
+        upd('simple-price-eur', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`simple/price?convert_currency=eur - Error: ${e.message}`, 'error');
+      }
+    },
+
+    'simple-price-ambiguous': async () => {
+      const start = Date.now();
+      upd('simple-price-ambiguous', { status: 'running', progress: 50 });
+
+      try {
+        const res = await proxyFetch('/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=usd', {
+          validateStatus: () => true
+        });
+
+        if (res.status !== 400) {
+          throw new Error(`expected HTTP 400, got ${res.status}`);
+        }
+
+        const d = await res.json();
+        if (!d.error) {
+          throw new Error('expected an error field in the body');
+        }
+
+        upd('simple-price-ambiguous', { status: 'completed', progress: 100, time: Date.now() - start, count: 1 });
+        log(`simple/price vs_currencies+convert_currency clash - HTTP 400 "${d.error}" ✅`, 'success');
+      } catch (e) {
+        upd('simple-price-ambiguous', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`simple/price vs_currencies+convert_currency clash - Error: ${e.message}`, 'error');
+      }
+    },
+
     'coins-id-markets': () => execCoinsId('coins-id-markets', data.marketsData, 'coins/markets'),
     'coins-id-list': () => execCoinsId('coins-id-list', data.coinsList, 'coins/list')
   };
@@ -410,7 +710,7 @@ const EndpointTester = ({ onBack }) => {
     upd(ep.id, { status: 'running', progress: 50 });
     
     try {
-      const res = await proxyFetch(ep.path);
+      const res = await proxyFetch(ep.path + (ep.query || ''));
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -441,7 +741,9 @@ const EndpointTester = ({ onBack }) => {
     
     const order = [
       'coins-list', 'coins-markets', 'leaderboard-prices', 'leaderboard-simple-prices',
-      'leaderboard-markets', 'asset-platforms', 'token-lists', 'coins-markets-by-ids',
+      'leaderboard-markets', 'exchange-rates', 'leaderboard-markets-eur', 'leaderboard-prices-eur',
+      'convert-currency-invalid', 'coins-markets-eur', 'simple-price-eur', 'simple-price-ambiguous',
+      'asset-platforms', 'token-lists', 'coins-markets-by-ids',
       'simple-price-markets', 'simple-price-coins', 'coins-id-markets', 'coins-id-list'
     ];
     
@@ -538,7 +840,7 @@ const EndpointTester = ({ onBack }) => {
                   <td>
                     <strong>{ep.name}</strong>
                     <br />
-                    <Link href={buildUrl(ep)} target="_blank">{ep.path} ↗</Link>
+                    <Link href={buildUrl(ep)} target="_blank">{ep.path}{ep.query || ''} ↗</Link>
                   </td>
                   <td>{ep.desc}</td>
                   <td>

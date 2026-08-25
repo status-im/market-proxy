@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/status-im/market-proxy/interfaces"
+	"github.com/status-im/market-proxy/jsonutil"
 )
 
 const (
@@ -134,24 +135,25 @@ func ConvertMarketsResponseToCoinGeckoData(tokensData [][]byte) []CoinGeckoData 
 	return result
 }
 
-// getStringFromMap safely extracts string from map
+// getStringFromMap extracts a string field, falling back to "" when it is
+// missing or not a string.
+//
+// The fallback makes a missing field indistinguishable from an empty one. That
+// is the long-standing behaviour of this conversion and the response shape
+// depends on it, so the collapse is done here explicitly rather than changed.
 func getStringFromMap(m map[string]interface{}, key string) string {
-	if value, exists := m[key]; exists {
-		if str, ok := value.(string); ok {
-			return str
-		}
-	}
-	return ""
+	value, _ := jsonutil.StringField(m, key)
+	return value
 }
 
-// getFloatFromMap safely extracts float64 from map
+// getFloatFromMap extracts a float64 field, falling back to 0 when it is
+// missing or not numeric.
+//
+// As above: a missing price and a real zero come out the same. Preserved
+// deliberately - changing it would change what these endpoints return.
 func getFloatFromMap(m map[string]interface{}, key string) float64 {
-	if value, exists := m[key]; exists {
-		if f, ok := value.(float64); ok {
-			return f
-		}
-	}
-	return 0.0
+	value, _ := jsonutil.FloatField(m, key)
+	return value
 }
 
 // getIntFromMap safely extracts int from map

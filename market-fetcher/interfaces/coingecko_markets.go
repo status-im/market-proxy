@@ -6,6 +6,8 @@ import "github.com/status-im/market-proxy/events"
 
 // IMarketsService defines the interface for CoinGecko markets service
 type IMarketsService interface {
+	IHealthReporter
+
 	// TopMarkets fetches top markets data for specified number of tokens,
 	// caches individual tokens by their coingecko id and returns the response
 	TopMarkets(limit int, currency string) (MarketsResponse, error)
@@ -48,6 +50,12 @@ type MarketsParams struct {
 
 	// PriceChangePercentage includes price change percentages for specific time periods
 	PriceChangePercentage []string `json:"price_change_percentage,omitempty"`
+
+	// ConvertCurrency, when set, asks for a realtime Estimate in that currency
+	// instead of Passthrough values. Cached rows are always normalized to the
+	// base currency, so Currency carries no information alongside it and is
+	// ignored. An empty response means no Ratio is available yet.
+	ConvertCurrency string `json:"convert_currency,omitempty"`
 }
 
 // MarketsResponse represents markets data response structure

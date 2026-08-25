@@ -46,4 +46,3 @@ func TestCoinsListEndpoint(t *testing.T) {
 	assert.Contains(t, firstItem, "name", "Item should contain 'name'")
 	assert.Contains(t, firstItem, "platforms", "Item should contain 'platforms'")
 }
-

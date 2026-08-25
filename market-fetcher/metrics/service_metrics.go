@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,7 +21,20 @@ const (
 	ServiceMarkets      = "markets"
 	ServiceMarketCharts = "market-charts"
 	ServicePlatforms    = "platforms"
+	// ServiceCurrencyRatios is the service deriving currency conversion ratios
+	ServiceCurrencyRatios = "currency-ratios"
+	// ServiceExchangeRates is the CoinGecko exchange rates passthrough service
+	ServiceExchangeRates = "exchange-rates"
 )
+
+// currencyRatiosSnapshotUnix holds the unix timestamp of the latest successful
+// currency ratios snapshot, 0 when no snapshot exists yet
+var currencyRatiosSnapshotUnix atomic.Int64
+
+// RecordCurrencyRatiosSnapshotTime records when the currency ratios snapshot was computed
+func RecordCurrencyRatiosSnapshotTime(t time.Time) {
+	currencyRatiosSnapshotUnix.Store(t.Unix())
+}
 
 var (
 	// tokensByPlatformMutex protects the RecordTokensByPlatform function
@@ -119,6 +133,25 @@ var (
 			Help: "Total number of retry attempts per service",
 		},
 		[]string{"service"},
+	)
+
+	// Age of the latest successful currency ratios snapshot.
+	// On upstream failure the previous snapshot keeps being served indefinitely,
+	// so this is the only signal that conversion Estimates have gone stale.
+	// Reports -1 while no snapshot exists.
+	// Cardinality: 1
+	CurrencyRatiosSnapshotAgeGauge = promauto.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: MetricsPrefix + "currency_ratios_snapshot_age_seconds",
+			Help: "Age in seconds of the latest successful currency ratios snapshot (-1 if none yet)",
+		},
+		func() float64 {
+			snapshotUnix := currencyRatiosSnapshotUnix.Load()
+			if snapshotUnix == 0 {
+				return -1
+			}
+			return time.Since(time.Unix(snapshotUnix, 0)).Seconds()
+		},
 	)
 
 	// Rate limit hits counter

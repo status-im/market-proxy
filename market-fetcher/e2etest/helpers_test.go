@@ -108,4 +108,3 @@ func waitForDataInitialization(t *testing.T, env *TestEnv) {
 	}
 	time.Sleep(2 * time.Second)
 }
-

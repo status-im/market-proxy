@@ -101,6 +101,22 @@ func (ms *MockServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// CoinGecko exchange rates endpoint (Passthrough)
+	if strings.Contains(path, "/api/v3/exchange_rates") {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, defaultExchangeRatesData())
+		return
+	}
+
+	// CoinGecko simple price endpoint used by the currency ratios service.
+	// It is the only caller asking for precision=full, so the ratio fixture can
+	// carry the per-currency 24h changes without disturbing the price tests.
+	if strings.Contains(path, "/api/v3/simple/price") && query.Get("precision") == "full" {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, defaultCurrencyRatiosData())
+		return
+	}
+
 	// CoinGecko simple price endpoint
 	if strings.Contains(path, "/api/v3/simple/price") {
 		w.Header().Set("Content-Type", "application/json")
@@ -240,8 +256,54 @@ func defaultLeaderboardData() string {
 		"atl_change_percentage": 692968.2,
 		"atl_date": "2015-10-20T00:00:00.000Z",
 		"last_updated": "2023-04-20T12:34:56.789Z"
+	},
+	{
+		"id": "sparsecoin",
+		"symbol": "spc",
+		"name": "Sparse Coin",
+		"image": "https://assets.coingecko.com/coins/images/0/large/sparse.png",
+		"current_price": 2.5,
+		"market_cap": null,
+		"total_volume": null,
+		"price_change_percentage_24h": null,
+		"last_updated": "2023-04-20T12:34:56.789Z"
 	}
 ]`
+}
+
+// Currency ratio fixture values, chosen so the derived ratios are round numbers:
+//
+//	eur: now 90000/100000 = 0.9, 24h-ago (90000/1.2)/(100000/1.1) = 0.825
+//	btc: now 1/100000 = 1e-5,    24h-ago (1/1.0)/(100000/1.1) = 1.1e-5
+const (
+	RatioFixtureEURNow = 0.9
+	RatioFixtureEUR24h = 0.825
+)
+
+// defaultCurrencyRatiosData returns the simple/price fixture the currency ratios
+// service derives its ratios from
+func defaultCurrencyRatiosData() string {
+	return `{
+		"bitcoin": {
+			"usd": 100000, "usd_24h_change": 10,
+			"eur": 90000, "eur_24h_change": 20,
+			"btc": 1, "btc_24h_change": 0,
+			"eth": 25, "eth_24h_change": 5
+		},
+		"ethereum": {
+			"usd": 4000, "usd_24h_change": 10,
+			"eur": 3600, "eur_24h_change": 20,
+			"btc": 0.04, "btc_24h_change": 0,
+			"eth": 1, "eth_24h_change": 0
+		}
+	}`
+}
+
+// defaultExchangeRatesData returns test data for the CoinGecko exchange rates endpoint
+func defaultExchangeRatesData() string {
+	return `{"rates":{"btc":{"name":"Bitcoin","unit":"BTC","value":1.0,"type":"crypto"},` +
+		`"usd":{"name":"US Dollar","unit":"$","value":100000.123456789,"type":"fiat"},` +
+		`"eur":{"name":"Euro","unit":"€","value":90000.111222333,"type":"fiat"}}}`
 }
 
 // defaultTokensListData returns test data for CoinGecko tokens list

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -8,7 +9,9 @@ import (
 
 	"github.com/status-im/market-proxy/interfaces"
 
+	"github.com/status-im/market-proxy/coingecko_coins"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
+	"github.com/status-im/market-proxy/coingecko_prices"
 )
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -35,6 +38,12 @@ func (s *Server) handleCoinsList(w http.ResponseWriter, r *http.Request) {
 // handleCoinsMarkets implements CoinGecko-compatible /api/v3/coins/markets endpoint
 func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 	params := interfaces.MarketsParams{}
+
+	convertCurrency, ok := s.resolveConvertCurrency(w, r)
+	if !ok {
+		return
+	}
+	params.ConvertCurrency = convertCurrency
 
 	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {
@@ -104,6 +113,21 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	}
 	params.Currencies = splitParamLowercase(currenciesParam)
 
+	// A currency cannot be both Passthrough (vs_currencies) and Estimate
+	// (convert_currency) in one response - the same keys would carry both.
+	requestedConvert := getParamLowercase(r, convertCurrencyParam)
+	if requestedConvert != "" && coingecko_prices.ContainsCurrency(params.Currencies, requestedConvert) {
+		s.sendJSONError(w, http.StatusBadRequest,
+			fmt.Sprintf("%s %s must not be listed in vs_currencies", convertCurrencyParam, requestedConvert))
+		return
+	}
+
+	convertCurrency, ok := s.resolveConvertCurrency(w, r)
+	if !ok {
+		return
+	}
+	params.ConvertCurrency = convertCurrency
+
 	if marketCapParam := r.URL.Query().Get("include_market_cap"); marketCapParam != "" {
 		if marketCap, err := strconv.ParseBool(marketCapParam); err == nil {
 			params.IncludeMarketCap = marketCap
@@ -164,7 +188,7 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 
 	data, err := s.marketChartService.MarketChart(params)
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid parameters") {
+		if errors.Is(err, coingecko_market_chart.ErrInvalidParams) {
 			http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
 		} else {
 			http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
@@ -189,7 +213,7 @@ func (s *Server) handleCoinsID(w http.ResponseWriter, r *http.Request) {
 
 	data, cacheStatus, err := s.coinsService.GetCoin(coinID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, coingecko_coins.ErrNotFound) {
 			http.Error(w, fmt.Sprintf("Coin not found: %s", coinID), http.StatusNotFound)
 		} else {
 			http.Error(w, fmt.Sprintf("Error fetching coin data: %v", err), http.StatusInternalServerError)

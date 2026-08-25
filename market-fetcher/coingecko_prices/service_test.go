@@ -75,7 +75,7 @@ func TestService_Basic(t *testing.T) {
 
 	// Create price service
 	mockTokensService := createMockTokensService(ctrl)
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Test Start method
 	err := priceService.Start(context.Background())
@@ -110,7 +110,7 @@ func TestService_SimplePricesWithMissingData(t *testing.T) {
 
 	// Create price service
 	mockTokensService := createMockTokensService(ctrl)
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Test SimplePrices with data not in cache - should return empty results
 	params := cg.PriceParams{
@@ -171,7 +171,7 @@ func TestService_StartStop(t *testing.T) {
 
 	// Create price service
 	mockTokensService := createMockTokensService(ctrl)
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Test Start
 	err := priceService.Start(context.Background())
@@ -188,7 +188,7 @@ func TestService_StartWithoutCache(t *testing.T) {
 	cfg := createTestConfig()
 
 	// Create price service without cache
-	priceService := NewService(nil, cfg, nil, nil)
+	priceService := NewService(nil, cfg, nil, nil, nil)
 
 	// Test Start should fail
 	err := priceService.Start(context.Background())
@@ -424,7 +424,7 @@ func TestService_SimplePricesAndTopPricesReturnSameFormat(t *testing.T) {
 	mockTokensService := createMockTokensService(ctrl)
 
 	// Create price service
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Start the service
 	err := priceService.Start(context.Background())
@@ -538,7 +538,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithPartialData(t *tes
 	mockTokensService := createMockTokensService(ctrl)
 
 	// Create price service
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Start the service
 	err := priceService.Start(context.Background())
@@ -618,7 +618,7 @@ func TestService_SimplePricesAndTopPricesFormatConsistencyWithEmptyResponse(t *t
 	mockTokensService := createMockTokensService(ctrl)
 
 	// Create price service
-	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService)
+	priceService := NewService(mockCache, cfg, mockMarketsService, mockTokensService, nil)
 
 	// Start the service
 	err := priceService.Start(context.Background())

@@ -21,6 +21,7 @@ import (
 type MockIMarketsService struct {
 	ctrl     *gomock.Controller
 	recorder *MockIMarketsServiceMockRecorder
+	isgomock struct{}
 }
 
 // MockIMarketsServiceMockRecorder is the mock recorder for MockIMarketsService.
@@ -40,10 +41,24 @@ func (m *MockIMarketsService) EXPECT() *MockIMarketsServiceMockRecorder {
 	return m.recorder
 }
 
-// Markets mocks base method.
-func (m *MockIMarketsService) Markets(arg0 interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+// Healthy mocks base method.
+func (m *MockIMarketsService) Healthy() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Markets", arg0)
+	ret := m.ctrl.Call(m, "Healthy")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Healthy indicates an expected call of Healthy.
+func (mr *MockIMarketsServiceMockRecorder) Healthy() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Healthy", reflect.TypeOf((*MockIMarketsService)(nil).Healthy))
+}
+
+// Markets mocks base method.
+func (m *MockIMarketsService) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Markets", params)
 	ret0, _ := ret[0].(interfaces.MarketsResponse)
 	ret1, _ := ret[1].(interfaces.CacheStatus)
 	ret2, _ := ret[2].(error)
@@ -51,9 +66,9 @@ func (m *MockIMarketsService) Markets(arg0 interfaces.MarketsParams) (interfaces
 }
 
 // Markets indicates an expected call of Markets.
-func (mr *MockIMarketsServiceMockRecorder) Markets(arg0 any) *gomock.Call {
+func (mr *MockIMarketsServiceMockRecorder) Markets(params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Markets", reflect.TypeOf((*MockIMarketsService)(nil).Markets), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Markets", reflect.TypeOf((*MockIMarketsService)(nil).Markets), params)
 }
 
 // SubscribeInitialized mocks base method.
@@ -85,31 +100,31 @@ func (mr *MockIMarketsServiceMockRecorder) SubscribeTopMarketsUpdate() *gomock.C
 }
 
 // TopMarketIds mocks base method.
-func (m *MockIMarketsService) TopMarketIds(arg0 int) ([]string, error) {
+func (m *MockIMarketsService) TopMarketIds(limit int) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopMarketIds", arg0)
+	ret := m.ctrl.Call(m, "TopMarketIds", limit)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TopMarketIds indicates an expected call of TopMarketIds.
-func (mr *MockIMarketsServiceMockRecorder) TopMarketIds(arg0 any) *gomock.Call {
+func (mr *MockIMarketsServiceMockRecorder) TopMarketIds(limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMarketIds", reflect.TypeOf((*MockIMarketsService)(nil).TopMarketIds), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMarketIds", reflect.TypeOf((*MockIMarketsService)(nil).TopMarketIds), limit)
 }
 
 // TopMarkets mocks base method.
-func (m *MockIMarketsService) TopMarkets(arg0 int, arg1 string) (interfaces.MarketsResponse, error) {
+func (m *MockIMarketsService) TopMarkets(limit int, currency string) (interfaces.MarketsResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TopMarkets", arg0, arg1)
+	ret := m.ctrl.Call(m, "TopMarkets", limit, currency)
 	ret0, _ := ret[0].(interfaces.MarketsResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TopMarkets indicates an expected call of TopMarkets.
-func (mr *MockIMarketsServiceMockRecorder) TopMarkets(arg0, arg1 any) *gomock.Call {
+func (mr *MockIMarketsServiceMockRecorder) TopMarkets(limit, currency any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMarkets", reflect.TypeOf((*MockIMarketsService)(nil).TopMarkets), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopMarkets", reflect.TypeOf((*MockIMarketsService)(nil).TopMarkets), limit, currency)
 }
