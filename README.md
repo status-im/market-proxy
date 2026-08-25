@@ -139,6 +139,12 @@ This will:
 - API Proxy: http://localhost:8080
 - Frontend: http://localhost:3000
 
+### Adding a Service
+
+[docs/service-template.md](./docs/service-template.md) walks the layers a new
+fetcher touches — config block, API client, service, composition root, handler,
+nginx location, tests — with a checklist of the parts that are easy to miss.
+
 ![img.png](test-api.png)
 
 ## Key Features
