@@ -39,6 +39,12 @@ type PriceParams struct {
 
 	// Precision for decimal places (empty means full precision)
 	Precision string `json:"precision,omitempty"`
+
+	// ConvertCurrency, when set, adds realtime Estimate keys for that currency
+	// alongside the Passthrough keys selected by Currencies. It must not also
+	// appear in Currencies - one key cannot be both. An empty response means no
+	// Ratio is available yet.
+	ConvertCurrency string `json:"convert_currency,omitempty"`
 }
 
 // SimplePriceResponse represents the response format compatible with CoinGecko simple/price API

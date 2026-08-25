@@ -7,12 +7,16 @@ package interfaces
 type ILeaderboardService interface {
 	IHealthReporter
 
-	// GetCacheData returns the cached top markets rows, or nil when empty
-	GetCacheData() *LeaderboardResponse
+	// GetCacheData returns the cached top markets rows, converted to
+	// convertCurrency when that is non-empty. nil means there is nothing to
+	// serve: either the cache is empty or no Ratio is available yet.
+	GetCacheData(convertCurrency string) *LeaderboardResponse
 
-	// GetTopPricesQuotes returns cached price quotes for top tokens in the
-	// given currency
-	GetTopPricesQuotes(currency string) LeaderboardQuotes
+	// GetTopPricesQuotes returns cached price quotes for top tokens.
+	// currency selects a Passthrough currency from the cache; convertCurrency,
+	// when non-empty, instead returns an Estimate computed at request time from
+	// the base currency rows. An empty result means no Ratio is available yet.
+	GetTopPricesQuotes(currency string, convertCurrency string) LeaderboardQuotes
 }
 
 // LeaderboardQuote represents price data for one token in a single currency

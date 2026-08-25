@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/status-im/market-proxy/cache"
 	cfg "github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/events"
 	"github.com/status-im/market-proxy/interfaces"
 	"github.com/status-im/market-proxy/metrics"
@@ -28,11 +30,17 @@ type Service struct {
 	initializedSubscriptionManager *events.SubscriptionManager
 	periodicUpdater                *PeriodicUpdater
 	tokensService                  interfaces.ITokensService
+	ratiosProvider                 interfaces.ICurrencyRatiosProvider
 	tokenUpdateSubscription        events.ISubscription
 	topIdsManager                  *TopIdsManager
 }
 
-func NewService(cache cache.ICache, config *cfg.Config, tokensService interfaces.ITokensService) *Service {
+func NewService(
+	cache cache.ICache,
+	config *cfg.Config,
+	tokensService interfaces.ITokensService,
+	ratiosProvider interfaces.ICurrencyRatiosProvider,
+) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServiceMarkets)
 	apiClient := NewCoinGeckoClient(config)
 
@@ -43,6 +51,7 @@ func NewService(cache cache.ICache, config *cfg.Config, tokensService interfaces
 		subscriptionManager:            events.NewSubscriptionManager(),
 		initializedSubscriptionManager: events.NewSubscriptionManager(),
 		tokensService:                  tokensService,
+		ratiosProvider:                 ratiosProvider,
 		topIdsManager:                  NewTopIdsManager(),
 	}
 
@@ -183,6 +192,59 @@ func (s *Service) cacheTokensPage(tier cfg.MarketTier, pagesData []PageData) (ma
 // Markets fetches markets data using cache with specified parameters
 // Returns full CoinGecko markets response in APIResponse format
 func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+	if params.ConvertCurrency != "" {
+		return s.marketsConverted(params)
+	}
+
+	return s.marketsPassthrough(params)
+}
+
+// marketsConverted serves an Estimate in params.ConvertCurrency, computed at
+// request time from the cached base currency rows. The cache is never mutated.
+//
+// An empty response stands for "no Ratio yet": serving Passthrough base
+// currency values under another currency's name would masquerade Passthrough
+// as Estimate.
+func (s *Service) marketsConverted(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+	conversion, ok := s.conversion(params.ConvertCurrency)
+	if !ok {
+		return interfaces.MarketsResponse([]interface{}{}), interfaces.CacheStatusMiss, nil
+	}
+
+	// Cached rows are normalized to the base currency by market_params_normalize,
+	// so whatever vs_currency the caller sent carries no information here.
+	params.Currency = currency_ratios.BaseCurrency
+
+	response, cacheStatus, err := s.marketsPassthrough(params)
+	if err != nil {
+		return nil, cacheStatus, err
+	}
+
+	return ConvertMarketsResponse(response, conversion), cacheStatus, nil
+}
+
+// conversion assembles the Ratios needed to convert a markets response,
+// including the 1h-ago spot ratio when the realtime history reaches back that far
+func (s *Service) conversion(currency string) (MarketsConversion, bool) {
+	if s.ratiosProvider == nil {
+		return MarketsConversion{}, false
+	}
+
+	ratio, ok := s.ratiosProvider.GetSnapshot().Ratio(currency)
+	if !ok {
+		return MarketsConversion{}, false
+	}
+
+	conversion := MarketsConversion{Ratio: ratio}
+	if spot1hAgo, ok := s.ratiosProvider.GetSpotRatioAgo(currency, time.Hour); ok {
+		conversion.Spot1hAgo = spot1hAgo
+		conversion.Has1hAgo = true
+	}
+
+	return conversion, true
+}
+
+func (s *Service) marketsPassthrough(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
 	if len(params.IDs) > 0 {
 		return s.MarketsByIds(params)
 	}

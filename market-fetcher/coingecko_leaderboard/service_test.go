@@ -11,13 +11,13 @@ import (
 func TestService_Healthy_Logic(t *testing.T) {
 	// Create a new service
 	cfg := &config.Config{}
-	svc := NewService(cfg, nil, nil)
+	svc := NewService(cfg, nil, nil, nil)
 
 	// Test case 1: Empty cache, client not healthy
 	// Just test the direct logic without using the Healthy method
 
 	// Check initial state - no cache data
-	assert.Nil(t, svc.GetCacheData())
+	assert.Nil(t, svc.GetCacheData(""))
 
 	// Test with cache data
 	mockData := []CoinData{
@@ -34,7 +34,7 @@ func TestService_Healthy_Logic(t *testing.T) {
 	svc.topMarketsUpdater.cache.Unlock()
 
 	// Verify data is in cache
-	cacheData := svc.GetCacheData()
+	cacheData := svc.GetCacheData("")
 	assert.NotNil(t, cacheData)
 	assert.NotEmpty(t, cacheData.Data)
 
@@ -44,7 +44,7 @@ func TestService_Healthy_Logic(t *testing.T) {
 	svc.topMarketsUpdater.cache.Unlock()
 
 	// Verify no data in cache
-	assert.Nil(t, svc.GetCacheData())
+	assert.Nil(t, svc.GetCacheData(""))
 
 	// Test with empty cache data
 	svc.topMarketsUpdater.cache.Lock()
@@ -52,7 +52,7 @@ func TestService_Healthy_Logic(t *testing.T) {
 	svc.topMarketsUpdater.cache.Unlock()
 
 	// Verify cache exists but is empty
-	cacheData = svc.GetCacheData()
+	cacheData = svc.GetCacheData("")
 	assert.NotNil(t, cacheData)
 	assert.Empty(t, cacheData.Data)
 }

@@ -31,6 +31,11 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	cacheService := cache.NewService(cfg.Cache)
 	registry.Register(cacheService)
 
+	// Currency ratios service - source of the realtime conversion Estimates the
+	// markets, prices and leaderboard services compute on request
+	currencyRatiosService := currency_ratios.NewService(cfg)
+	registry.Register(currencyRatiosService)
+
 	// Tokens service
 	tokensService := coingecko_tokens.NewService(cfg)
 	registry.Register(tokensService)
@@ -40,7 +45,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry.Register(tokenListService)
 
 	// Markets service
-	marketsService := coingecko_markets.NewService(cacheService, cfg, tokensService)
+	marketsService := coingecko_markets.NewService(cacheService, cfg, tokensService, currencyRatiosService)
 	registry.Register(marketsService)
 
 	// Coins service
@@ -48,7 +53,7 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry.Register(coinsService)
 
 	// Prices service
-	pricesService := coingecko_prices.NewService(cacheService, cfg, marketsService, tokensService)
+	pricesService := coingecko_prices.NewService(cacheService, cfg, marketsService, tokensService, currencyRatiosService)
 	registry.Register(pricesService)
 
 	// MarketChart service
@@ -60,12 +65,8 @@ func Setup(ctx context.Context, cfg *config.Config) (*Registry, error) {
 	registry.Register(assetsPlatformsService)
 
 	// Leaderboard service
-	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService)
+	cgService := coingecko_leaderboard.NewService(cfg, pricesService, marketsService, currencyRatiosService)
 	registry.Register(cgService)
-
-	// Currency ratios service (source of realtime conversion Estimates)
-	currencyRatiosService := currency_ratios.NewService(cfg)
-	registry.Register(currencyRatiosService)
 
 	// Exchange rates service (independent Passthrough endpoint)
 	exchangeRatesService := coingecko_exchange_rates.NewService(cfg)

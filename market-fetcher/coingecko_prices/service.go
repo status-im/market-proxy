@@ -12,6 +12,7 @@ import (
 
 	"github.com/status-im/market-proxy/cache"
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/events"
 )
 
@@ -25,13 +26,20 @@ type Service struct {
 	periodicUpdater                IPeriodicUpdater
 	marketsService                 interfaces.IMarketsService
 	tokensService                  interfaces.ITokensService
+	ratiosProvider                 interfaces.ICurrencyRatiosProvider
 	marketUpdateSubscription       events.ISubscription
 	tokenUpdateSubscription        events.ISubscription
 	marketsInitializedSubscription events.ISubscription
 }
 
 // NewService creates a new price service with the given cache and config
-func NewService(cache cache.ICache, config *config.Config, marketsService interfaces.IMarketsService, tokensService interfaces.ITokensService) *Service {
+func NewService(
+	cache cache.ICache,
+	config *config.Config,
+	marketsService interfaces.IMarketsService,
+	tokensService interfaces.ITokensService,
+	ratiosProvider interfaces.ICurrencyRatiosProvider,
+) *Service {
 	metricsWriter := metrics.NewMetricsWriter(metrics.ServicePrices)
 	apiClient := NewCoinGeckoClient(config, metricsWriter)
 
@@ -56,6 +64,7 @@ func NewService(cache cache.ICache, config *config.Config, marketsService interf
 		subscriptionManager: events.NewSubscriptionManager(),
 		marketsService:      marketsService,
 		tokensService:       tokensService,
+		ratiosProvider:      ratiosProvider,
 	}
 
 	// Create periodic updater
@@ -238,7 +247,49 @@ func (s *Service) Stop() {
 
 // SimplePrices fetches prices for the given parameters using cache only
 // Returns raw CoinGecko JSON response with cache status
-func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
+func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+	if params.ConvertCurrency != "" {
+		return s.simplePricesConverted(ctx, params)
+	}
+
+	return s.simplePrices(ctx, params)
+}
+
+// simplePricesConverted adds Estimate keys for params.ConvertCurrency next to
+// the Passthrough keys the caller asked for.
+//
+// The base currency has to be read from cache to compute them, so it is added
+// to the cache read and dropped again afterwards when the caller did not ask
+// for it. An empty response stands for "no Ratio yet".
+func (s *Service) simplePricesConverted(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+	ratio, ok := s.ratio(params.ConvertCurrency)
+	if !ok {
+		return interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil
+	}
+
+	requestedCurrencies := params.Currencies
+	params.Currencies = SourceCurrencies(params.Currencies)
+
+	response, cacheStatus, err := s.simplePrices(ctx, params)
+	if err != nil {
+		return nil, cacheStatus, err
+	}
+
+	keepBase := ContainsCurrency(requestedCurrencies, currency_ratios.BaseCurrency)
+
+	return ConvertSimplePrices(response, params.ConvertCurrency, ratio, params.Precision, keepBase), cacheStatus, nil
+}
+
+// ratio looks up the Ratio for a target currency; ok is false when no snapshot
+// exists yet or the currency is missing from it
+func (s *Service) ratio(currency string) (currency_ratios.Ratio, bool) {
+	if s.ratiosProvider == nil {
+		return currency_ratios.Ratio{}, false
+	}
+	return s.ratiosProvider.GetSnapshot().Ratio(currency)
+}
+
+func (s *Service) simplePrices(ctx context.Context, params interfaces.PriceParams) (resp interfaces.SimplePriceResponse, cacheStatus interfaces.CacheStatus, err error) {
 	if len(params.IDs) == 0 {
 		return interfaces.SimplePriceResponse{}, interfaces.CacheStatusFull, nil
 	}
