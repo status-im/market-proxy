@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/status-im/market-proxy/interfaces"
 
+	"github.com/status-im/market-proxy/coingecko_coins"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
 	"github.com/status-im/market-proxy/coingecko_prices"
 )
@@ -186,7 +188,7 @@ func (s *Server) handleMarketChart(w http.ResponseWriter, r *http.Request) {
 
 	data, err := s.marketChartService.MarketChart(params)
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid parameters") {
+		if errors.Is(err, coingecko_market_chart.ErrInvalidParams) {
 			http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
 		} else {
 			http.Error(w, fmt.Sprintf("Error fetching market chart: %v", err), http.StatusInternalServerError)
@@ -211,7 +213,7 @@ func (s *Server) handleCoinsID(w http.ResponseWriter, r *http.Request) {
 
 	data, cacheStatus, err := s.coinsService.GetCoin(coinID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, coingecko_coins.ErrNotFound) {
 			http.Error(w, fmt.Sprintf("Coin not found: %s", coinID), http.StatusNotFound)
 		} else {
 			http.Error(w, fmt.Sprintf("Error fetching coin data: %v", err), http.StatusInternalServerError)

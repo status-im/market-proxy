@@ -51,7 +51,7 @@ func (s *Service) MarketChart(params MarketChartParams) (MarketChartResponseData
 		params.ID, params.Currency, params.Days)
 
 	if err := params.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid parameters: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidParams, err)
 	}
 
 	originalParams := params

@@ -110,12 +110,12 @@ func (s *Service) GetByID(id string) ([]byte, interfaces.CacheStatus, error) {
 	}
 
 	if len(missingKeys) > 0 {
-		return nil, interfaces.CacheStatusMiss, fmt.Errorf("item not found: %s", id)
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("%w: %s", ErrNotFound, id)
 	}
 
 	data, exists := cachedData[cacheKey]
 	if !exists {
-		return nil, interfaces.CacheStatusMiss, fmt.Errorf("item not found: %s", id)
+		return nil, interfaces.CacheStatusMiss, fmt.Errorf("%w: %s", ErrNotFound, id)
 	}
 
 	return data, interfaces.CacheStatusFull, nil
