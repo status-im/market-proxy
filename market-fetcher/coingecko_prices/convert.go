@@ -20,7 +20,10 @@ const (
 // keys for the target currency added, computed from the base currency keys.
 //
 // For a target currency X the keys `x`, `x_market_cap` and `x_24h_vol` are scaled
-// by the spot ratio and `x_24h_change` is converted with the honest 24h formula.
+// by the spot ratio and `x_24h_change` is converted with the honest 24h formula:
+// a value at one instant scales exactly, a change with two known endpoints in
+// time is converted with the Ratio at both, and a 24h volume can only be
+// spot-scaled (see below).
 // A key is only produced when the corresponding base currency key is present, so
 // the include_* flags the caller applied are respected implicitly.
 //
@@ -56,7 +59,11 @@ func ConvertSimplePrices(
 			converted[key] = value
 		}
 
-		// Spot-scaled fields
+		// Spot-scaled fields. The price and the market cap are amounts at a
+		// single instant, so the spot ratio is exact for them. The 24h volume
+		// is an integral of every trade over the window - converting it
+		// honestly would need the exchange rate at each trade, which is not
+		// available; CoinGecko reports non-usd volume the same way.
 		for _, suffix := range []string{"", marketCapSuffix, volume24hSuffix} {
 			if value, ok := jsonutil.Float(row[base+suffix]); ok {
 				converted[currency+suffix] = applyPrecision(value*ratio.Now, decimals)

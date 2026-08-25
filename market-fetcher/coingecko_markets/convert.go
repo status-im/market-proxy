@@ -18,8 +18,21 @@ const (
 	PercentChange1hField = "price_change_percentage_1h_in_currency"
 )
 
-// spotScaledFields are amounts of money at a single point in time: multiplying
-// by the spot ratio is exact.
+// How a field is converted depends on how many points in time it spans:
+//
+//   - A point-in-time amount (current_price, market_cap, high_24h, ath, ...)
+//     is money measured at one instant, so multiplying by the spot ratio is
+//     exact.
+//   - A 24h percent change or absolute delta has exactly two known endpoints in
+//     time, and we know the Ratio at both, so both are converted honestly with
+//     the spot and the 24h-ago Ratio.
+//   - total_volume is neither: it is an integral of every trade across the
+//     window, so an honest conversion would need the exchange rate at each
+//     individual trade. That data does not exist here, and CoinGecko itself
+//     reports non-usd volume by scaling with the current rate - so spot scaling
+//     is both the only option and the one that matches upstream.
+//
+// spotScaledFields therefore covers the point-in-time amounts plus total_volume.
 var spotScaledFields = []string{
 	fieldCurrentPrice,
 	fieldMarketCap,

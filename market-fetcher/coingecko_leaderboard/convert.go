@@ -32,6 +32,11 @@ func ConvertAPIResponse(response *APIResponse, ratio currency_ratios.Ratio) *API
 
 // ConvertQuotes returns a copy of the price quotes converted to the target
 // currency. The input map is never mutated.
+//
+// Price and MarketCap are point-in-time amounts and scale exactly with the spot
+// ratio; PercentChange24h has two known endpoints in time and is converted
+// honestly with both ratios. Volume24h is spot-scaled for the reason given on
+// ConvertAPIResponse: converting it honestly would need the rate at each trade.
 func ConvertQuotes(quotes map[string]Quote, ratio currency_ratios.Ratio) map[string]Quote {
 	converted := make(map[string]Quote, len(quotes))
 
