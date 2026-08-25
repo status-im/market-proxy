@@ -350,29 +350,3 @@ func TestSnapshot_RatioOnNilSnapshot(t *testing.T) {
 	assert.False(t, ok)
 	assert.Equal(t, Ratio{}, ratio)
 }
-
-func TestToFloat(t *testing.T) {
-	tests := []struct {
-		name     string
-		value    interface{}
-		expected float64
-		ok       bool
-	}{
-		{name: "float64", value: 1.5, expected: 1.5, ok: true},
-		{name: "json.Number", value: json.Number("2.5"), expected: 2.5, ok: true},
-		{name: "invalid json.Number", value: json.Number("abc"), ok: false},
-		{name: "nil (json null)", value: nil, ok: false},
-		{name: "string", value: "1.5", ok: false},
-		{name: "bool", value: true, ok: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, ok := toFloat(tt.value)
-			assert.Equal(t, tt.ok, ok)
-			if tt.ok {
-				assert.Equal(t, tt.expected, got)
-			}
-		})
-	}
-}

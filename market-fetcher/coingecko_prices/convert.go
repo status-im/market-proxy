@@ -1,12 +1,12 @@
 package coingecko_prices
 
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
 
 	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/interfaces"
+	"github.com/status-im/market-proxy/jsonutil"
 )
 
 // CoinGecko simple/price field suffixes
@@ -58,13 +58,13 @@ func ConvertSimplePrices(
 
 		// Spot-scaled fields
 		for _, suffix := range []string{"", marketCapSuffix, volume24hSuffix} {
-			if value, ok := asFloat(row[base+suffix]); ok {
+			if value, ok := jsonutil.Float(row[base+suffix]); ok {
 				converted[currency+suffix] = applyPrecision(value*ratio.Now, decimals)
 			}
 		}
 
 		// Honest 24h change
-		if value, ok := asFloat(row[base+change24hSuffix]); ok {
+		if value, ok := jsonutil.Float(row[base+change24hSuffix]); ok {
 			converted[currency+change24hSuffix] = applyPrecision(currency_ratios.ConvertPercentChange24h(value, ratio), decimals)
 		}
 
@@ -133,20 +133,4 @@ func ContainsCurrency(currencies []string, currency string) bool {
 		}
 	}
 	return false
-}
-
-// asFloat converts a decoded JSON value to float64
-func asFloat(value interface{}) (float64, bool) {
-	switch v := value.(type) {
-	case float64:
-		return v, true
-	case json.Number:
-		number, err := v.Float64()
-		if err != nil {
-			return 0, false
-		}
-		return number, true
-	default:
-		return 0, false
-	}
 }

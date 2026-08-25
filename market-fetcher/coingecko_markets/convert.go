@@ -1,10 +1,9 @@
 package coingecko_markets
 
 import (
-	"encoding/json"
-
 	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/interfaces"
+	"github.com/status-im/market-proxy/jsonutil"
 )
 
 // Field names of a CoinGecko /coins/markets row, grouped by how a currency
@@ -100,19 +99,19 @@ func convertMarketsRow(row map[string]interface{}, conversion MarketsConversion)
 	}
 
 	for _, field := range spotScaledFields {
-		if value, ok := asFloat(row[field]); ok {
+		if value, ok := jsonutil.Float(row[field]); ok {
 			result[field] = value * ratio.Now
 		}
 	}
 
 	for field, baseField := range absolute24hDeltaFields {
-		delta, ok := asFloat(row[field])
+		delta, ok := jsonutil.Float(row[field])
 		if !ok {
 			continue
 		}
 		// The absolute delta needs the *base currency* current value, which is
 		// read from the untouched row rather than the already-converted result.
-		baseValue, ok := asFloat(row[baseField])
+		baseValue, ok := jsonutil.Float(row[baseField])
 		if !ok {
 			continue
 		}
@@ -120,13 +119,13 @@ func convertMarketsRow(row map[string]interface{}, conversion MarketsConversion)
 	}
 
 	for _, field := range percentChange24hFields {
-		if value, ok := asFloat(row[field]); ok {
+		if value, ok := jsonutil.Float(row[field]); ok {
 			result[field] = currency_ratios.ConvertPercentChange24h(value, ratio)
 		}
 	}
 
 	if conversion.Has1hAgo {
-		if value, ok := asFloat(row[PercentChange1hField]); ok {
+		if value, ok := jsonutil.Float(row[PercentChange1hField]); ok {
 			result[PercentChange1hField] = currency_ratios.ConvertPercentChange(value, ratio.Now, conversion.Spot1hAgo)
 		}
 	}
@@ -153,7 +152,7 @@ func convertSparkline(value interface{}, spotRatio float64) (map[string]interfac
 
 	convertedPrices := make([]interface{}, 0, len(prices))
 	for _, price := range prices {
-		if number, ok := asFloat(price); ok {
+		if number, ok := jsonutil.Float(price); ok {
 			convertedPrices = append(convertedPrices, number*spotRatio)
 			continue
 		}
@@ -167,21 +166,4 @@ func convertSparkline(value interface{}, spotRatio float64) (map[string]interfac
 	result[fieldSparklinePrice] = convertedPrices
 
 	return result, true
-}
-
-// asFloat converts a decoded JSON value to float64. Nulls, missing values and
-// non-numeric values return false.
-func asFloat(value interface{}) (float64, bool) {
-	switch v := value.(type) {
-	case float64:
-		return v, true
-	case json.Number:
-		number, err := v.Float64()
-		if err != nil {
-			return 0, false
-		}
-		return number, true
-	default:
-		return 0, false
-	}
 }

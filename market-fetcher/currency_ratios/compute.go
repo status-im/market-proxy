@@ -1,11 +1,11 @@
 package currency_ratios
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/market-proxy/jsonutil"
 )
 
 // SimplePricePayload is the decoded CoinGecko simple/price response:
@@ -70,12 +70,12 @@ func ComputeRatios(payload SimplePricePayload, referenceCoins []string, currenci
 // coin in the given currency. Returns false when any field is missing, null or
 // unusable.
 func priceAndAgoPrice(row map[string]interface{}, currency string) (price float64, agoPrice float64, ok bool) {
-	price, ok = toFloat(row[currency])
+	price, ok = jsonutil.Float(row[currency])
 	if !ok || price <= 0 {
 		return 0, 0, false
 	}
 
-	change, ok := toFloat(row[currency+changeSuffix])
+	change, ok := jsonutil.Float(row[currency+changeSuffix])
 	if !ok {
 		return 0, 0, false
 	}
@@ -92,23 +92,6 @@ func priceAndAgoPrice(row map[string]interface{}, currency string) (price float6
 	}
 
 	return price, agoPrice, true
-}
-
-// toFloat converts a decoded JSON value to float64. Nulls, missing values and
-// non-numeric values return false.
-func toFloat(value interface{}) (float64, bool) {
-	switch v := value.(type) {
-	case float64:
-		return v, true
-	case json.Number:
-		f, err := v.Float64()
-		if err != nil {
-			return 0, false
-		}
-		return f, true
-	default:
-		return 0, false
-	}
 }
 
 // ConvertPercentChange24h re-expresses a 24h percent change stated in the base
