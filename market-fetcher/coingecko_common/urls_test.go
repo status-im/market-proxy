@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/status-im/market-proxy/config"
+	"github.com/status-im/proxy-common/apikeys"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,7 +13,7 @@ func TestGetApiBaseUrl(t *testing.T) {
 	tests := []struct {
 		name        string
 		cfg         *config.Config
-		keyType     KeyType
+		keyType     apikeys.KeyType
 		expectedURL string
 	}{
 		{
@@ -69,11 +70,11 @@ func TestGetApiBaseUrl(t *testing.T) {
 
 // Mock APIKeyManager for testing
 type mockAPIKeyManager struct {
-	keys       []APIKey
+	keys       []apikeys.APIKey
 	failedKeys []string
 }
 
-func (m *mockAPIKeyManager) GetAvailableKeys() []APIKey {
+func (m *mockAPIKeyManager) GetAvailableKeys() []apikeys.APIKey {
 	return m.keys
 }
 
@@ -84,19 +85,19 @@ func (m *mockAPIKeyManager) MarkKeyAsFailed(key string) {
 func TestTryWithKeys(t *testing.T) {
 	tests := []struct {
 		name             string
-		keys             []APIKey
-		executorBehavior func(apiKey APIKey) (interface{}, bool, error)
+		keys             []apikeys.APIKey
+		executorBehavior func(apiKey apikeys.APIKey) (interface{}, bool, error)
 		expectedResult   interface{}
 		expectedError    string
 		expectedFailed   []string
 	}{
 		{
 			name: "Success on first key",
-			keys: []APIKey{
+			keys: []apikeys.APIKey{
 				{Key: "key1", Type: ProKey},
 				{Key: "key2", Type: DemoKey},
 			},
-			executorBehavior: func(apiKey APIKey) (interface{}, bool, error) {
+			executorBehavior: func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 				return "success", true, nil
 			},
 			expectedResult: "success",
@@ -105,11 +106,11 @@ func TestTryWithKeys(t *testing.T) {
 		},
 		{
 			name: "Success on second key",
-			keys: []APIKey{
+			keys: []apikeys.APIKey{
 				{Key: "key1", Type: ProKey},
 				{Key: "key2", Type: DemoKey},
 			},
-			executorBehavior: func(apiKey APIKey) (interface{}, bool, error) {
+			executorBehavior: func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 				if apiKey.Key == "key1" {
 					return nil, false, errors.New("first key failed")
 				}
@@ -121,11 +122,11 @@ func TestTryWithKeys(t *testing.T) {
 		},
 		{
 			name: "All keys fail",
-			keys: []APIKey{
+			keys: []apikeys.APIKey{
 				{Key: "key1", Type: ProKey},
 				{Key: "", Type: NoKey},
 			},
-			executorBehavior: func(apiKey APIKey) (interface{}, bool, error) {
+			executorBehavior: func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 				return nil, false, errors.New("failed")
 			},
 			expectedResult: nil,
@@ -134,8 +135,8 @@ func TestTryWithKeys(t *testing.T) {
 		},
 		{
 			name: "No keys available",
-			keys: []APIKey{},
-			executorBehavior: func(apiKey APIKey) (interface{}, bool, error) {
+			keys: []apikeys.APIKey{},
+			executorBehavior: func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 				return "success", true, nil
 			},
 			expectedResult: nil,
@@ -151,8 +152,8 @@ func TestTryWithKeys(t *testing.T) {
 				failedKeys: []string{},
 			}
 
-			onFailed := CreateFailCallback(mockKeyManager)
-			result, err := TryWithKeys(mockKeyManager.keys, "TEST", tt.executorBehavior, onFailed)
+			onFailed := apikeys.CreateFailCallback(mockKeyManager)
+			result, err := apikeys.TryWithKeys(mockKeyManager.keys, "TEST", tt.executorBehavior, onFailed)
 
 			assert.Equal(t, tt.expectedResult, result)
 

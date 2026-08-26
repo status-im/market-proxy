@@ -7,6 +7,7 @@ import (
 
 	"github.com/status-im/market-proxy/coingecko_common"
 	cg "github.com/status-im/market-proxy/interfaces"
+	batch "github.com/status-im/proxy-common/batch"
 )
 
 const (
@@ -81,7 +82,7 @@ func (f *ChunksFetcher) FetchPrices(ctx context.Context, params cg.PriceParams, 
 		return chunkData, nil
 	}
 
-	result, err := coingecko_common.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, coingecko_common.MaxChunkStringLength, f.requestDelay, fetchFunc)
+	result, err := batch.ChunkMapFetcher(ctx, params.IDs, f.chunkSize, coingecko_common.MaxChunkStringLength, f.requestDelay, fetchFunc)
 	if err != nil {
 		return nil, err
 	}

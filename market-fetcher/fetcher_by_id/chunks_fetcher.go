@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/status-im/market-proxy/coingecko_common"
+	batch "github.com/status-im/proxy-common/batch"
 )
 
 const (
@@ -82,7 +83,7 @@ func (f *ChunksFetcher) fetchSingle(ctx context.Context, ids []string, onChunk f
 		return chunkData, nil
 	}
 
-	result, err := coingecko_common.ChunkMapFetcher(
+	result, err := batch.ChunkMapFetcher(
 		ctx,
 		ids,
 		chunkSize,
@@ -120,7 +121,7 @@ func (f *ChunksFetcher) fetchBatch(ctx context.Context, ids []string, onChunk fu
 		return chunkData, nil
 	}
 
-	result, err := coingecko_common.ChunkMapFetcher(
+	result, err := batch.ChunkMapFetcher(
 		ctx,
 		ids,
 		f.chunkSize,

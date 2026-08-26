@@ -8,11 +8,12 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool
 }
@@ -35,7 +36,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 }
 
 func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (AssetsPlatformsResponse, error) {
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		requestBuilder := NewAssetsPlatformsRequestBuilder(baseURL).
@@ -66,10 +67,10 @@ func (c *CoinGeckoClient) FetchAssetsPlatforms(params AssetsPlatformsParams) (As
 		return result, true, nil
 	}
 
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, "CoinGecko-AssetsPlatforms", executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, "CoinGecko-AssetsPlatforms", executor, onFailed)
 	if err != nil {
 		return nil, err
 	}
