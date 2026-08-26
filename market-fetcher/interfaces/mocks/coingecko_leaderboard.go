@@ -40,6 +40,20 @@ func (m *MockILeaderboardService) EXPECT() *MockILeaderboardServiceMockRecorder 
 	return m.recorder
 }
 
+// EstimatesCurrency mocks base method.
+func (m *MockILeaderboardService) EstimatesCurrency(currency string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EstimatesCurrency", currency)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// EstimatesCurrency indicates an expected call of EstimatesCurrency.
+func (mr *MockILeaderboardServiceMockRecorder) EstimatesCurrency(currency any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EstimatesCurrency", reflect.TypeOf((*MockILeaderboardService)(nil).EstimatesCurrency), currency)
+}
+
 // GetCacheData mocks base method.
 func (m *MockILeaderboardService) GetCacheData(convertCurrency string) *interfaces.LeaderboardResponse {
 	m.ctrl.T.Helper()

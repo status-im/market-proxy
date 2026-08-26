@@ -3,6 +3,7 @@ package coingecko_leaderboard
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/currency_ratios"
@@ -39,14 +40,47 @@ func NewService(
 	return service
 }
 
-// ratio looks up the Ratio for a target currency.
-// ok is false when no snapshot exists yet or the currency is missing from it;
-// callers then behave as if the cache were empty.
+// cacheCurrency is the currency the leaderboard caches are held in. Both
+// updaters fetch exactly this one currency, so it is the only one that can be
+// served as provider data.
+func (s *Service) cacheCurrency() string {
+	if s.config != nil && s.config.CoingeckoLeaderboard.Currency != "" {
+		return strings.ToLower(s.config.CoingeckoLeaderboard.Currency)
+	}
+
+	return currency_ratios.BaseCurrency
+}
+
+// EstimatesCurrency reports whether values in this currency would be computed
+// rather than passed through
+func (s *Service) EstimatesCurrency(currency string) bool {
+	return !strings.EqualFold(s.cacheCurrency(), currency)
+}
+
+// ratio looks up the Ratio converting the cached currency into the target one.
+//
+// Ratios are expressed against the base currency, so a cache held in some other
+// currency needs the quotient of the two. ok is false when no snapshot exists
+// yet or either currency is missing from it; callers then behave as if the
+// cache were empty.
 func (s *Service) ratio(currency string) (currency_ratios.Ratio, bool) {
 	if s.ratiosProvider == nil {
 		return currency_ratios.Ratio{}, false
 	}
-	return s.ratiosProvider.GetSnapshot().Ratio(currency)
+
+	snapshot := s.ratiosProvider.GetSnapshot()
+
+	target, ok := snapshot.Ratio(currency)
+	if !ok {
+		return currency_ratios.Ratio{}, false
+	}
+
+	source, ok := snapshot.Ratio(s.cacheCurrency())
+	if !ok {
+		return currency_ratios.Ratio{}, false
+	}
+
+	return currency_ratios.CrossRatio(source, target)
 }
 
 // SetOnUpdateCallback sets a callback function that will be called when data is updated
@@ -69,17 +103,22 @@ func (s *Service) SetOnUpdateCallback(onUpdate func()) {
 // result means no ratio is available yet.
 func (s *Service) GetTopPricesQuotes(currency string, convertCurrency string) PriceQuotes {
 	if convertCurrency != "" {
+		// The cache holds one currency; when that is the one being asked for,
+		// the provider's own values are served instead of a computed copy.
+		if !s.EstimatesCurrency(convertCurrency) {
+			return s.topPricesUpdater.GetTopPricesQuotes(s.cacheCurrency())
+		}
+
 		ratio, ok := s.ratio(convertCurrency)
 		if !ok {
 			return PriceQuotes{}
 		}
 
-		// Estimates are always computed from the base currency Passthrough rows
-		return ConvertQuotes(s.topPricesUpdater.GetTopPricesQuotes(currency_ratios.BaseCurrency), ratio)
+		return ConvertQuotes(s.topPricesUpdater.GetTopPricesQuotes(s.cacheCurrency()), ratio)
 	}
 
 	if currency == "" {
-		currency = currency_ratios.BaseCurrency
+		currency = s.cacheCurrency()
 	}
 
 	return s.topPricesUpdater.GetTopPricesQuotes(currency)
@@ -117,6 +156,12 @@ func (s *Service) Stop() {
 func (s *Service) GetCacheData(convertCurrency string) *APIResponse {
 	data := s.topMarketsUpdater.GetCacheData()
 	if convertCurrency == "" || data == nil {
+		return data
+	}
+
+	// The cached rows are already in this currency - provider data beats a
+	// computed copy of it.
+	if !s.EstimatesCurrency(convertCurrency) {
 		return data
 	}
 

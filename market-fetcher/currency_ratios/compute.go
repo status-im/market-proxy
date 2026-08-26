@@ -139,3 +139,22 @@ func ConvertPercentChange(pctBase, ratioNow, ratioThen float64) float64 {
 func ConvertAbsoluteChange24h(valueNowBase, deltaBase float64, ratio Ratio) float64 {
 	return valueNowBase*(ratio.Now-ratio.H24) + deltaBase*ratio.H24
 }
+
+// CrossRatio returns the Ratio that converts values held in currency `from`
+// into currency `to`, given both currencies' Ratios against the base currency.
+//
+// Ratios are all expressed against the base currency, so a cache holding values
+// in some other currency needs the quotient. When `from` is the base currency
+// its Ratio is the identity and this returns `to` unchanged.
+//
+// ok is false when `from` has no usable ratio, in which case no conversion is
+// possible and the caller must serve nothing rather than guess.
+func CrossRatio(from, to Ratio) (Ratio, bool) {
+	if from.Now == 0 || from.H24 == 0 {
+		return Ratio{}, false
+	}
+	if from == IdentityRatio {
+		return to, true
+	}
+	return Ratio{Now: to.Now / from.Now, H24: to.H24 / from.H24}, true
+}

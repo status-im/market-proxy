@@ -249,24 +249,49 @@ func (s *Service) Stop() {
 // Returns raw CoinGecko JSON response with cache status
 func (s *Service) SimplePrices(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
 	if params.ConvertCurrency != "" {
-		return s.simplePricesConverted(ctx, params)
+		return s.simplePricesWithCurrency(ctx, params)
 	}
 
 	return s.simplePrices(ctx, params)
 }
 
-// simplePricesConverted adds Estimate keys for params.ConvertCurrency next to
-// the Passthrough keys the caller asked for.
+// EstimatesCurrency reports whether values in this currency would be computed
+// rather than passed through.
 //
-// The base currency has to be read from cache to compute them, so it is added
-// to the cache read and dropped again afterwards when the caller did not ask
-// for it. An empty response stands for "no Ratio yet".
-func (s *Service) simplePricesConverted(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
-	ratio, ok := s.ratio(params.ConvertCurrency)
+// The proxy fetches a configured set of currencies from the provider; for those
+// it already holds real provider values, and computing an approximation instead
+// would be strictly worse. Only currencies outside that set are estimated.
+func (s *Service) EstimatesCurrency(currency string) bool {
+	return !ContainsCurrency(s.getConfigCurrencies(), currency)
+}
+
+// simplePricesWithCurrency serves params.ConvertCurrency from the better source.
+//
+// `convert_currency=X` asks for values in X, not for an Estimate. When the proxy
+// already fetches X from the provider the request collapses into an ordinary
+// Passthrough read - including when the caller also listed X in vs_currencies,
+// which is a duplicate rather than a conflict. Only when X is not fetched are
+// the values computed from the base currency.
+func (s *Service) simplePricesWithCurrency(ctx context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
+	target := params.ConvertCurrency
+
+	if !s.EstimatesCurrency(target) {
+		// Provider values for this currency are cached; serve those and let the
+		// currency appear exactly once whether or not vs_currencies repeats it.
+		params.Currencies = appendCurrency(params.Currencies, target)
+		params.ConvertCurrency = ""
+
+		return s.simplePrices(ctx, params)
+	}
+
+	ratio, ok := s.ratio(target)
 	if !ok {
 		return interfaces.SimplePriceResponse{}, interfaces.CacheStatusMiss, nil
 	}
 
+	// The base currency has to be read from cache to compute the Estimate, so it
+	// is added to the cache read and dropped again when the caller did not ask
+	// for it.
 	requestedCurrencies := params.Currencies
 	params.Currencies = SourceCurrencies(params.Currencies)
 
@@ -277,7 +302,7 @@ func (s *Service) simplePricesConverted(ctx context.Context, params interfaces.P
 
 	keepBase := ContainsCurrency(requestedCurrencies, currency_ratios.BaseCurrency)
 
-	return ConvertSimplePrices(response, params.ConvertCurrency, ratio, params.Precision, keepBase), cacheStatus, nil
+	return ConvertSimplePrices(response, target, ratio, params.Precision, keepBase), cacheStatus, nil
 }
 
 // ratio looks up the Ratio for a target currency; ok is false when no snapshot

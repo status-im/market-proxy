@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	cache_mocks "github.com/status-im/market-proxy/cache/mocks"
+	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/currency_ratios"
 	"github.com/status-im/market-proxy/interfaces"
 	interface_mocks "github.com/status-im/market-proxy/interfaces/mocks"
@@ -191,4 +192,65 @@ func TestService_Markets_ConvertCurrencyDoesNotMutateCache(t *testing.T) {
 	var pristine map[string]interface{}
 	require.NoError(t, json.Unmarshal([]byte(convertibleRow), &pristine))
 	assert.Equal(t, pristine, firstRow(t, passthrough))
+}
+
+// TestService_EstimatesCurrency pins which currency the cache can serve as
+// provider data: the one market_params_normalize pins it to.
+func TestService_EstimatesCurrency(t *testing.T) {
+	usd := "usd"
+
+	withNormalization := createTestConfig()
+	withNormalization.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{VsCurrency: &usd}
+
+	ctrl := gomock.NewController(t)
+	service := NewService(cache_mocks.NewMockICache(ctrl), withNormalization, createMockTokensService(ctrl), nil)
+
+	assert.False(t, service.EstimatesCurrency("usd"), "the cache is normalized to usd")
+	assert.False(t, service.EstimatesCurrency("USD"), "the check is case-insensitive")
+	assert.True(t, service.EstimatesCurrency("eur"))
+
+	// With normalization off the cache's currency is whatever the last fetch
+	// used, so nothing can be claimed as provider data.
+	withoutNormalization := createTestConfig()
+	withoutNormalization.CoingeckoMarkets.MarketParamsNormalize = nil
+	service = NewService(cache_mocks.NewMockICache(ctrl), withoutNormalization, createMockTokensService(ctrl), nil)
+
+	assert.True(t, service.EstimatesCurrency("usd"))
+}
+
+// TestService_Markets_NormalizedCurrencyIsServedAsProviderData - asking for the
+// currency the cache is already normalized to must not compute anything.
+func TestService_Markets_NormalizedCurrencyIsServedAsProviderData(t *testing.T) {
+	usd := "usd"
+
+	cfg := createTestConfig()
+	cfg.CoingeckoMarkets.MarketParamsNormalize = &config.MarketParamsNormalize{VsCurrency: &usd}
+
+	ctrl := gomock.NewController(t)
+	mockCache := cache_mocks.NewMockICache(ctrl)
+	mockCache.EXPECT().Get(gomock.Any()).DoAndReturn(func(keys []string) (map[string][]byte, []string, error) {
+		result := make(map[string][]byte, len(keys))
+		for _, key := range keys {
+			result[key] = []byte(convertibleRow)
+		}
+		return result, nil, nil
+	}).AnyTimes()
+
+	// a provider that would fail any conversion: if the row still comes back,
+	// nothing was computed
+	provider := interface_mocks.NewMockICurrencyRatiosProvider(ctrl)
+	provider.EXPECT().GetSnapshot().Return(nil).AnyTimes()
+
+	service := NewService(mockCache, cfg, createMockTokensService(ctrl), provider)
+
+	response, _, err := service.Markets(interfaces.MarketsParams{
+		IDs:             []string{"bitcoin"},
+		ConvertCurrency: "usd",
+	})
+	require.NoError(t, err)
+
+	var pristine map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(convertibleRow), &pristine))
+	assert.Equal(t, pristine, firstRow(t, response),
+		"the provider's own row is served, untouched, without needing a Ratio")
 }

@@ -335,15 +335,30 @@ curl "http://localhost:8080/api/v1/coins/markets?ids=bitcoin&convert_currency=eu
 curl "http://localhost:8080/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=eur"
 ```
 
+`convert_currency=X` asks for **values in X**, not for a computation. The proxy
+picks the source: if it already holds the provider's own values for X it serves
+those, because provider data beats anything derived from a ratio; otherwise it
+computes them from the base currency at request time.
+
 Shared rules:
 
 - A currency outside the configured `currency_ratios.currencies` list returns
   `HTTP 400 {"error": "unsupported convert_currency: <code>"}` - never a silent
   fallback to USD.
-- Before the first ratio snapshot exists, the endpoints return their usual empty
-  response shape.
-- `convert_currency=usd` is allowed and passes the values through numerically.
+- **`X-Estimated-Currencies`** on the response names the currencies whose values
+  the proxy computed, comma-separated. The header is absent when everything
+  served was provider data, so its absence is the "all passthrough" signal.
+- When the values have to be computed and no ratio snapshot exists yet, the
+  endpoints return their usual empty response shape.
 - Snapshot staleness is exported as `market_fetcher_currency_ratios_snapshot_age_seconds`.
+
+Which source you get depends on what the proxy caches:
+
+| Endpoint | Served as provider data for | Computed for |
+|---|---|---|
+| `/simple/price` | every currency in `coingecko_prices.currencies` | anything else |
+| `/coins/markets` | `coingecko_markets.market_params_normalize.vs_currency` | anything else |
+| `/leaderboard/*` | `coingecko_leaderboard.currency` | anything else |
 
 Per endpoint:
 
@@ -361,11 +376,13 @@ Per endpoint:
   normalized to USD by `market_params_normalize`. `ath_change_percentage`,
   `atl_change_percentage` and percentages over windows longer than 24h pass through
   unchanged - honest values would need the exchange rate as it stood on those dates.
-- **`/simple/price`** - Estimate keys `x`, `x_market_cap`, `x_24h_vol` and
-  `x_24h_change` are added next to the requested `vs_currencies` Passthrough keys; a
-  key only appears when its USD source key was requested via the `include_*` flags.
-  Listing the same currency in both `vs_currencies` and `convert_currency` returns
-  `HTTP 400` - one key cannot be both Passthrough and Estimate.
+- **`/simple/price`** - keys `x`, `x_market_cap`, `x_24h_vol` and `x_24h_change`
+  are added next to the requested `vs_currencies` keys. When the values are
+  computed, a key only appears if its USD source key was requested via the
+  `include_*` flags. Listing the same currency in both `vs_currencies` and
+  `convert_currency` is a duplicate, not an error: it is served once. Either
+  parameter satisfies the currency requirement, so `convert_currency` alone is a
+  complete request.
 
 ### GET /api/v1/exchange_rates
 Returns the CoinGecko `/api/v3/exchange_rates` body verbatim, refreshed on the

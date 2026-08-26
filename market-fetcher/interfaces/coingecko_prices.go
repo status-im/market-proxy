@@ -11,6 +11,7 @@ import (
 // IPricesService interface for fetching prices of top tokens
 type IPricesService interface {
 	IHealthReporter
+	ICurrencySourceReporter
 
 	// SimplePrices returns cached prices using PriceParams structure
 	SimplePrices(ctx context.Context, params PriceParams) (SimplePriceResponse, CacheStatus, error)
@@ -40,10 +41,12 @@ type PriceParams struct {
 	// Precision for decimal places (empty means full precision)
 	Precision string `json:"precision,omitempty"`
 
-	// ConvertCurrency, when set, adds realtime Estimate keys for that currency
-	// alongside the Passthrough keys selected by Currencies. It must not also
-	// appear in Currencies - one key cannot be both. An empty response means no
-	// Ratio is available yet.
+	// ConvertCurrency, when set, asks for values in that currency alongside the
+	// Passthrough keys selected by Currencies. The proxy picks the source: if it
+	// already holds provider values for the currency it serves those, otherwise
+	// it computes them from the base currency. Listing the same currency here
+	// and in Currencies is allowed and yields one set of values.
+	// An empty response means a conversion was needed and no Ratio is available.
 	ConvertCurrency string `json:"convert_currency,omitempty"`
 }
 

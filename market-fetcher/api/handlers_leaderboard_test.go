@@ -20,6 +20,8 @@ type stubLeaderboardService struct {
 	markets *interfaces.LeaderboardResponse
 	quotes  interfaces.LeaderboardQuotes
 
+	estimated map[string]bool
+
 	gotMarketsConvertCurrency string
 	gotPricesCurrency         string
 	gotPricesConvertCurrency  string
@@ -37,6 +39,11 @@ func (s *stubLeaderboardService) GetTopPricesQuotes(currency string, convertCurr
 }
 
 func (s *stubLeaderboardService) Healthy() bool { return true }
+
+// estimated lists the currencies this stub claims to compute rather than pass through
+func (s *stubLeaderboardService) EstimatesCurrency(currency string) bool {
+	return s.estimated[currency]
+}
 
 // stubRatiosProvider is an ICurrencyRatiosProvider with a fixed allow-list
 type stubRatiosProvider struct {
@@ -62,7 +69,7 @@ func floatPtr(value float64) *float64 {
 }
 
 func supportedCurrencies() map[string]bool {
-	return map[string]bool{"usd": true, "eur": true, "btc": true}
+	return map[string]bool{"usd": true, "eur": true, "btc": true, "chf": true}
 }
 
 func testMarkets() *interfaces.LeaderboardResponse {
@@ -228,4 +235,72 @@ func TestHandleLeaderboardSimplePrices_SharesTheSameHandling(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, "eur", leaderboard.gotPricesConvertCurrency)
+}
+
+// --- X-Estimated-Currencies ---
+
+func TestHandleLeaderboard_HeaderNamesOnlyComputedCurrencies(t *testing.T) {
+	tests := []struct {
+		name           string
+		target         string
+		expectedHeader string
+	}{
+		{
+			name:           "computed currency is named",
+			target:         "?convert_currency=chf",
+			expectedHeader: "chf",
+		},
+		{
+			name:   "a currency the cache already holds is not named",
+			target: "?convert_currency=usd",
+		},
+		{
+			name:   "no conversion requested",
+			target: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// the leaderboard caches one currency (usd); everything else is computed
+			leaderboard := &stubLeaderboardService{
+				markets:   testMarkets(),
+				quotes:    testQuotes(),
+				estimated: map[string]bool{"chf": true, "eur": true, "btc": true},
+			}
+			server := newTestServer(leaderboard, readyRatiosProvider())
+
+			markets := doRequest(t, server.handleLeaderboardMarkets, "/api/v1/leaderboard/markets"+tt.target)
+			require.Equal(t, http.StatusOK, markets.Code)
+			assert.Equal(t, tt.expectedHeader, markets.Header().Get(estimatedCurrenciesHeader))
+
+			prices := doRequest(t, server.handleLeaderboardPrices, "/api/v1/leaderboard/prices"+tt.target)
+			require.Equal(t, http.StatusOK, prices.Code)
+			assert.Equal(t, tt.expectedHeader, prices.Header().Get(estimatedCurrenciesHeader))
+		})
+	}
+}
+
+func TestSetEstimatedCurrenciesHeader(t *testing.T) {
+	server := &Server{}
+
+	tests := []struct {
+		name       string
+		currencies []string
+		expected   string
+	}{
+		{name: "none", currencies: nil},
+		{name: "empty strings are dropped", currencies: []string{"", ""}},
+		{name: "one", currencies: []string{"chf"}, expected: "chf"},
+		{name: "several are comma separated", currencies: []string{"chf", "sek"}, expected: "chf,sek"},
+		{name: "a mix keeps only the computed ones", currencies: []string{"chf", ""}, expected: "chf"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			server.setEstimatedCurrenciesHeader(recorder, tt.currencies...)
+			assert.Equal(t, tt.expected, recorder.Header().Get(estimatedCurrenciesHeader))
+		})
+	}
 }

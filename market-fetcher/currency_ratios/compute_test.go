@@ -350,3 +350,50 @@ func TestSnapshot_RatioOnNilSnapshot(t *testing.T) {
 	assert.False(t, ok)
 	assert.Equal(t, Ratio{}, ratio)
 }
+
+// TestCrossRatio pins the quotient a cache held in a non-base currency needs.
+func TestCrossRatio(t *testing.T) {
+	eur := Ratio{Now: 0.9, H24: 0.825}
+	chf := Ratio{Now: 0.8, H24: 0.75}
+
+	t.Run("from the base currency is the target unchanged", func(t *testing.T) {
+		crossed, ok := CrossRatio(IdentityRatio, eur)
+		require.True(t, ok)
+		assert.Equal(t, eur, crossed)
+	})
+
+	t.Run("between two non-base currencies", func(t *testing.T) {
+		crossed, ok := CrossRatio(eur, chf)
+		require.True(t, ok)
+		assert.InDelta(t, 0.8/0.9, crossed.Now, 1e-12)
+		assert.InDelta(t, 0.75/0.825, crossed.H24, 1e-12)
+	})
+
+	t.Run("to itself is the identity", func(t *testing.T) {
+		crossed, ok := CrossRatio(eur, eur)
+		require.True(t, ok)
+		assert.InDelta(t, 1.0, crossed.Now, 1e-12)
+		assert.InDelta(t, 1.0, crossed.H24, 1e-12)
+	})
+
+	t.Run("an unusable source ratio has no answer", func(t *testing.T) {
+		_, ok := CrossRatio(Ratio{Now: 0, H24: 1}, eur)
+		assert.False(t, ok)
+
+		_, ok = CrossRatio(Ratio{Now: 1, H24: 0}, eur)
+		assert.False(t, ok)
+	})
+
+	// Crossing is transitive with the base currency: converting usd->eur->chf
+	// must land where usd->chf does.
+	t.Run("composes with the base currency", func(t *testing.T) {
+		viaEUR, ok := CrossRatio(eur, chf)
+		require.True(t, ok)
+
+		direct, ok := CrossRatio(IdentityRatio, chf)
+		require.True(t, ok)
+
+		valueInEUR := 100.0 * eur.Now
+		assert.InDelta(t, 100.0*direct.Now, valueInEUR*viaEUR.Now, 1e-9)
+	})
+}

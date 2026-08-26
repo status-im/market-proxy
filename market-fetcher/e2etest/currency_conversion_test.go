@@ -315,18 +315,74 @@ func TestCoinsMarketsConvertCurrencyUnknown(t *testing.T) {
 	assert.Equal(t, "unsupported convert_currency: xyz", body["error"])
 }
 
-// TestSimplePriceConvertCurrency checks that Estimate keys are added alongside
-// the Passthrough ones on /api/v1/simple/price
-func TestSimplePriceConvertCurrency(t *testing.T) {
+// getWithHeaders performs a GET, decodes the JSON body and returns the response
+func getWithHeaders(t *testing.T, url string, out interface{}) *http.Response {
+	t.Helper()
+	return getJSON(t, url, out)
+}
+
+// TestSimplePriceCachedCurrencyIsServedAsProviderData is the design rule:
+// convert_currency asks for a currency, and the proxy answers from the better
+// source. The test config fetches eur from the provider, so the values must be
+// the provider's own, not a copy derived from usd.
+func TestSimplePriceCachedCurrencyIsServedAsProviderData(t *testing.T) {
 	env := SetupTest(t)
 	defer env.TearDown()
 
 	waitForDataInitialization(t, env)
-	waitForConvertedMarkets(t, env)
+
+	const query = "/api/v1/simple/price?ids=bitcoin,ethereum&vs_currencies=eur"
+	waitForSimplePrices(t, env, query)
+
+	var passthrough map[string]map[string]float64
+	resp := getJSON(t, env.ServerBaseURL+query, &passthrough)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, passthrough)
+
+	var requested map[string]map[string]float64
+	resp = getWithHeaders(t, env.ServerBaseURL+
+		"/api/v1/simple/price?ids=bitcoin,ethereum&convert_currency=eur", &requested)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	assert.Equal(t, passthrough, requested,
+		"a currency the proxy fetches must come back exactly as the provider reported it")
+	assert.Empty(t, resp.Header.Get("X-Estimated-Currencies"),
+		"nothing was computed, so the header must be absent")
+}
+
+// TestSimplePriceSameCurrencyInBothParams removes the rule that made a client
+// mirror the proxy's cached-currency configuration to phrase a request.
+func TestSimplePriceSameCurrencyInBothParams(t *testing.T) {
+	env := SetupTest(t)
+	defer env.TearDown()
+
+	waitForDataInitialization(t, env)
+
+	const query = "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd,eur"
+	waitForSimplePrices(t, env, query)
+
+	var withoutConvert map[string]map[string]float64
+	resp := getJSON(t, env.ServerBaseURL+query, &withoutConvert)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var withConvert map[string]map[string]float64
+	resp = getJSON(t, env.ServerBaseURL+query+"&convert_currency=eur", &withConvert)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode, "naming eur twice is no longer an error")
+	assert.Equal(t, withoutConvert, withConvert, "eur is served once, from the provider")
+	assert.Empty(t, resp.Header.Get("X-Estimated-Currencies"))
+}
+
+// TestSimplePriceNonCachedCurrencyIsComputed keeps the conversion path covered:
+// the test config fetches usd and eur only, so btc can only be computed.
+func TestSimplePriceNonCachedCurrencyIsComputed(t *testing.T) {
+	env := SetupTest(t)
+	defer env.TearDown()
+
+	waitForDataInitialization(t, env)
 
 	const query = "/api/v1/simple/price?ids=bitcoin,ethereum&vs_currencies=usd" +
 		"&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
-
 	waitForSimplePrices(t, env, query)
 
 	var usdResponse map[string]map[string]float64
@@ -334,13 +390,16 @@ func TestSimplePriceConvertCurrency(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotEmpty(t, usdResponse)
 
-	var converted map[string]map[string]float64
-	resp = getJSON(t, env.ServerBaseURL+query+"&convert_currency=eur", &converted)
+	var computed map[string]map[string]float64
+	resp = getJSON(t, env.ServerBaseURL+query+"&convert_currency=btc", &computed)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Len(t, converted, len(usdResponse))
+	require.Len(t, computed, len(usdResponse))
+
+	assert.Equal(t, "btc", resp.Header.Get("X-Estimated-Currencies"),
+		"a computed currency is named in the response")
 
 	for tokenID, usdRow := range usdResponse {
-		row, ok := converted[tokenID]
+		row, ok := computed[tokenID]
 		require.True(t, ok, "token %s should be present", tokenID)
 
 		// Passthrough keys survive untouched
@@ -348,77 +407,52 @@ func TestSimplePriceConvertCurrency(t *testing.T) {
 		assert.Equal(t, usdRow["usd_market_cap"], row["usd_market_cap"])
 		assert.Equal(t, usdRow["usd_24h_change"], row["usd_24h_change"])
 
-		// Estimate keys are added
-		assert.InDelta(t, usdRow["usd"]*RatioFixtureEURNow, row["eur"], 1e-6)
-		assert.InDelta(t, usdRow["usd_market_cap"]*RatioFixtureEURNow, row["eur_market_cap"], 1e-3)
-		assert.InDelta(t, usdRow["usd_24h_vol"]*RatioFixtureEURNow, row["eur_24h_vol"], 1e-3)
+		// Computed keys are added
+		assert.InDelta(t, usdRow["usd"]*RatioFixtureBTCNow, row["btc"], 1e-12)
+		assert.InDelta(t, usdRow["usd_market_cap"]*RatioFixtureBTCNow, row["btc_market_cap"], 1e-6)
+		assert.InDelta(t, usdRow["usd_24h_vol"]*RatioFixtureBTCNow, row["btc_24h_vol"], 1e-6)
 
-		expected := ((1+usdRow["usd_24h_change"]/100)*RatioFixtureEURNow/RatioFixtureEUR24h - 1) * 100
-		assert.InDelta(t, expected, row["eur_24h_change"], 1e-9)
+		expected := ((1+usdRow["usd_24h_change"]/100)*RatioFixtureBTCNow/RatioFixtureBTC24h - 1) * 100
+		assert.InDelta(t, expected, row["btc_24h_change"], 1e-9)
 	}
 }
 
-// TestSimplePriceConvertCurrencyWithoutBaseRequested checks that the base
-// currency is read in for the Estimate but not leaked into the response
-func TestSimplePriceConvertCurrencyWithoutBaseRequested(t *testing.T) {
+// TestSimplePriceComputedCurrencyWithoutBaseRequested checks that the base
+// currency is read in to compute the values but not leaked into the response
+func TestSimplePriceComputedCurrencyWithoutBaseRequested(t *testing.T) {
 	env := SetupTest(t)
 	defer env.TearDown()
 
 	waitForDataInitialization(t, env)
-	waitForConvertedMarkets(t, env)
 
 	const query = "/api/v1/simple/price?ids=bitcoin&vs_currencies=eur"
 	waitForSimplePrices(t, env, query)
 
-	var converted map[string]map[string]float64
-	resp := getJSON(t, env.ServerBaseURL+query+"&convert_currency=btc", &converted)
+	var computed map[string]map[string]float64
+	resp := getJSON(t, env.ServerBaseURL+query+"&convert_currency=btc", &computed)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	row, ok := converted["bitcoin"]
+	row, ok := computed["bitcoin"]
 	require.True(t, ok)
 	assert.Contains(t, row, "eur", "the requested passthrough currency is served")
-	assert.Contains(t, row, "btc", "the estimate currency is added")
+	assert.Contains(t, row, "btc", "the computed currency is added")
 	assert.NotContains(t, row, "usd", "the base currency was not requested")
+	assert.Equal(t, "btc", resp.Header.Get("X-Estimated-Currencies"))
 }
 
-// TestSimplePriceConvertCurrencyErrors covers the 400 cases
+// TestSimplePriceConvertCurrencyErrors - only an unsupported currency is an error
 func TestSimplePriceConvertCurrencyErrors(t *testing.T) {
 	env := SetupTest(t)
 	defer env.TearDown()
 
 	waitForDataInitialization(t, env)
 
-	tests := []struct {
-		name          string
-		query         string
-		expectedError string
-	}{
-		{
-			name:          "unknown currency",
-			query:         "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=xyz",
-			expectedError: "unsupported convert_currency: xyz",
-		},
-		{
-			name:          "ambiguous with vs_currencies",
-			query:         "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd,eur&convert_currency=eur",
-			expectedError: "convert_currency eur must not be listed in vs_currencies",
-		},
-		{
-			name:          "ambiguous base currency",
-			query:         "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=usd",
-			expectedError: "convert_currency usd must not be listed in vs_currencies",
-		},
-	}
+	var body map[string]string
+	resp := getJSON(t, env.ServerBaseURL+
+		"/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=xyz", &body)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var body map[string]string
-			resp := getJSON(t, env.ServerBaseURL+tt.query, &body)
-
-			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-			assert.Equal(t, tt.expectedError, body["error"])
-		})
-	}
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "unsupported convert_currency: xyz", body["error"])
 }
 
 // TestLeaderboardPricesConvertCurrency checks the realtime Estimate on

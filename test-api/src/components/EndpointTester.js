@@ -111,7 +111,7 @@ const endpoints = [
   { id: 'convert-currency-invalid', name: 'Convert Currency (invalid)', path: '/v1/leaderboard/markets', query: '?convert_currency=xyz', desc: 'Unknown currency must return 400', deps: [] },
   { id: 'coins-markets-eur', name: 'Coins Markets (EUR)', path: '/v1/coins/markets', query: '?ids=bitcoin,ethereum,tether&convert_currency=eur', desc: 'CoinGecko markets converted to EUR', deps: [] },
   { id: 'simple-price-eur', name: 'Simple Price (EUR estimate)', path: '/v1/simple/price', query: '?ids=bitcoin,ethereum&vs_currencies=usd&convert_currency=eur', desc: 'USD passthrough + EUR estimate keys', deps: [] },
-  { id: 'simple-price-ambiguous', name: 'Simple Price (ambiguous)', path: '/v1/simple/price', query: '?ids=bitcoin&vs_currencies=usd&convert_currency=usd', desc: 'convert_currency in vs_currencies must return 400', deps: [] },
+  { id: 'simple-price-duplicate', name: 'Simple Price (duplicate currency)', path: '/v1/simple/price', query: '?ids=bitcoin&vs_currencies=eur&convert_currency=eur', desc: 'same currency in both params is deduped, not a 400', deps: [] },
   { id: 'simple-price-markets', name: 'Simple Price (Markets)', path: '/v1/simple/price', desc: 'Prices for market IDs', deps: ['coins-markets'] },
   { id: 'simple-price-coins', name: 'Simple Price (Coins)', path: '/v1/simple/price', desc: 'Prices for coin IDs', deps: ['coins-list'] },
   { id: 'asset-platforms', name: 'Asset Platforms', path: '/v1/asset_platforms', desc: 'Get asset platforms', deps: [] },
@@ -164,6 +164,13 @@ const EndpointTester = ({ onBack }) => {
     
     const auth = user && pass ? `${user}:${pass}@` : '';
     return base.replace('://', `://${auth}`) + path + (ep.query || samples[ep.id] || '');
+  };
+
+  // Currencies the proxy computed rather than passed through. An absent header
+  // means every value in the response is provider data.
+  const parseEstimated = (res) => {
+    const header = res.headers && res.headers.get ? res.headers.get('X-Estimated-Currencies') : '';
+    return (header || '').split(',').map(c => c.trim().toLowerCase()).filter(Boolean);
   };
 
   // Relative difference between two numbers, 0 when both are 0
@@ -588,25 +595,38 @@ const EndpointTester = ({ onBack }) => {
           throw new Error('empty response');
         }
 
-        // Both key sets must be present: usd passthrough and eur estimate
+        // Both key sets must be present whichever source eur came from
         const incomplete = ids.filter(id => typeof d[id].usd !== 'number' || typeof d[id].eur !== 'number');
         if (incomplete.length) {
           throw new Error(`missing usd/eur keys for: ${incomplete.slice(0, 3).join(', ')}`);
         }
 
-        const pairs = ids.map(id => ({ id, usd: d[id].usd, converted: d[id].eur }));
-        const complete = checkConversion(pairs, 'simple/price eur');
+        // convert_currency asks for a currency, not for a computation: the
+        // header says which currencies the proxy computed. Only those can be
+        // checked against a ratio - provider values are independent of usd.
+        const estimated = parseEstimated(res);
+        let ok = true;
 
-        const capPairs = ids
-          .filter(id => typeof d[id].usd_market_cap === 'number' && typeof d[id].eur_market_cap === 'number')
-          .map(id => ({ id, usd: d[id].usd_market_cap, converted: d[id].eur_market_cap }));
-        const capComplete = checkConversion(capPairs, 'simple/price eur_market_cap');
+        if (estimated.includes('eur')) {
+          ok = checkConversion(ids.map(id => ({ id, usd: d[id].usd, converted: d[id].eur })), 'simple/price eur') &&
+            checkConversion(ids
+              .filter(id => typeof d[id].usd_market_cap === 'number' && typeof d[id].eur_market_cap === 'number')
+              .map(id => ({ id, usd: d[id].usd_market_cap, converted: d[id].eur_market_cap })),
+            'simple/price eur_market_cap');
+        } else {
+          // Provider data: it must match a plain vs_currencies=eur request exactly
+          const plain = await proxyFetch('/v1/simple/price?ids=bitcoin,ethereum&vs_currencies=eur');
+          const p = await plain.json();
+          const differing = ids.filter(id => !p[id] || p[id].eur !== d[id].eur);
+          ok = !differing.length;
+          log(`  eur served as provider data, matches vs_currencies=eur: ${ok ? 'yes' : `no (${differing.join(', ')})`}`,
+            ok ? 'success' : 'error');
+        }
 
-        const ok = complete && capComplete;
         upd('simple-price-eur', {
           status: 'completed', progress: 100, time: Date.now() - start, count: ids.length, complete: ok
         });
-        log(`simple/price?convert_currency=eur - ${ids.length} tokens with usd+eur keys ${ok ? '✅' : '⚠️'}`,
+        log(`simple/price?convert_currency=eur - ${ids.length} tokens, estimated: ${estimated.join(',') || 'none'} ${ok ? '✅' : '⚠️'}`,
           ok ? 'success' : 'error');
       } catch (e) {
         upd('simple-price-eur', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
@@ -614,29 +634,34 @@ const EndpointTester = ({ onBack }) => {
       }
     },
 
-    'simple-price-ambiguous': async () => {
+    'simple-price-duplicate': async () => {
       const start = Date.now();
-      upd('simple-price-ambiguous', { status: 'running', progress: 50 });
+      upd('simple-price-duplicate', { status: 'running', progress: 50 });
 
       try {
-        const res = await proxyFetch('/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=usd', {
-          validateStatus: () => true
-        });
+        // Naming a currency in both parameters used to be a 400, which forced
+        // the client to know which currencies the proxy caches.
+        const [plainRes, bothRes] = await Promise.all([
+          proxyFetch('/v1/simple/price?ids=bitcoin&vs_currencies=eur', { validateStatus: () => true }),
+          proxyFetch('/v1/simple/price?ids=bitcoin&vs_currencies=eur&convert_currency=eur', { validateStatus: () => true })
+        ]);
 
-        if (res.status !== 400) {
-          throw new Error(`expected HTTP 400, got ${res.status}`);
+        if (bothRes.status !== 200) {
+          throw new Error(`expected HTTP 200, got ${bothRes.status}`);
         }
 
-        const d = await res.json();
-        if (!d.error) {
-          throw new Error('expected an error field in the body');
+        const plain = await plainRes.json();
+        const both = await bothRes.json();
+
+        if (JSON.stringify(plain) !== JSON.stringify(both)) {
+          throw new Error('the duplicate currency changed the response');
         }
 
-        upd('simple-price-ambiguous', { status: 'completed', progress: 100, time: Date.now() - start, count: 1 });
-        log(`simple/price vs_currencies+convert_currency clash - HTTP 400 "${d.error}" ✅`, 'success');
+        upd('simple-price-duplicate', { status: 'completed', progress: 100, time: Date.now() - start, count: 1 });
+        log('simple/price vs_currencies+convert_currency duplicate - deduped, one value set ✅', 'success');
       } catch (e) {
-        upd('simple-price-ambiguous', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
-        log(`simple/price vs_currencies+convert_currency clash - Error: ${e.message}`, 'error');
+        upd('simple-price-duplicate', { status: 'error', progress: 100, time: Date.now() - start, error: e.message });
+        log(`simple/price duplicate currency - Error: ${e.message}`, 'error');
       }
     },
 
@@ -742,7 +767,7 @@ const EndpointTester = ({ onBack }) => {
     const order = [
       'coins-list', 'coins-markets', 'leaderboard-prices', 'leaderboard-simple-prices',
       'leaderboard-markets', 'exchange-rates', 'leaderboard-markets-eur', 'leaderboard-prices-eur',
-      'convert-currency-invalid', 'coins-markets-eur', 'simple-price-eur', 'simple-price-ambiguous',
+      'convert-currency-invalid', 'coins-markets-eur', 'simple-price-eur', 'simple-price-duplicate',
       'asset-platforms', 'token-lists', 'coins-markets-by-ids',
       'simple-price-markets', 'simple-price-coins', 'coins-id-markets', 'coins-id-list'
     ];

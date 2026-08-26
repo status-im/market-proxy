@@ -275,9 +275,12 @@ func defaultLeaderboardData() string {
 //
 //	eur: now 90000/100000 = 0.9, 24h-ago (90000/1.2)/(100000/1.1) = 0.825
 //	btc: now 1/100000 = 1e-5,    24h-ago (1/1.0)/(100000/1.1) = 1.1e-5
+//	btc: now 1/100000 = 1e-5,    24h-ago (1/1.0)/(100000/1.1) = 1.1e-5
 const (
 	RatioFixtureEURNow = 0.9
 	RatioFixtureEUR24h = 0.825
+	RatioFixtureBTCNow = 1e-5
+	RatioFixtureBTC24h = 1.1e-5
 )
 
 // defaultCurrencyRatiosData returns the simple/price fixture the currency ratios

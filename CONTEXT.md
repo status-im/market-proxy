@@ -5,11 +5,11 @@ Caching proxy between Status clients and market data providers (CoinGecko). Serv
 ## Language
 
 **Passthrough**:
-Data whose *values* are exactly as the upstream provider (CoinGecko) returned them. CoinGecko-compatible endpoints serve only passthrough. Passthrough values are never mutated in cache or storage.
+Data whose *values* are exactly as the upstream provider (CoinGecko) returned them. Passthrough values are never mutated in cache or storage, and are always preferred over an Estimate of the same thing.
 _Avoid_: raw data, original data
 
 **Estimate**:
-A value computed by the proxy itself rather than returned by the provider — e.g. a price converted to another currency via a ratio. Estimates are served only under an explicit URL marker, and are either computed at request time (realtime) or stored in tables separate from passthrough.
+A value computed by the proxy itself rather than returned by the provider — e.g. a price converted to another currency via a ratio. Estimates are computed at request time (realtime) or stored in tables separate from passthrough. Which of the two a response carries is the proxy's choice, not the client's: `?convert_currency=X` asks for values in X, and passthrough is served whenever the proxy already holds X. The response names any estimated currencies in the `X-Estimated-Currencies` header.
 _Avoid_: converted data, derived data
 
 **Ratio**:

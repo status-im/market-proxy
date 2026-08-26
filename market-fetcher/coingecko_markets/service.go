@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/status-im/market-proxy/cache"
@@ -193,26 +194,59 @@ func (s *Service) cacheTokensPage(tier cfg.MarketTier, pagesData []PageData) (ma
 // Returns full CoinGecko markets response in APIResponse format
 func (s *Service) Markets(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
 	if params.ConvertCurrency != "" {
-		return s.marketsConverted(params)
+		return s.marketsWithCurrency(params)
 	}
 
 	return s.marketsPassthrough(params)
 }
 
-// marketsConverted serves an Estimate in params.ConvertCurrency, computed at
-// request time from the cached base currency rows. The cache is never mutated.
+// normalizedCurrency is the currency the cached rows are held in, as forced by
+// market_params_normalize. Empty when no normalization is configured, in which
+// case the cache's currency is whatever the last fetch used and nothing can be
+// concluded about it.
+func (s *Service) normalizedCurrency() string {
+	normalize := s.config.CoingeckoMarkets.MarketParamsNormalize
+	if normalize == nil || normalize.VsCurrency == nil {
+		return ""
+	}
+
+	return strings.ToLower(*normalize.VsCurrency)
+}
+
+// EstimatesCurrency reports whether values in this currency would be computed
+// rather than passed through.
 //
-// An empty response stands for "no Ratio yet": serving Passthrough base
-// currency values under another currency's name would masquerade Passthrough
-// as Estimate.
-func (s *Service) marketsConverted(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+// The cache holds one normalized currency, so only that one can be served as
+// provider data. With normalization switched off the cache's currency is
+// unknown, and claiming Passthrough would be a guess.
+func (s *Service) EstimatesCurrency(currency string) bool {
+	normalized := s.normalizedCurrency()
+
+	return normalized == "" || !strings.EqualFold(normalized, currency)
+}
+
+// marketsWithCurrency serves params.ConvertCurrency from the better source.
+//
+// When the cache is already normalized to the requested currency there is
+// nothing to compute and the provider's own rows are served. Otherwise the rows
+// are converted at request time; the cache is never mutated, and an empty
+// response stands for "no Ratio yet" rather than base currency values wearing
+// another currency's name.
+func (s *Service) marketsWithCurrency(params interfaces.MarketsParams) (interfaces.MarketsResponse, interfaces.CacheStatus, error) {
+	// Cached rows are normalized to a single currency, so whatever vs_currency
+	// the caller sent carries no information here.
+	if !s.EstimatesCurrency(params.ConvertCurrency) {
+		params.Currency = params.ConvertCurrency
+		params.ConvertCurrency = ""
+
+		return s.marketsPassthrough(params)
+	}
+
 	conversion, ok := s.conversion(params.ConvertCurrency)
 	if !ok {
 		return interfaces.MarketsResponse([]interface{}{}), interfaces.CacheStatusMiss, nil
 	}
 
-	// Cached rows are normalized to the base currency by market_params_normalize,
-	// so whatever vs_currency the caller sent carries no information here.
 	params.Currency = currency_ratios.BaseCurrency
 
 	response, cacheStatus, err := s.marketsPassthrough(params)

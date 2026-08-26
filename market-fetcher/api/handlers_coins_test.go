@@ -18,6 +18,7 @@ import (
 type stubMarketsService struct {
 	response   interfaces.MarketsResponse
 	lastParams interfaces.MarketsParams
+	estimated  map[string]bool
 }
 
 func (s *stubMarketsService) TopMarkets(int, string) (interfaces.MarketsResponse, error) {
@@ -35,10 +36,16 @@ func (s *stubMarketsService) SubscribeTopMarketsUpdate() events.ISubscription { 
 func (s *stubMarketsService) SubscribeInitialized() events.ISubscription      { return nil }
 func (s *stubMarketsService) Healthy() bool                                   { return true }
 
+// estimated lists the currencies this stub claims to compute rather than pass through
+func (s *stubMarketsService) EstimatesCurrency(currency string) bool {
+	return s.estimated[currency]
+}
+
 // stubPricesService records the params the handler built
 type stubPricesService struct {
 	response   interfaces.SimplePriceResponse
 	lastParams interfaces.PriceParams
+	estimated  map[string]bool
 }
 
 func (s *stubPricesService) SimplePrices(_ context.Context, params interfaces.PriceParams) (interfaces.SimplePriceResponse, interfaces.CacheStatus, error) {
@@ -52,6 +59,10 @@ func (s *stubPricesService) TopPrices(context.Context, int, []string) (interface
 
 func (s *stubPricesService) SubscribeTopPricesUpdate() events.ISubscription { return nil }
 func (s *stubPricesService) Healthy() bool                                  { return true }
+
+func (s *stubPricesService) EstimatesCurrency(currency string) bool {
+	return s.estimated[currency]
+}
 
 func marketsRow() map[string]interface{} {
 	return map[string]interface{}{
@@ -169,9 +180,10 @@ func TestHandleSimplePrice_ForwardsParams(t *testing.T) {
 	}
 }
 
-// One key cannot be both Passthrough and Estimate, so the combination is
-// rejected before it reaches the service.
-func TestHandleSimplePrice_AmbiguousCurrencyReturns400(t *testing.T) {
+// Naming the same currency twice used to be a 400, which forced the client to
+// mirror the proxy's cached-currency configuration. It is now a duplicate the
+// service resolves.
+func TestHandleSimplePrice_SameCurrencyInBothParamsIsAccepted(t *testing.T) {
 	for _, target := range []string{
 		"/api/v1/simple/price?ids=bitcoin&vs_currencies=usd,eur&convert_currency=eur",
 		"/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=usd",
@@ -182,10 +194,70 @@ func TestHandleSimplePrice_AmbiguousCurrencyReturns400(t *testing.T) {
 
 		recorder := doRequest(t, server.handleSimplePrice, target)
 
-		assert.Equal(t, http.StatusBadRequest, recorder.Code, "%s should be rejected", target)
-		assert.Contains(t, decodeErrorBody(t, recorder)["error"], "must not be listed in vs_currencies")
-		assert.Empty(t, prices.lastParams.IDs, "a rejected request never reaches the service")
+		assert.Equal(t, http.StatusOK, recorder.Code, "%s should be accepted", target)
+		assert.Equal(t, []string{"bitcoin"}, prices.lastParams.IDs, "the request reaches the service")
 	}
+}
+
+// --- X-Estimated-Currencies ---
+
+func TestHandleSimplePrice_HeaderNamesOnlyComputedCurrencies(t *testing.T) {
+	tests := []struct {
+		name           string
+		target         string
+		estimated      map[string]bool
+		expectedHeader string
+	}{
+		{
+			name:           "computed currency is named",
+			target:         "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=chf",
+			estimated:      map[string]bool{"chf": true},
+			expectedHeader: "chf",
+		},
+		{
+			name:      "provider currency is not named",
+			target:    "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd&convert_currency=eur",
+			estimated: map[string]bool{"chf": true},
+		},
+		{
+			name:      "no conversion requested",
+			target:    "/api/v1/simple/price?ids=bitcoin&vs_currencies=usd",
+			estimated: map[string]bool{"chf": true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prices := &stubPricesService{
+				response:  interfaces.SimplePriceResponse{"bitcoin": simplePriceRow()},
+				estimated: tt.estimated,
+			}
+			server := newCoinsTestServer(nil, prices, readyRatiosProvider())
+
+			recorder := doRequest(t, server.handleSimplePrice, tt.target)
+
+			require.Equal(t, http.StatusOK, recorder.Code)
+			assert.Equal(t, tt.expectedHeader, recorder.Header().Get(estimatedCurrenciesHeader),
+				"an empty expectation means the header must be absent")
+		})
+	}
+}
+
+func TestHandleCoinsMarkets_HeaderNamesOnlyComputedCurrencies(t *testing.T) {
+	markets := &stubMarketsService{
+		response:  interfaces.MarketsResponse{marketsRow()},
+		estimated: map[string]bool{"chf": true},
+	}
+	server := newCoinsTestServer(markets, nil, readyRatiosProvider())
+
+	recorder := doRequest(t, server.handleCoinsMarkets, "/api/v1/coins/markets?ids=bitcoin&convert_currency=chf")
+	require.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, "chf", recorder.Header().Get(estimatedCurrenciesHeader))
+
+	recorder = doRequest(t, server.handleCoinsMarkets, "/api/v1/coins/markets?ids=bitcoin&convert_currency=usd")
+	require.Equal(t, http.StatusOK, recorder.Code)
+	assert.Empty(t, recorder.Header().Get(estimatedCurrenciesHeader),
+		"a currency the cache already holds is provider data")
 }
 
 func TestHandleSimplePrice_UnknownCurrencyReturns400(t *testing.T) {
@@ -210,15 +282,22 @@ func TestHandleSimplePrice_EmptyResponseStaysAnObject(t *testing.T) {
 	assert.JSONEq(t, `{}`, recorder.Body.String())
 }
 
-func TestHandleSimplePrice_RequiredParamsStillEnforced(t *testing.T) {
+func TestHandleSimplePrice_RequiredParams(t *testing.T) {
 	prices := &stubPricesService{response: interfaces.SimplePriceResponse{"bitcoin": simplePriceRow()}}
 	server := newCoinsTestServer(nil, prices, readyRatiosProvider())
 
 	recorder := doRequest(t, server.handleSimplePrice, "/api/v1/simple/price?vs_currencies=usd&convert_currency=eur")
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Equal(t, http.StatusBadRequest, recorder.Code, "ids is still required")
 
+	recorder = doRequest(t, server.handleSimplePrice, "/api/v1/simple/price?ids=bitcoin")
+	assert.Equal(t, http.StatusBadRequest, recorder.Code, "naming no currency at all is still a bad request")
+
+	// convert_currency names a currency to answer in, so it satisfies the
+	// requirement on its own
 	recorder = doRequest(t, server.handleSimplePrice, "/api/v1/simple/price?ids=bitcoin&convert_currency=eur")
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Empty(t, prices.lastParams.Currencies)
+	assert.Equal(t, "eur", prices.lastParams.ConvertCurrency)
 }
 
 func TestHandleSimplePrice_ResponseIsServedUnchanged(t *testing.T) {

@@ -11,7 +11,6 @@ import (
 
 	"github.com/status-im/market-proxy/coingecko_coins"
 	"github.com/status-im/market-proxy/coingecko_market_chart"
-	"github.com/status-im/market-proxy/coingecko_prices"
 )
 
 // handleCoinsList responds with the list of tokens filtered by supported platforms
@@ -44,6 +43,10 @@ func (s *Server) handleCoinsMarkets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params.ConvertCurrency = convertCurrency
+
+	if convertCurrency != "" && s.marketsService.EstimatesCurrency(convertCurrency) {
+		s.setEstimatedCurrenciesHeader(w, convertCurrency)
+	}
 
 	currency := getParamLowercase(r, "vs_currency")
 	if currency != "" {
@@ -106,27 +109,27 @@ func (s *Server) handleSimplePrice(w http.ResponseWriter, r *http.Request) {
 	}
 	params.IDs = splitParamLowercase(idsParam)
 
-	currenciesParam := getParamLowercase(r, "vs_currencies")
-	if currenciesParam == "" {
-		http.Error(w, "Parameter 'vs_currencies' is required", http.StatusBadRequest)
-		return
-	}
-	params.Currencies = splitParamLowercase(currenciesParam)
-
-	// A currency cannot be both Passthrough (vs_currencies) and Estimate
-	// (convert_currency) in one response - the same keys would carry both.
-	requestedConvert := getParamLowercase(r, convertCurrencyParam)
-	if requestedConvert != "" && coingecko_prices.ContainsCurrency(params.Currencies, requestedConvert) {
-		s.sendJSONError(w, http.StatusBadRequest,
-			fmt.Sprintf("%s %s must not be listed in vs_currencies", convertCurrencyParam, requestedConvert))
-		return
-	}
-
+	// Naming the same currency in vs_currencies and convert_currency is a
+	// duplicate, not a conflict: the service serves it once, from whichever
+	// source is better.
 	convertCurrency, ok := s.resolveConvertCurrency(w, r)
 	if !ok {
 		return
 	}
 	params.ConvertCurrency = convertCurrency
+
+	// Either parameter names a currency to answer in, so only requesting
+	// neither is a bad request.
+	currenciesParam := getParamLowercase(r, "vs_currencies")
+	if currenciesParam == "" && convertCurrency == "" {
+		http.Error(w, "Parameter 'vs_currencies' is required", http.StatusBadRequest)
+		return
+	}
+	params.Currencies = splitParamLowercase(currenciesParam)
+
+	if convertCurrency != "" && s.pricesService.EstimatesCurrency(convertCurrency) {
+		s.setEstimatedCurrenciesHeader(w, convertCurrency)
+	}
 
 	if marketCapParam := r.URL.Query().Get("include_market_cap"); marketCapParam != "" {
 		if marketCap, err := strconv.ParseBool(marketCapParam); err == nil {

@@ -132,6 +132,19 @@ func SourceCurrencies(requested []string) []string {
 	return append(source, base)
 }
 
+// appendCurrency adds a currency to the list unless it is already there,
+// so a currency named by both vs_currencies and convert_currency is read once
+func appendCurrency(currencies []string, currency string) []string {
+	if ContainsCurrency(currencies, currency) {
+		return currencies
+	}
+
+	extended := make([]string, 0, len(currencies)+1)
+	extended = append(extended, currencies...)
+
+	return append(extended, currency)
+}
+
 // ContainsCurrency reports whether a currency is present in the list, ignoring case
 func ContainsCurrency(currencies []string, currency string) bool {
 	for _, candidate := range currencies {

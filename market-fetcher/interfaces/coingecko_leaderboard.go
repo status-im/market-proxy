@@ -6,6 +6,7 @@ package interfaces
 // proxy's own aggregated API over top-N tokens.
 type ILeaderboardService interface {
 	IHealthReporter
+	ICurrencySourceReporter
 
 	// GetCacheData returns the cached top markets rows, converted to
 	// convertCurrency when that is non-empty. nil means there is nothing to
