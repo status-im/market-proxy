@@ -8,6 +8,7 @@ import (
 	cg "github.com/status-im/market-proxy/coingecko_common"
 	"github.com/status-im/market-proxy/config"
 	"github.com/status-im/market-proxy/metrics"
+	"github.com/status-im/proxy-common/apikeys"
 )
 
 const logPrefix = "CoinGecko-CurrencyRatios"
@@ -25,7 +26,7 @@ type IClient interface {
 // CoinGeckoClient implements IClient for CoinGecko
 type CoinGeckoClient struct {
 	config          *config.Config
-	keyManager      cg.IAPIKeyManager
+	keyManager      apikeys.IAPIKeyManager
 	httpClient      *cg.HTTPClientWithRetries
 	successfulFetch atomic.Bool
 }
@@ -49,7 +50,7 @@ func (c *CoinGeckoClient) Healthy() bool {
 
 // FetchReferencePrices performs the single simple/price call ratios are derived from
 func (c *CoinGeckoClient) FetchReferencePrices(referenceCoins []string, currencies []string) (SimplePricePayload, error) {
-	executor := func(apiKey cg.APIKey) (interface{}, bool, error) {
+	executor := func(apiKey apikeys.APIKey) (interface{}, bool, error) {
 		baseURL := cg.GetApiBaseUrl(c.config, apiKey.Type)
 
 		requestBuilder := NewRatiosRequestBuilder(baseURL).
@@ -82,10 +83,10 @@ func (c *CoinGeckoClient) FetchReferencePrices(referenceCoins []string, currenci
 		return payload, true, nil
 	}
 
-	onFailed := cg.CreateFailCallback(c.keyManager)
+	onFailed := apikeys.CreateFailCallback(c.keyManager)
 	availableKeys := c.keyManager.GetAvailableKeys()
 
-	result, err := cg.TryWithKeys(availableKeys, logPrefix, executor, onFailed)
+	result, err := apikeys.TryWithKeys(availableKeys, logPrefix, executor, onFailed)
 	if err != nil {
 		return nil, err
 	}
