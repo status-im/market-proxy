@@ -106,9 +106,10 @@ curl http://localhost:8080/api/v1/leaderboard/markets
 
 ### Docker
 
-1. Build the container:
+1. Build the container from the repository root (the image needs the
+   `proxy-common` submodule: `git submodule update --init`):
 ```bash
-docker build -t market-fetcher .
+docker build -f market-fetcher/Dockerfile -t market-fetcher .
 ```
 
 2. Run the container:

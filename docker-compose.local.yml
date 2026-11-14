@@ -55,7 +55,7 @@ services:
     build:
       context: ./proxy-common
       dockerfile: auth/Dockerfile
-    container_name: 'auth-service'
+    container_name: 'market-auth-service'
     restart: unless-stopped
     environment:
       CONFIG_FILE: '/app/config.json'

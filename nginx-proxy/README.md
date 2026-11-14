@@ -116,11 +116,22 @@ The setup follows eth-rpc-proxy and nft-proxy: the proxy runs on OpenResty and
 checks tokens in Lua ([lua/auth](lua/auth)).
 
 - The auth service verifies a token once. A valid token is then remembered in
-  the `jwt_tokens` shared dict until it expires, so later requests do not reach
+  the `jwt_tokens` shared dict until its `exp`, so later requests do not reach
   the auth service and keep working while it is down.
-- Requests are counted per token in the same shared dict. A token past
-  `requests_per_token` gets `401`, as does an invalid or expired one; the
-  client is expected to solve a new puzzle.
+- Requests are counted in the same shared dict per token id (`jti`), not per
+  token: the auth service signs a new token for every submission of one solved
+  puzzle, and all of them share one limit. A token past `requests_per_token`
+  gets `401`, as does an invalid or expired one; the client is expected to
+  solve a new puzzle.
+- `X-RateLimit-Limit` and `X-RateLimit-Remaining` on a response tell a token
+  client where it stands.
+- When the auth service is down or slow (2s to connect, 5s to answer), a token
+  it has not verified yet gets `500`, not `401`: the failure says nothing about
+  the token, so the client must not throw it away.
+- `/auth/solve` is limited to 10 requests per second per client address
+  (`429` beyond a burst of 20): checking a solution costs the auth service an
+  Argon2 run whether it is right or not. Behind a load balancer nginx must see
+  the real client address (`real_ip` module), or all clients share this limit.
 - The token is taken from the `Authorization: Bearer` header only. Unlike
   eth-rpc-proxy, a token in the query string is not accepted: the query string
   is part of the proxy cache key and is passed to market-fetcher.
