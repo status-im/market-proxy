@@ -1,8 +1,8 @@
 services:
   market-fetcher:
     build:
-      context: ./market-fetcher
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: market-fetcher/Dockerfile
     container_name: 'market-fetcher'
     volumes:
       - ./market-fetcher/config.yaml:/app/config.yaml
@@ -29,8 +29,11 @@ services:
     container_name: 'market-proxy'
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./secrets/auth_config.json:/app/auth_config.json:ro
     environment:
       MARKET_BASE_URL: "http://localhost:8080"
+      GO_AUTH_SERVICE_URL: 'http://auth-service:8081'
+      AUTH_CONFIG_FILE: '/app/auth_config.json'
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -45,6 +48,28 @@ services:
     depends_on:
       market-fetcher:
         condition: service_healthy
+      auth-service:
+        condition: service_started
+
+  auth-service:
+    build:
+      context: ./proxy-common
+      dockerfile: auth/Dockerfile
+    container_name: 'auth-service'
+    restart: unless-stopped
+    environment:
+      CONFIG_FILE: '/app/config.json'
+      PORT: '8081'
+    volumes:
+      - ./secrets/auth_config.json:/app/config.json:ro
+    networks:
+      - 'markets-network'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://0.0.0.0:8081/auth/status || exit 1']
+      interval: '30s'
+      timeout: '30s'
+      retries: 3
+      start_period: '10s'
 
   market-frontend:
     build:

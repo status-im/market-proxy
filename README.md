@@ -16,6 +16,7 @@ This project consists of two main components:
 ### Prerequisites
 
 - Docker and Docker Compose
+- The `proxy-common` submodule: `git submodule update --init`
 
 
 ### Configuration
@@ -130,7 +131,8 @@ This will:
 1. Create necessary configuration files if they don't exist
 2. Build and start the following services:
    - **market-fetcher**: Fetches market data (port 8081)
-   - **market-proxy**: Nginx proxy with caching (port 8080)
+   - **market-proxy**: Nginx (OpenResty) proxy with caching (port 8080)
+   - **auth-service**: Puzzle auth service issuing JWT tokens (reached through the proxy at `/auth/`)
    - **market-frontend**: Test frontend application (port 3000)
 3. Set up a Docker network for communication between services
 
@@ -174,6 +176,7 @@ The proxy provides the following endpoints:
 - `/v1/leaderboard/markets` - Top market data from leaderboard service (optional `?convert_currency=<code>`)
 - `/v1/leaderboard/prices` - Top price data from leaderboard service (optional `?convert_currency=<code>`)
 - `/v1/leaderboard/simpleprices` - Simple prices for top tokens
+- `/auth/puzzle`, `/auth/solve` - Puzzle auth: get a JWT token for the protected endpoints, see [Nginx Proxy](./nginx-proxy/README.md#authentication)
 - `/health` - Health check endpoint
 - `/metrics` - Prometheus metrics
 

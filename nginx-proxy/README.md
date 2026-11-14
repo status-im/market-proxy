@@ -85,4 +85,63 @@ The proxy implements caching with the following features:
 
 ## Authentication
 
-The proxy can be configured to require HTTP basic authentication. Credentials are stored in `.htpasswd`. 
+Protected endpoints accept either of two credentials ([auth.conf](auth.conf)):
+
+1. **HTTP basic authentication.** Credentials are stored in `.htpasswd`.
+2. **Puzzle JWT token.** A client solves a proof-of-work puzzle of the auth
+   service ([proxy-common/auth](../proxy-common/auth/README.md)) and gets a
+   short-lived token good for a limited number of requests:
+
+```bash
+# 1. Get a puzzle
+curl http://localhost:8080/auth/puzzle
+
+# 2. Solve it and exchange the solution for a token
+curl -X POST http://localhost:8080/auth/solve -d '{"challenge": "...", "salt": "...", "nonce": 0, "argon_hash": "...", "hmac": "...", "expires_at": "..."}'
+
+# 3. Use the token
+curl -H "Authorization: Bearer <token>" http://localhost:8080/v1/leaderboard/markets
+```
+
+`go run ./auth/cmd/test-puzzle-auth http://localhost:8080` in `proxy-common`
+runs the whole flow.
+
+Protected endpoints: `/v1/leaderboard/prices`, `/v1/leaderboard/markets`,
+`/v1/exchange_rates`, `/v1/coins/list`, `/v1/coins/markets`. `/auth/*` and the
+other endpoints need no credentials.
+
+### How a token is checked
+
+The setup follows eth-rpc-proxy and nft-proxy: the proxy runs on OpenResty and
+checks tokens in Lua ([lua/auth](lua/auth)).
+
+- The auth service verifies a token once. A valid token is then remembered in
+  the `jwt_tokens` shared dict until it expires, so later requests do not reach
+  the auth service and keep working while it is down.
+- Requests are counted per token in the same shared dict. A token past
+  `requests_per_token` gets `401`, as does an invalid or expired one; the
+  client is expected to solve a new puzzle.
+- The token is taken from the `Authorization: Bearer` header only. Unlike
+  eth-rpc-proxy, a token in the query string is not accepted: the query string
+  is part of the proxy cache key and is passed to market-fetcher.
+- The counter lives in the memory of one nginx instance, so with several
+  replicas the limit applies per replica.
+
+### Configuration
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `GO_AUTH_SERVICE_URL` | `http://auth-service:8081` | Auth service address |
+| `AUTH_CONFIG_FILE` | `/app/auth_config.json` | Auth config, the same file the auth service runs with |
+
+The proxy reads `requests_per_token` and `token_expiry_minutes` from the auth
+config at startup; restart it after changing them. `secrets/auth_config.json`
+is created by [../start-local.sh](../start-local.sh) when missing.
+
+### Lua tests
+
+```bash
+luarocks install busted
+luarocks install lua-cjson
+./lua_tests/run_busted_tests.sh
+```

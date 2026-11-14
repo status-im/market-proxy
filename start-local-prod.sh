@@ -28,6 +28,25 @@ fi
 # This emulates what Ansible does on production
 echo "MARKET_BASE_URL=https://prod.market.status.im/" > .env
 
+if [ ! -f "./secrets/auth_config.json" ]; then
+    # Puzzle auth config shared by the auth service and nginx
+    cat <<EOL > ./secrets/auth_config.json
+{
+  "algorithm": "argon2id",
+  "jwt_secret": "$(openssl rand -hex 32)",
+  "puzzle_difficulty": 1,
+  "requests_per_token": 100,
+  "token_expiry_minutes": 10,
+  "argon2_params": {
+    "memory_kb": 16384,
+    "time": 4,
+    "threads": 4,
+    "key_len": 32
+  }
+}
+EOL
+fi
+
 # Stop and remove existing containers AND volumes
 docker compose -f docker-compose.yml down --volumes
 
@@ -53,7 +72,8 @@ echo "Public API endpoints (no authentication required):"
 echo "- Simple price (CoinGecko-compatible): http://localhost:8080/v1/simple/price"
 echo "- Simple prices by token ID: http://localhost:8080/v1/leaderboard/simpleprices"
 echo ""
-echo "API endpoints (require authentication - user: test, password: test):"
+echo "API endpoints (require authentication - user: test, password: test,"
+echo "or a puzzle JWT token from /auth/puzzle + /auth/solve):"
 echo "- Leaderboard prices: http://localhost:8080/v1/leaderboard/prices"
 echo "- Leaderboard markets: http://localhost:8080/v1/leaderboard/markets"
 echo "- Coins list: http://localhost:8080/v1/coins/list"
