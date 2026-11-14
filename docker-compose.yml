@@ -24,8 +24,8 @@ services:
 
   market-proxy:
     build:
-      context: ./nginx-proxy
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nginx-proxy/Dockerfile
     container_name: 'market-proxy'
     volumes:
       - ./secrets/.htpasswd:/etc/nginx/.htpasswd:ro

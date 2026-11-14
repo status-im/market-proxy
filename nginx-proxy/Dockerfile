@@ -1,19 +1,30 @@
+# Build context: the repository root (proxy-common is a submodule there):
+#   docker build -f nginx-proxy/Dockerfile .
 FROM openresty/openresty:alpine
 
 # Install dependencies
-RUN apk add --no-cache ca-certificates curl apache2-utils gettext
+# perl and curl are what opm runs on; lua-resty-http parses the auth service
+# URL for the Lua DNS lookup
+RUN apk add --no-cache ca-certificates curl apache2-utils gettext perl && \
+    /usr/local/openresty/bin/opm install ledgetech/lua-resty-http
 
 # Copy configuration files
-COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY static.conf /usr/local/openresty/nginx/conf/static.conf
-COPY auth.conf /usr/local/openresty/nginx/conf/auth.conf
-COPY lua /usr/local/openresty/nginx/lua
+COPY nginx-proxy/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY nginx-proxy/static.conf /usr/local/openresty/nginx/conf/static.conf
+COPY nginx-proxy/auth.conf /usr/local/openresty/nginx/conf/auth.conf
+# Puzzle auth for nginx, shared with eth-rpc-proxy and nft-proxy
+COPY proxy-common/auth/nginx/conf/auth_locations.conf /usr/local/openresty/nginx/conf/auth_locations.conf
+COPY proxy-common/auth/nginx/lua /usr/local/openresty/nginx/lua
 
 # Copy static files
-COPY static /usr/share/nginx/static
+COPY nginx-proxy/static /usr/share/nginx/static
 
 # Set default base URL
 ENV MARKET_BASE_URL="https://test.market.status.im"
+
+# A token in the query string is not accepted: the query string is part of the
+# proxy cache key and is passed to market-fetcher
+ENV AUTH_ACCEPT_QUERY_TOKEN="false"
 
 # Specify the port to be used
 EXPOSE 8080
