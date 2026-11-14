@@ -10,12 +10,8 @@ import (
 )
 
 // newTestKeyManager uses a custom backoff (for tests that need a short wait).
-func newTestKeyManager(t *config.APITokens, backoff time.Duration) *apikeys.APIKeyManager {
-	return apikeys.NewAPIKeyManager(
-		tokensProvider{t: t},
-		[]apikeys.KeyType{ProKey, DemoKey, NoKey},
-		backoff,
-	)
+func newTestKeyManager(t *config.APITokens, backoff time.Duration) *APIKeyManager {
+	return newAPIKeyManager(t, backoff)
 }
 
 // Helper function for tests to check if a key is in the list of available keys
@@ -183,4 +179,48 @@ func TestNewAPIKeyManager_AlwaysIncludesNoKey(t *testing.T) {
 			require.Equal(t, "", last.Key)
 		})
 	}
+}
+
+func TestAPIKeyManager_DemoKeyInBackoffIsSkipped(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		demoTokens []string
+	}{{
+		name:       "the only demo key",
+		demoTokens: []string{"demo1"},
+	}, {
+		name:       "one of several demo keys",
+		demoTokens: []string{"demo1", "demo2"},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			manager := newTestKeyManager(&config.APITokens{DemoTokens: tc.demoTokens}, 100*time.Millisecond)
+			require.True(t, containsKey(manager.GetAvailableKeys(), "demo1", DemoKey))
+
+			manager.MarkKeyAsFailed("demo1")
+
+			keys := manager.GetAvailableKeys()
+			require.False(t, containsKey(keys, "demo1", DemoKey))
+			// The request still has the "no key" entry to fall back to.
+			require.Equal(t, NoKey, keys[len(keys)-1].Type)
+
+			// Once the backoff is over the key is tried again.
+			require.Eventually(t, func() bool {
+				return containsKey(manager.GetAvailableKeys(), "demo1", DemoKey)
+			}, time.Second, 10*time.Millisecond)
+		})
+	}
+}
+
+func TestAPIKeyManager_OnlyProKeyStaysAvailableInBackoff(t *testing.T) {
+	manager := NewAPIKeyManager(&config.APITokens{
+		Tokens:     []string{"solo-pro"},
+		DemoTokens: []string{"solo-demo"},
+	})
+
+	manager.MarkKeyAsFailed("solo-pro")
+	manager.MarkKeyAsFailed("solo-demo")
+
+	keys := manager.GetAvailableKeys()
+	require.True(t, containsKey(keys, "solo-pro", ProKey))
+	require.False(t, containsKey(keys, "solo-demo", DemoKey))
 }
