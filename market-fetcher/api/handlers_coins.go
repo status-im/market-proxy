@@ -225,10 +225,8 @@ func (s *Server) handleCoinsID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.setCacheStatusHeader(w, cacheStatus.String())
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	// The coin comes from the cache as JSON bytes: send them as they are, with an ETag like every other route
+	s.sendJSONBytes(w, data)
 }
 
 // handleCoinsRoutes routes different /api/v1/coins/* endpoints to appropriate handlers

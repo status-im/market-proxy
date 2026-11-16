@@ -1,9 +1,12 @@
 package api
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -230,4 +233,27 @@ func TestSendJSONResponse(t *testing.T) {
 			assert.True(t, strings.HasSuffix(etag, `"`), "ETag should end with quote")
 		})
 	}
+}
+
+func TestSendJSONBytes_SendsTheBodyUnchangedWithAnETag(t *testing.T) {
+	server := &Server{}
+	// Key order and spacing a re-encode would change
+	body := []byte(`{"id":"bitcoin", "b":1,"a":2}`)
+
+	recorder := httptest.NewRecorder()
+	server.sendJSONBytes(recorder, body)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, string(body), recorder.Body.String())
+	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	assert.Equal(t, strconv.Itoa(len(body)), recorder.Header().Get("Content-Length"))
+
+	// The ETag is the MD5 of exactly these bytes, and other bytes get another one
+	sum := md5.Sum(body)
+	etag := recorder.Header().Get("ETag")
+	assert.Equal(t, `"`+hex.EncodeToString(sum[:])+`"`, etag)
+
+	other := httptest.NewRecorder()
+	server.sendJSONBytes(other, []byte(`{"id":"ethereum"}`))
+	assert.NotEqual(t, etag, other.Header().Get("ETag"))
 }
