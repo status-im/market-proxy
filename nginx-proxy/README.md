@@ -85,4 +85,75 @@ The proxy implements caching with the following features:
 
 ## Authentication
 
-The proxy can be configured to require HTTP basic authentication. Credentials are stored in `.htpasswd`. 
+Protected endpoints accept either of two credentials ([auth.conf](auth.conf)):
+
+1. **HTTP basic authentication.** Credentials are stored in `.htpasswd`.
+2. **Puzzle JWT token.** A client solves a proof-of-work puzzle of the auth
+   service ([proxy-common/auth](../proxy-common/auth/README.md)) and gets a
+   short-lived token good for a limited number of requests:
+
+```bash
+# 1. Get a puzzle
+curl http://localhost:8080/auth/puzzle
+
+# 2. Solve it and exchange the solution for a token
+curl -X POST http://localhost:8080/auth/solve -d '{"challenge": "...", "salt": "...", "nonce": 0, "argon_hash": "...", "hmac": "...", "expires_at": "..."}'
+
+# 3. Use the token
+curl -H "Authorization: Bearer <token>" http://localhost:8080/v1/leaderboard/markets
+```
+
+`go run ./auth/cmd/test-puzzle-auth http://localhost:8080` in `proxy-common`
+runs the whole flow.
+
+Protected endpoints: `/v1/leaderboard/prices`, `/v1/leaderboard/markets`,
+`/v1/exchange_rates`, `/v1/coins/list`, `/v1/coins/markets`. `/auth/*` and the
+other endpoints need no credentials.
+
+### How a token is checked
+
+The proxy runs on OpenResty and checks tokens with the Lua module it shares
+with eth-rpc-proxy and nft-proxy:
+[proxy-common/auth/nginx](../proxy-common/auth/nginx/README.md). The image
+copies the module from the `proxy-common` submodule, so it is built from the
+repository root: `docker build -f nginx-proxy/Dockerfile .`
+
+- The auth service verifies a token once. A valid token is then remembered in
+  the `jwt_tokens` shared dict until its `exp`, so later requests do not reach
+  the auth service and keep working while it is down.
+- Requests are counted in the same shared dict per token id (`jti`). A token
+  past `requests_per_token` gets `401`, as does an invalid or expired one; the
+  client is expected to solve a new puzzle.
+- A solved puzzle buys one token: a solution submitted again gets `409`.
+- `X-RateLimit-Limit` and `X-RateLimit-Remaining` on a response tell a token
+  client where it stands.
+- When the auth service is down or slow (2s to connect, 5s to answer), a token
+  it has not verified yet gets `500`, not `401`: the failure says nothing about
+  the token, so the client must not throw it away.
+- `/auth/solve` is limited to 10 requests per second per client address
+  (`429` beyond a burst of 20): checking a solution costs the auth service an
+  Argon2 run whether it is right or not. Behind a load balancer nginx must see
+  the real client address (`real_ip` module), or all clients share this limit.
+- The token is taken from the `Authorization: Bearer` header only
+  (`AUTH_ACCEPT_QUERY_TOKEN=false`, set in the image). Unlike eth-rpc-proxy, a
+  token in the query string is not accepted: the query string is part of the
+  proxy cache key and is passed to market-fetcher.
+- The auth service address is looked up in Lua, when a worker starts and every
+  `AUTH_RESOLVE_INTERVAL` seconds after that; nginx's own `resolver` is not
+  involved. An auth service that comes back on another address is found
+  without restarting the proxy.
+- The counter lives in the memory of one nginx instance, so with several
+  replicas the limit applies per replica.
+
+### Configuration
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `GO_AUTH_SERVICE_URL` | `http://auth-service:8081` | Auth service address |
+| `AUTH_CONFIG_FILE` | `/app/auth_config.json` | Auth config, the same file the auth service runs with |
+| `CUSTOM_DNS` | `127.0.0.11` (Docker) | DNS server the auth service address is looked up with |
+| `AUTH_RESOLVE_INTERVAL` | `30` | Seconds between lookups of the address |
+
+The proxy reads `requests_per_token` and `token_expiry_minutes` from the auth
+config at startup; restart it after changing them. `secrets/auth_config.json`
+is created by [../start-local.sh](../start-local.sh) when missing.

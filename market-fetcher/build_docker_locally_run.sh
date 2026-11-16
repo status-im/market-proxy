@@ -3,8 +3,10 @@
 # Create Docker network (if it doesn't exist)
 docker network create market-proxy-network || true
 
-# Build image
-docker build -t market-fetcher .
+# Build image. The build context is the repository root: the image needs the
+# proxy-common submodule next to market-fetcher.
+cd "$(dirname "$0")/.."
+docker build -f market-fetcher/Dockerfile -t market-fetcher .
 
 # Remove existing container (if it present)
 docker rm -f market-fetcher || true

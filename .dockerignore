@@ -1,0 +1,47 @@
+# The repository root is the build context of market-fetcher and nginx-proxy
+# (see their Dockerfiles), both of which need proxy-common; everything else
+# stays out of it.
+*
+!market-fetcher
+!nginx-proxy
+!proxy-common
+
+# Git
+**/.git
+**/.gitignore
+
+# Binaries and build files
+market-fetcher/bin
+**/*.exe
+**/*.exe~
+**/*.dll
+**/*.so
+**/*.dylib
+
+# Test binary, built with `go test -c`
+**/*.test
+
+# Output of the go coverage tool
+**/*.out
+
+# Go workspace file
+**/go.work
+
+# IDE specific files
+**/.idea
+**/.vscode
+**/*.swp
+**/*.swo
+
+# OS specific files
+**/.DS_Store
+**/Thumbs.db
+
+# Configuration files that shouldn't be in Docker
+market-fetcher/config.local.yaml
+**/*.env
+**/*.env.*
+!**/.env.example
+
+# Debug files
+market-fetcher/debug
