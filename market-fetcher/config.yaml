@@ -175,6 +175,8 @@ coingecko_token_list:
     - blast
     - robinhood
     - binance-smart-chain
+    - polygon-pos
+    - mantle
 
 coingecko_coins:
   name: "coins"
