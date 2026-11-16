@@ -22,26 +22,26 @@ func (s *Server) setCacheStatusHeader(w http.ResponseWriter, cacheStatus string)
 // sendJSONResponse is a common wrapper for JSON responses that sets Content-Type,
 // Content-Length and ETag headers
 func (s *Server) sendJSONResponse(w http.ResponseWriter, data interface{}) {
-	// Marshal the data to calculate content length and ETag
 	responseBytes, err := json.Marshal(data)
 	if err != nil {
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		return
 	}
+	s.sendJSONBytes(w, responseBytes)
+}
 
-	// Calculate ETag (MD5 hash of the response)
-	hash := md5.Sum(responseBytes)
-	etag := hex.EncodeToString(hash[:])
+// sendJSONBytes writes a body that is already JSON with the same headers as
+// sendJSONResponse. The ETag is the MD5 of the body, so nginx can answer a
+// matching If-None-Match with 304.
+func (s *Server) sendJSONBytes(w http.ResponseWriter, body []byte) {
+	hash := md5.Sum(body)
 
-	// Set headers
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", strconv.Itoa(len(responseBytes)))
-	w.Header().Set("ETag", "\""+etag+"\"")
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.Header().Set("ETag", "\""+hex.EncodeToString(hash[:])+"\"")
 
-	// Write the response
-	if _, err := w.Write(responseBytes); err != nil {
+	if _, err := w.Write(body); err != nil {
 		log.Printf("Error writing response: %v", err)
-		return
 	}
 }
 
